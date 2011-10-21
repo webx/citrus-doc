@@ -1,0 +1,1258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.resource" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="resourceloading.html" ?>
+    <title>Resource Loading服务指南</title>
+    <para>Webx框架中，包含了一套用来查找和装载资源的服务 —— Resource Loading服务。</para>
+    <para>Resource Loading服务从Spring
+        <code>ResourceLoader</code>机制中扩展而来，并且和Spring框架融为一体。因此，你不需要写特别的Java代码，就可以让所有利用Spring
+            <code>ResourceLoader</code>机制的代码，直接享用Webx所提供的新的Resource Loading机制。</para>
+    <section>
+        <title>资源概述</title>
+        <section>
+            <title>什么是资源？</title>
+            <para>在一个稍具规模的应用程序中，经常要做的一件事，就是查找资源、读取资源的内容。这里所谓的“资源”，是指<emphasis>存放在某一介质中，可以被程序利用的文件、数据</emphasis>。例如，基于Java的WEB应用中，常用到下面的资源：<itemizedlist>
+                    <listitem>
+                        <para>配置文件：<filename>*.xml</filename>、<filename>*.properties</filename>等。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Java类文件：<filename>*.class</filename>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>JSP页面、Velocity模板文件：<filename>*.jsp</filename>、<filename>*.vm</filename>等。</para>
+                    </listitem>
+                    <listitem>
+                        <para>图片、CSS、JavaScript文件：<filename>*.jpg</filename>、<filename>*.css</filename>、<filename>*.js</filename>等。
+                        </para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>如何表示资源？</title>
+            <para>在Java中，有多种形式可以表示一个资源：</para>
+            <table frame="none">
+                <title>资源的表示</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="4.0*" />
+                    <thead>
+                        <row>
+                            <entry>可表示资源的对象</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>java.io.&zwsp;File</code></entry>
+                            <entry>
+                                <para>可代表文件系统中的文件或目录。例如：<itemizedlist>
+                                        <listitem>
+                                            <para>文件系统中的文件：“<filename>c:\config.sys</filename>”。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>文件系统中的目录：“<filename>c:\windows\</filename>”。
+                                            </para>
+                                        </listitem>
+                                    </itemizedlist></para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>java.net.&zwsp;URL</code></entry>
+                            <entry>
+                                <para>统一资源定位符。例如：<itemizedlist>
+                                        <listitem>
+                                            <para>文件系统中的文件：<filename>c:\config.sys</filename>，可以表示成URL：“<code>file:///c:/config.sys</code>”。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>文件系统中的目录：<filename>c:\windows\</filename>，可以表示成URL：“<code>file:///c:/windows/</code>”。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>远程WEB服务器上的文件：“<code>http://www.springframework.org/schema/beans.xml</code>”。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>Jar包中的某个文件，可以表示成URL：“<code>jar:file:///c:/my.jar!/my/file.txt</code>”。
+                                            </para>
+                                        </listitem>
+                                    </itemizedlist></para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>java.io.&zwsp;InputStream</code></entry>
+                            <entry>
+                                <para>输入流对象，可用来直接访问资源的内容。例如：<itemizedlist>
+                                        <listitem>
+                                            <para>文件系统中的文件：<filename>c:\config.sys</filename>，可以用下面的代码来转换成输入流：</para>
+                                            <programlisting language="java">new FileInputStream("c:\\config.sys");</programlisting>
+                                        </listitem>
+                                        <listitem>
+                                            <para>远程WEB服务器上的文件，可以用下面的代码来转换成输入流：</para>
+                                            <programlisting language="java">new URL("http://www.springframework.org/schema/beans.xml")&zwsp;.openStream();</programlisting>
+                                        </listitem>
+                                        <listitem>
+                                            <para>Jar包中的某个文件，可以用下面的代码来转换成输入流： </para>
+                                            <programlisting language="java">new URL("jar:file:///c:/my.jar!/my/file.txt")&zwsp;.openStream();</programlisting>
+                                        </listitem>
+                                    </itemizedlist></para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>然而，并不是所有的资源，都可以表现成上述所有的形式。比如，<itemizedlist>
+                    <listitem>
+                        <para>Windows文件系统中的目录，无法表现为输入流。</para>
+                    </listitem>
+                    <listitem>
+                        <para>而远程WEB服务器上的文件无法转换成<code>File</code>对象。</para>
+                    </listitem>
+                    <listitem>
+                        <para>多数资源都可以表现成<code>URL</code>形式。但也有例外，例如，如果把数据库中的数据看作资源，那么一般来说这种资源无法表示成<code>URL</code>。</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>如何访问资源？</title>
+            <para>不同类型的资源，需要用不同的方法来访问。</para>
+            <variablelist>
+                <varlistentry>
+                    <term>访问CLASSPATH中的资源</term>
+                    <listitem>
+                        <para>将资源放在CLASSPATH是最简单的做法。我们只要把所需的资源文件打包到Jar文件中，或是在运行java时，用<code>-classpath</code>参数中指定的路径中。接下来我们就可以用下面的代码来访问这些资源：</para>
+                        <example>
+                            <title>访问CLASSPATH中的资源</title>
+                            <programlisting language="java">URL resourceURL = getClassLoader().getResource("java/lang/String.class"); // 取得URL
+InputStream resourceContent = getClassLoader().getResourceAsStream("java/lang/String.class"); // 取得输入流</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>访问文件系统中的资源</term>
+                    <listitem>
+                        <para>下面的代码从文件资源中读取信息：</para>
+                        <example>
+                            <title>访问文件系统中的资源</title>
+                            <programlisting language="java">File resourceFile = new File("c:\\test.txt"); // 取得File
+InputStream resourceContent = new FileInputStream(resourceFile); // 取得输入流</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>访问Web应用中的资源</term>
+                    <listitem>
+                        <para>Web应用既可以打包成war文件，也可以展开到任意目录中。因此Web应用中的资源（JSP、模板、图片、Java类、配置文件）不总是可以用文件的方式存取。虽然Servlet
+                                API提供了<code>ServletContext.getRealPath()</code>方法，用来取得某个资源的实际文件路径，但该方法很可能返回<code>null</code>
+                            —— 这取决于应用服务器的实现，以及Web应用的布署方式。更好的获取WEB应用资源的方法如下：</para>
+                        <example>
+                            <title>访问Web应用中的资源</title>
+                            <programlisting language="java">URL resourceURL = servletContext.getResource("/WEB-INF/web.xml"); // 取得URL
+InputStream resourceContent = servletContext.getResourceAsStream("/WEB-INF/web.xml"); // 取得输入流</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>访问Jar/Zip文件中的资源</term>
+                    <listitem>
+                        <para>下面的代码读取被打包在Jar文件中的资源信息：</para>
+                        <example>
+                            <title>访问Jar/Zip文件中的资源</title>
+                            <programlisting language="java">URL jarURL = new File(System.getProperty("java.home") + "/lib/rt.jar").toURI().toURL();
+URL resourceURL = new URL("jar:" + jarURL + "!/java/lang/String.class"); // 取得URL
+InputStream resourceContent = resourceURL.openStream(); // 取得输入流</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>访问其它资源</term>
+                    <listitem>
+                        <para>还可以想到一些访问资源的方法，例如从数据库中取得资源数据。</para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </section>
+        <section>
+            <title>如何遍历资源？</title>
+            <para>有时候，我们不知道资源的路径，但希望能找出所有符合条件的资源，这个操作叫作遍历。例如，找出所有符合pattern
+                    “<code>/WEB-INF/webx-*.xml</code>”的配置文件。</para>
+            <variablelist>
+                <varlistentry>
+                    <term>遍历文件系统</term>
+                    <listitem>
+                        <example>
+                            <title>遍历文件系统</title>
+                            <programlisting language="java">File parentResource = new File("c:\\windows");
+File[] subResources = parentResource.listFiles();</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>遍历WEB应用中的资源</term>
+                    <listitem>
+                        <example>
+                            <title>遍历WEB应用中的资源</title>
+                            <programlisting language="java">Set&lt;String> subResources = servletContext.getResourcePaths("/WEB-INF/");</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>遍历Jar/zip文件中的资源</term>
+                    <listitem>
+                        <example>
+                            <title>遍历Jar/zip文件中的资源</title>
+                            <programlisting language="java">File jar = new File("myfile.jar");
+ZipInputStream zis = new ZipInputStream(new FileInputStream(jar));
+
+try {
+    for (ZipEntry entry = zis.getNextEntry(); entry != null; entry = zis.getNextEntry()) {
+        // visit entry
+    }
+} finally {
+    zis.close();
+}</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+            <para>并非所有类型的资源都支持遍历操作。通常遍历操作会涉及比较复杂的递归算法。</para>
+        </section>
+        <section>
+            <title>有什么问题？</title>
+            <para>应用程序访问资源时，有什么问题呢？</para>
+            <para>首先，资源表现形式的多样性，给应用程序的接口设计带来一点麻烦。假如，我写一个<code>ConfigReader</code>类，用来读各种配置文件。那么我可能需要在接口中列出所有的资源的形式：</para>
+            <example>
+                <title>用来读取配置文件的接口</title>
+                <programlisting language="java">public interface ConfigReader {
+    Object readConfig(File configFile);
+    Object readConfig(URL configURL);
+    Object readConfig(InputStream configStream);
+}</programlisting>
+            </example>
+            <para>特别是当一个通用的框架，如Spring和Webx，需要在对象之间传递各种形式的资源的时候，这种多样性将导致很大的编程困难。</para>
+            <para>其次，有这么多种查找资源和遍历资源的方法，使我们的应用程序和资源所在的环境高度耦合。这种耦合会妨碍代码的可移植性和可测试性。</para>
+            <para>比如，我希望在非WEB的环境下测试一个模块，但这个模块因为要存取Web应用下的资源，而引用了<code>ServletContext</code>对象。在测试环境中并不存在<code>ServletContext</code>而导致该模块难以被测试。再比如，我希望测试的一个模块，引用了classpath下的某个配置文件（这也是一种耦合）。而我希望用另一个专为该测试打造的配置文件来代替这个文件。由于原配置文件是在classpath中，因此是难以替换的。</para>
+            <para>对于不打算重用的应用程序来说，这个问题还不太严重：大不了我预先设定好，就从这个地方，以固定的方式存取资源。然而就算这样，也是挺麻烦的。有的人喜欢把资源放在某个子目录下，有的人喜欢把资源放在CLASSPATH下，又有人总是通过<code>ServletContext</code>来存取Web应用下的资源。当你要把这些不同人写的模块整合起来时，你会发现很难管理。</para>
+            <para>一种可能发生的情形是，因为某些原因，环境发生改变，导致资源的位置、存取方式不得不跟着改变。比如将老系统升级为新系统。但一些不得不继续使用的老代码，由于引用了旧环境的资源而不能工作
+                ——
+                除非你去修改这些代码。有时修改老代码是很危险的，可能导致不可预知的错误。又比如，由于存储硬件的改变或管理的需要，我们需要将部分资源移到另一个地方（我们曾经将Web页面模板中的某个子目录，移动到一个新的地方，因为这些模板必须由新的CMS系统自动生成）。想要不影响现有代码来完成这些事，是很困难的。
+            </para>
+        </section>
+    </section>
+    <section>
+        <title>Spring的<code>ResourceLoader</code>机制</title>
+        <para>Spring内置了一套<code>ResourceLoader</code>机制，很好地解决了访问资源的大部分问题。</para>
+        <section>
+            <title><code>Resource</code>接口</title>
+            <para>Spring将所有形式的资源表现概括成一个<code>Resource</code>接口。如下所示（下面的接口定义是被简化的，有意省略了一些东西，以便突出重点）：</para>
+            <example>
+                <title>Spring的<code>Resource</code>接口（简化）</title>
+                <programlisting language="java">public interface Resource {
+    InputStream getInputStream();
+    URL getURL();
+    File getFile();
+    boolean exists();
+}</programlisting>
+            </example>
+            <para><code>Resource</code>接口向应用程序屏蔽了资源表现形式的多样性。于是，前面例子中的<code>ConfigReader</code>就可以被简化成下面的样子：</para>
+            <example>
+                <title>用来读取配置文件的接口（简化后）</title>
+                <programlisting language="java">public interface ConfigReader {
+    Object readConfig(Resource configResource);
+}</programlisting>
+            </example>
+            <para>事实上，Spring正是利用<code>Resource</code>接口来初始化它的<code>ApplicationContext</code>的：</para>
+            <example>
+                <title>Spring用<code>Resource</code>接口来代表用来初始化<code>ApplicationContext</code>的配置文件</title>
+                <programlisting language="java">public abstract class AbstractXmlApplicationContext extends ... {
+    ...
+    protected void loadBeanDefinitions(XmlBeanDefinitionReader reader) {
+        Resource[] configResources = getConfigResources();
+        ...
+    }
+
+    protected Resource[] getConfigResources();
+}</programlisting>
+            </example>
+        </section>
+        <section>
+            <title><code>ResourceLoader</code>和<code>ResourcePatternResolver</code>接口</title>
+            <para>Spring不仅可以通过<code>ResourceLoader</code>接口来取得单一的资源对象，还可以通过<code>ResourcePatternResolver</code>遍历并取得多个符合指定pattern的资源对象。这个设计向应用程序屏蔽了查找和遍历资源的复杂性。</para>
+            <figure>
+                <title><code>ResourceLoader</code>和<code>ResourcePatternResolver</code>接口</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/resource/spring-interfaces.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+        </section>
+        <section>
+            <title>在代码中取得资源</title>
+            <section>
+                <title>通过<code>ResourceLoader</code>取得资源</title>
+                <example>
+                    <title>通过<code>ResourceLoader</code>取得资源</title>
+                    <programlisting language="java">public class MyBean implements ResourceLoaderAware <co xml:id="co.rl.aware" /> {
+    private ResourceLoader loader;
+
+    public void setResourceLoader(ResourceLoader loader) <co xml:id="co.rl.aware2" /> {
+        this.loader = loader;
+    }
+
+    public void func() {
+        Resource resource = loader.getResource("myFile.xml"); <co xml:id="co.rl.aware.getres" />
+        ...
+    }
+}</programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.rl.aware co.rl.aware2">
+                            <para>实现了<code>ResourceLoaderAware</code>接口。要取得资源，必须要拿到<code>ResourceLoader</code>对象。而通过<code>ResourceLoaderAware</code>接口拿到<code>ResourceLoader</code>是最简单的方法。</para>
+                        </callout>
+                        <callout arearefs="co.rl.aware.getres">
+                            <para>调用所取得的<code>ResourceLoader</code>来取得资源。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+            <section>
+                <title>直接注入资源</title>
+                <para>另一种更简便的方法是，将资源直接“注入”到bean中 ——
+                    你不需要手工调用<code>ResourceLoader</code>来取得资源的方式来设置资源。例如：</para>
+                <example>
+                    <title>直接注入资源</title>
+                    <programlisting language="java">public class MyBean {
+    private URL resource;
+
+    public void setLocation(URL resource) <co xml:id="co.rl.inject.url" /> {
+        this.resource = resource;
+    }
+
+    ……
+}</programlisting>
+                    <para>Spring配置文件可以这样写：</para>
+                    <programlisting language="xml">&lt;bean id="myBean" class="MyBean">
+    &lt;property name="location" value="myFile.xml" />
+&lt;/bean></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.rl.inject.url">
+                            <para>此处注入资源的URL</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>这样，Spring就会把适当的<filename>myFile.xml</filename>所对应的资源注入到<code>myBean</code>对象中。此外，Spring会自动把<code>Resource</code>对象转换成<code>URL</code>、<code>File</code>等普通对象。在上面的例子中，<code>MyBean</code>并不依赖于<code>Resource</code>接口，只依赖于<code>URL</code>类。</para>
+                <para>将代码稍作修改，就可以注入一组资源：</para>
+                <example>
+                    <title>注入一组资源</title>
+                    <programlisting language="java">    public void setLocations(URL[] resources) <co xml:id="co.rl.inject.urls" /> {
+        this.resources = resources;
+    }</programlisting>
+                    <para>配置文件：</para>
+                    <programlisting language="xml">    &lt;property name="locations" value="WEB-INF/webx-*.xml" /></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.rl.inject.urls">
+                            <para>此处注入资源的URL的数组。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>上例中，可以直接得到所有符合pattern
+                        “<code>WEB-INF/webx-*.xml</code>”的配置文件。显然这是通过<code>ResourcePatternResolver</code>取得的。</para>
+            </section>
+        </section>
+        <section>
+            <title>Spring如何装载资源？</title>
+            <para>Spring是如何装载资源文件的呢？Spring装载资源的方案是由<code>ApplicationContext</code>决定的。不同的<code>ApplicationContext</code>类，实现了不同的资源装载方案。</para>
+            <figure>
+                <title>Spring <code>ApplicationContext</code>实现了资源装载的具体方案</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/resource/spring-rl-impl.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <section>
+                <title><code>ClassPathXmlApplicationContext</code></title>
+                <para><code>ClassPathXmlApplicationContext</code>支持从classpath中装载资源。</para>
+                <example>
+                    <title><code>ClassPathXmlApplicationContext</code> - 从classpath中装载资源</title>
+                    <para>假如我以下面的方式启动Spring，那么系统将支持从<emphasis>classpath中</emphasis>装载资源。</para>
+                    <programlisting language="java">ApplicationContext context = new ClassPathXmlApplicationContext("beans.xml");</programlisting>
+                    <para><code>ClassPathXmlApplicationContext</code>装载资源文件<filename>myFile.xml</filename>的逻辑，相当于如下代码：</para>
+                    <programlisting language="java">URL resource = getClassLoader().getResource("myFile.xml");</programlisting>
+                </example>
+            </section>
+            <section>
+                <title><code>FileSystemXmlApplicationContext</code></title>
+                <para><code>FileSystemXmlApplicationContext</code>支持从文件系统中装载资源。</para>
+                <example>
+                    <title><code>FileSystemXmlApplicationContext</code> - 从文件系统中装载资源</title>
+                    <para>假如我以下面的方式启动Spring，那么系统将支持从<emphasis>文件系统中</emphasis>装载资源。</para>
+                    <programlisting language="java">ApplicationContext context = new FileSystemXmlApplicationContext("beans.xml");</programlisting>
+                    <para><code>FileSystemXmlApplicationContext</code>装载资源文件<filename>myFile.xml</filename>的逻辑，相当于如下代码：</para>
+                    <programlisting language="java">File resource = new File("myFile.xml");</programlisting>
+                </example>
+            </section>
+            <section>
+                <title><code>XmlWebApplicationContext</code></title>
+                <para><code>XmlWebApplicationContext</code>支持从webapp上下文中（也就是<code>ServletContext</code>对象中）装载资源。</para>
+                <example>
+                    <title><code>XmlWebApplicationContext</code> - 从Web应用的根目录中装载资源</title>
+                    <para>假如我以下面的方式启动Spring，那么系统将支持从<emphasis>Web应用的根目录中</emphasis>装载资源。</para>
+                    <programlisting language="java">ApplicationContext context = new XmlWebApplicationContext();
+
+context.setConfigLocation("/WEB-INF/beans.xml");
+context.setServletContext(servletContext);
+context.refresh();</programlisting>
+                    <para>也可以让<code>ContextLoaderListener</code>来创建<code>XmlWebApplicationContext</code>，只需要在<filename>/WEB-INF/web.xml</filename>中添加如下配置：</para>
+                    <programlisting language="xml">&lt;context-param>
+    &lt;param-name>contextConfigLocation&lt;/param-name>
+    &lt;param-value>/WEB-INF/beans.xml&lt;/param-value>
+&lt;/context-param>
+&lt;listener>
+    &lt;listener-class>org.springframework.web.context.ContextLoaderListener&lt;/listener-class>
+&lt;/listener></programlisting>
+                    <para><code>XmlWebApplicationContext</code>装载资源文件<filename>myFile.xml</filename>的逻辑，相当于如下代码：</para>
+                    <programlisting language="java">URL resource = servletContext.getResource("myFile.xml");</programlisting>
+                </example>
+            </section>
+            <section>
+                <title><code>Classpath</code>和<code>Classpath*</code>前缀</title>
+                <para>除了用<code>ClassPathXmlApplicationContext</code>以外，事实上所有的Spring
+                        <code>ApplicationContext</code>实现也都支持装载classpath中的资源。可以用下面两种方法：</para>
+                <table frame="none">
+                    <title>Spring <code>ApplicationContext</code>装载classpath资源的方法</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.81*" />
+                        <thead>
+                            <row>
+                                <entry>方法</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>使用<code>classpath:</code>前缀</entry>
+                                <entry>例如：“<code>classpath:myFile.xml</code>” ——
+                                        在classpath中装载资源<code>myFile.xml</code>。</entry>
+                            </row>
+                            <row>
+                                <entry>使用<code>classpath*:</code>前缀</entry>
+                                <entry>例如：“<code>classpath*:/META-INF/my*.xml</code>” ——
+                                    在classpath中装载所有符合pattern的资源。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+        </section>
+        <section>
+            <title>Spring <code>ResourceLoader</code>的缺点</title>
+            <variablelist>
+                <varlistentry>
+                    <term>鱼和熊掌不可得兼</term>
+                    <listitem>
+                        <para>Spring
+                                <code>ResourceLoader</code>是由<code>ApplicationContext</code>来实现的。而你一次只能选择一种<code>ApplicationContext</code>的实现
+                            ——
+                                如果你选择了<code>XmlWebApplicationContext</code>，你就放弃了<code>FileSystemXmlApplicationContext</code>；反之亦然。</para>
+                        <para>在WEB应用中，由于Spring使用了<code>XmlWebApplicationContext</code>，因此你就无法装载文件系统下的资源。</para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>不透明性</term>
+                    <listitem>
+                        <para>你必须用“绝对路径”来引用Spring中的资源。</para>
+                        <para>假如你使用<code>FileSystemXmlApplicationContext</code>来访问资源，你必须使用绝对路径来访问文件或目录资源。这妨碍了应用程序在不同系统中布署的自由。因为在不同的系统中，例如Windows和Linux，文件的绝对路径是不同的。为了系统管理的需要，有时也需要将文件或目录放在不同于开发环境的地方。</para>
+                        <para>即便是访问WEB应用下的资源，或者是classpath下的资源，你也必须明确指出它们的位置，例如：<code>WEB-INF/myFile.xml</code>、<code>classpath:myFile.xml</code>等。如果我希望把<code>classpath:myFile.xml</code>挪到另一个物理位置，就必须修改所有的引用。</para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>无扩展性</term>
+                    <listitem>
+                        <para>我无法在Spring
+                                <code>ResourceLoader</code>机制中增加一种新的装载资源的方法。例如，我希望把资源文件保存在数据库中，并用<code>ResourceLoader</code>来取得它。用Spring很难做到这点。</para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </section>
+    </section>
+    <section>
+        <title>Resource Loading服务</title>
+        <section>
+            <title>替换Spring <code>ResourceLoader</code></title>
+            <para>Webx Resource Loading服务可作为Spring <code>ResourceLoader</code>机制的替代品（Drop-in Replacement，投入既替换）：<itemizedlist>
+                    <listitem>
+                        <para>当你不使用它时，Spring原有的<code>ResourceLoader</code>功能不受影响；</para>
+                    </listitem>
+                    <listitem>
+                        <para>当你在spring配置文件中添加Resource
+                            Loading服务时，<code>ResourceLoader</code>即被切换到新的机制。新的机制可兼容原有的Spring配置和代码，但支持更多的资源装载方式，以及更多的功能，如资源重命名、资源重定向等。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>你只需要在配置文件中增加以下内容，就可以将Spring <code>ResourceLoader</code>机制替换成Webx的Resource
+                Loading服务：</para>
+            <example>
+                <title>Resource Loading服务的基本配置（<filename>/WEB-INF/webx.xml</filename>）</title>
+                <programlisting language="xml">&lt;resource-loading
+        xmlns="http://www.alibaba.com/schema/services"
+        xmlns:res-loaders="http://www.alibaba.com/schema/services/resource-loading/loaders">
+
+    &lt;resource-alias pattern="/" name="/webroot" /> <co xml:id="co.rl.basic.alias.root" />
+
+    &lt;resource pattern="/webroot" internal="true"> <co xml:id="co.rl.basic.def.webroot" />
+        &lt;res-loaders:webapp-loader /> <co xml:id="co.rl.basic.webroot" />
+    &lt;/resource>
+    &lt;resource pattern="/classpath" internal="true"> <co xml:id="co.rl.basic.def.classpath" />
+        &lt;res-loaders:classpath-loader /> <co xml:id="co.rl.basic.classpath" />
+    &lt;/resource>
+
+&lt;/ resource-loading></programlisting>
+                <calloutlist>
+                    <para>关于这段配置的具体含义，请参见本章其它小节：</para>
+                    <callout arearefs="co.rl.basic.alias.root">
+                        <para>请参见：<xref linkend="webx.resource.rename.res" />。</para>
+                    </callout>
+                    <callout arearefs="co.rl.basic.def.webroot co.rl.basic.def.classpath">
+                        <para>请参见：<xref linkend="webx.resource.define.newres" />。</para>
+                    </callout>
+                    <callout arearefs="co.rl.basic.webroot">
+                        <para>请参见：<xref linkend="webx.resource.loader.webapp" />。</para>
+                    </callout>
+                    <callout arearefs="co.rl.basic.classpath">
+                        <para>请参见：<xref linkend="webx.resource.loader.classpath" />。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>这段配置使得Resource Loading服务的行为和原来的Spring <code>ResourceLoader</code>完全兼容：<itemizedlist>
+                    <listitem>
+                        <para>仍然支持<code>classpath:</code>和<code>classpath*:</code>前缀所定义的资源。</para>
+                    </listitem>
+                    <listitem>
+                        <para>如不加前缀，则代表访问WEB应用根目录下的文件。例如：<itemizedlist>
+                                <listitem>
+                                    <para><filename>/myFile.xml</filename>代表着Web应用根目录下的<filename>/myFile.xml</filename>。</para>
+                                </listitem>
+                                <listitem>
+                                    <para><filename>/WEB-INF/myFile.xml</filename>代表着Web应用根目录下的<filename>/WEB-INF/myFile.xml</filename>。</para>
+                                </listitem>
+                            </itemizedlist></para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>加上这段配置以后，虽然功能和原来相比并没有变化，然而它已经准备好向系统中添加新的资源装载的功能了。</para>
+        </section>
+        <section xml:id="webx.resource.define.newres">
+            <title>定义新资源</title>
+            <para>定义一种新资源，需要回答两个问题：<orderedlist>
+                    <listitem>
+                        <para>资源的名称是什么？</para>
+                    </listitem>
+                    <listitem>
+                        <para>资源在哪里（或如何装载资源）？</para>
+                    </listitem>
+                </orderedlist></para>
+            <para>下面的例子定义了一种新的资源，它的名称是“<code>/jdk/*</code>”，通过“<code>file-loader</code>”从文件系统<code>${java.home}</code>文件夹中装载。</para>
+            <example>
+                <title>定义新资源：<code>/jdk/*</code></title>
+                <programlisting language="xml">&lt;resource-loading
+        xmlns="http://www.alibaba.com/schema/services"
+        xmlns:res-loaders="http://www.alibaba.com/schema/services/resource-loading/loaders">
+    ...
+
+    &lt;resource pattern="/jdk"> <co xml:id="co.rl.define.res.jdk" />
+        &lt;res-loaders:file-loader basedir="${java.home}" /> <co xml:id="co.rl.loader.file" />
+    &lt;/resource>
+
+&lt;/resource-loading></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.rl.define.res.jdk">
+                        <para>定义新资源，资源名以<code>/jdk</code>为前缀。</para>
+                    </callout>
+                    <callout arearefs="co.rl.loader.file">
+                        <para><code>&lt;file-loader></code>表示从文件系统中装载资源。详见：<xref
+                                linkend="webx.resource.loader.file" />。</para>
+                        <para><code>${java.home}</code>是Java提供的system
+                            property，它的值指向当前Java运行环境的根目录。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>前文讲过，Spring可以直接把资源注入到对象中。使用Resource
+                    Loading服务以后，你仍然可以这样做。下面的配置把JDK目录下的<code>tools.jar</code>文件（如果存在的话）的URL注入到<code>myBean</code>中：</para>
+            <example>
+                <title>注入<code>JAVA_HOME/lib/tools.jar</code></title>
+                <programlisting language="xml">&lt;bean id="myBean" class="MyBean">
+    &lt;property name="location" value="/jdk/lib/tools.jar" />
+&lt;/bean></programlisting>
+            </example>
+        </section>
+        <section xml:id="webx.resource.rename.res">
+            <title>重命名资源</title>
+            <para>重命名资源是指对于即有的资源，改变其名字。</para>
+            <para>为什么需要修改资源的名字？理由是：<emphasis>取消资源名称和环境的关联性</emphasis>。有一些资源的名称，具有明显的环境相关性，比如：<itemizedlist>
+                    <listitem>
+                        <para><code>classpath:myFile.xml</code>或者<code>/classpath/myFile.xml</code>
+                            —— 从资源的名称就可以看出，这些资源是从classpath中装载的。</para>
+                    </listitem>
+                    <listitem>
+                        <para><code>/WEB-INF/myFile.xml</code>或者<code>/webroot/WEB-INF/myFile.xml</code>
+                            —— 从资源的名称可以看出，这些资源是从web应用中装载的。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>使用和环境相关的资源名称有什么问题？问题就是，当环境改变时，应用代码会受到影响。最常见的一种状况是：单元测试时，用于测试的资源文件往往被放在专供测试的目录中，这些目录和应用运行时的环境是不同的
+                ——
+                    你可能希望将<code>classpath:myFile.xml</code>或<code>/WEB-INF/myFile.xml</code>改成<code>/src/test/config/myFile.xml</code>。</para>
+            <para>对资源重命名就可以解决这类问题：<itemizedlist>
+                    <listitem>
+                        <para>将<code>classpath:myFile.xml</code>或者<code>/WEB-INF/myFile.xml</code>重命名成：<code>myapp/conf/myFile.xml</code>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>在测试环境中，将<code>myapp/conf/myFile.xml</code>名称指向另一个物理地址<code>src/test/config/myFile.xml</code>。
+                        </para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>重命名资源是通过alias别名实现的：</para>
+            <example>
+                <title>重命名资源</title>
+                <programlisting language="xml">&lt;resource-loading
+        xmlns="http://www.alibaba.com/schema/services"
+        xmlns:res-loaders="http://www.alibaba.com/schema/services/resource-loading/loaders">
+    ...
+
+    &lt;resource-alias pattern="/myapp/conf" name="/webroot/WEB-INF" /> <co xml:id="co.rl.alias.conf" />
+
+    &lt;resource pattern="/webroot" internal="true"> <co xml:id="co.rl.res.webroot" />
+        &lt;res-loaders:webapp-loader /> <co xml:id="co.rl.res.webroot.loader" />
+    &lt;/resource>
+
+&lt;/resource-loading></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.rl.alias.conf">
+                        <para>定义了一个资源的别名：<code>/myapp/conf</code>。</para>
+                        <para>当你查找<code>/myapp/conf/myFile.xml</code>时，Resource
+                                Loading服务实际上会去找<code>/webroot/WEB-INF/myFile.xml</code>。而<code>/webroot/*</code>则是由
+                                <coref linkend="co.rl.res.webroot" /> 所定义的资源。</para>
+                    </callout>
+                    <callout arearefs="co.rl.res.webroot">
+                        <para>定义以<code>/webroot</code>为前缀的新资源。</para>
+                        <para>其中，attribute
+                                <emphasis><code>internal=true</code></emphasis>是一个可选项，当它的值为<code>true</code>时，代表它所修饰的资源是不能被外界所直接访问的。例如，你想直接在<code>myBean</code>中注入<code>/webroot/WEB-INF/myFile.xml</code>是不行的。把<code>internal</code>选项设成<code>true</code>，可以让强制用户转向新的资源名称。<code>Internal</code>参数的默认值为<code>false</code>，意味着，新旧两种名称同时可用。</para>
+                    </callout>
+                    <callout arearefs="co.rl.res.webroot.loader">
+                        <para><code>&lt;webapp-loader></code>表示从Web应用中装载资源。详见：<xref
+                                linkend="webx.resource.loader.webapp" />。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+        </section>
+        <section xml:id="webx.resource.redirect.res">
+            <title>重定向资源</title>
+            <para>重定向资源的意思是，将部分资源名称，指向另外的地址。</para>
+            <para>一个常见的需求是这样的：通常我们会把页面模板保存在WEB应用的<code>/templates</code>目录下。但是有一批模板是由外部的CMS系统生成的，这些模板文件不可能和WEB应用打包在一起，而是存放在某个外部的目录下的。我们希望用<code>/templates/cms</code>来引用这些模板。</para>
+            <para>由于<code>/templates/cms</code>只不过是<code>/templates</code>的子目录，所以如果没有Resource
+                Loading服务所提供的重定向功能，是不可能实现上述功能的。用Resource Loading服务重定向的配置如下：</para>
+            <example>
+                <title>重定向资源</title>
+                <programlisting language="xml">&lt;resource-loading
+        xmlns="http://www.alibaba.com/schema/services"
+        xmlns:res-loaders="http://www.alibaba.com/schema/services/resource-loading/loaders">
+    ...
+
+    &lt;resource-alias pattern="/templates" name="/webroot/templates" /> <co xml:id="co.rl.alias.templates" />
+
+    &lt;resource pattern="/templates/cms"> <co xml:id="co.rl.define.templates.cms" />
+        &lt;res-loaders:file-loader basedir="${cms_root}" />
+    &lt;/resource>
+
+    &lt;resource pattern="/webroot" internal="true">
+        &lt;res-loaders:webapp-loader />
+    &lt;/resource>
+
+    ...
+&lt;/resource-loading></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.rl.alias.templates">
+                        <para>定义了一个资源的别名：<code>/templates</code>，指向internal资源：<code>/webroot/templates</code>。</para>
+                    </callout>
+                    <callout arearefs="co.rl.define.templates.cms">
+                        <para>将<code>/templates</code>的子目录<code>/templates/cms</code>重定向到某个外部的文件目录<code>${cms_root}</code>中。</para>
+                        <para>其中<code>cms_root</code>是启动服务器时所指定的system
+                                property（<code>-Dcms_root=...</code>）或者spring所定义的placeholder。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>通过上述配置，可以达到如下效果：</para>
+            <table frame="none">
+                <title>访问<code>/templates</code>目录下的资源</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.17*" />
+                    <thead>
+                        <row>
+                            <entry>资源名</entry>
+                            <entry>如何装载？</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><code>/templates/xxx.vm</code></entry>
+                            <entry>不受重定向影响。访问<code>/webroot/templates/xxx.vm</code>，继而通过<code>webapp-loader</code>访问Web应用根目录下的<filename>/templates/xxx.vm</filename>文件。</entry>
+                        </row>
+                        <row>
+                            <entry><code>/templates/cms/yyy.vm</code></entry>
+                            <entry><emphasis>被重定向</emphasis>。通过<code>file-loader</code>访问<code>${cms_root}</code>目录下的文件：<filename>${cms_root}/yyy.vm</filename>。</entry>
+                        </row>
+                        <row>
+                            <entry><code>/templates/subdir/zzz.vm</code></entry>
+                            <entry>不受重定向影响。访问<code>/webroot/templates/subdir/zzz.vm</code>，继而通过<code>webapp-loader</code>访问Web应用根目录下的<filename>/templates/subdir/zzz.vm</filename>文件。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>最重要的是，<emphasis>访问<code>/templates</code>目录的应用程序并不知道这个资源重定向的存在</emphasis>，当cms所对应的实际目录被改变时，应用程序也不会受到任何影响
+                —— 这个正是Resource Loading服务的“魔法”。</para>
+        </section>
+        <section xml:id="webx.resource.matching">
+            <title>匹配资源</title>
+            <para>无论是定义新资源（<code>&lt;resource></code>）或是重命名资源（资源别名、<code>&lt;resource-alias></code>），都需要指定一个<code>pattern</code>
+                attribute来匹配资源的名称。</para>
+            <section xml:id="webx.resource.matching.type">
+                <title>匹配绝对路径和相对路径</title>
+                <para>资源或资源别名的pattern支持对绝对路径和相对路径的匹配：</para>
+                <table frame="none">
+                    <title>资源或别名的<code>pattern</code>格式</title>
+                    <tgroup cols="3">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.42*" />
+                        <colspec colname="c3" colnum="3" colwidth="4.67*" />
+                        <thead>
+                            <row>
+                                <entry>pattern类型</entry>
+                                <entry>格式</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody valign="middle">
+                            <row>
+                                <entry>匹配绝对路径</entry>
+                                <entry>
+                                    <para><code>/absolute/path</code></para></entry>
+                                <entry>
+                                    <para><emphasis>以<code>/</code>开头的pattern</emphasis>代表一个绝对路径的匹配。</para>
+                                    <para>例如：<code>pattern="/absolute/path"</code>可以匹配资源名<code>/abslute/path/xxx/yyy</code>，但不能匹配资源名<code>/xxx/abslute/path/yyy</code>。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>匹配相对路径</entry>
+                                <entry>
+                                    <para><code>relative/path</code></para>
+                                </entry>
+                                <entry>
+                                    <para><emphasis>不以<code>/</code>开头的pattern</emphasis>代表一个相对路径的匹配。</para>
+                                    <para>例如：<code>pattern="relative/path"</code>可以匹配资源名<code>/relative/path/xxx/yyy</code>，也可以匹配资源名<code>/xxx/relative/path/yyy</code>。</para>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section xml:id="webx.resource.matching.wildcard">
+                <title>匹配通配符</title>
+                <table frame="none">
+                    <title>通配符格式</title>
+                    <tgroup cols="2">
+                        <colspec colname="c2" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c3" colnum="2" colwidth="3.88*" />
+                        <thead>
+                            <row>
+                                <entry>格式</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody valign="middle">
+                            <row>
+                                <entry>星号 <code>*</code></entry>
+                                <entry>匹配0-n个字符，但不包括“<code>/</code>”。即，“<code>*</code>”只匹配一级目录或文件中的零个或多个字符。</entry>
+                            </row>
+                            <row>
+                                <entry>双星号 <code>**</code></entry>
+                                <entry>匹配0-n个字符，包括“<code>/</code>”。即，“<code>**</code>”匹配多级目录或文件。</entry>
+                            </row>
+                            <row>
+                                <entry>问号 <code>?</code></entry>
+                                <entry>匹配0-1个字符，但不包括“<code>/</code>”。即，“<code>?</code>”匹配一级目录或文件中的零个或一个字符。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <para>所有被通配符匹配的内容，将被按顺序赋给变量“<code>$1</code>”、“<code>$2</code>”、“<code>$3</code>”、“<code>$4</code>”、……。这些变量可以在其它地方被引用。</para>
+                <para>通配符匹配的名称既可以是绝对路径，也可以是相对路径。把相对路径和通配符结合起来的最常见用法，就是匹配文件名后缀，例如：<code>pattern="*.xml"</code>。</para>
+                <para>下面是一些使用通配符的例子：</para>
+                <example>
+                    <title>用通配符来匹配资源名称或资源别名</title>
+                    <variablelist>
+                        <varlistentry>
+                            <term>重命名<code>WEB-INF</code>及其子目录下的所有的xml文件</term>
+                            <listitem>
+                                <para>例如，将<code>/myapp/conf/my/file.xml</code>转换成<code>/webroot/WEB-INF/my/file.xml</code>。</para>
+                                <programlisting language="xml">&lt;resource-alias pattern="/myapp/conf/**/*.xml" name="/webroot/WEB-INF/$1/$2.xml" /></programlisting>
+                            </listitem>
+                        </varlistentry>
+                        <varlistentry>
+                            <term>修改文件名后缀</term>
+                            <listitem>
+                                <para>例如，将<code>/myapp/conf/myfile.conf</code>转换成<code>/webroot/WEB-INF/myfile.xml</code>。</para>
+                                <programlisting language="xml">&lt;resource-alias pattern="/myapp/conf/*.conf" name="/WEB-INF/$1.xml"/></programlisting>
+                            </listitem>
+                        </varlistentry>
+                        <varlistentry>
+                            <term>按首字母划分子目录</term>
+                            <listitem>
+                                <para>将<code>a</code>开头的文件名放到<code>a</code>子目录下，<code>b</code>开头的文件名放到<code>b</code>子目录下，以此类推。</para>
+                                <para>例如，将<code>/profiles/myname</code>转换成文件路径<code>${profile_root}/m/myname</code>；将<code>/profiles/othername</code>转换成文件路径<code>${profile_root}/o/othername</code>。</para>
+                                <programlisting language="xml">&lt;resource pattern="/profiles/?*">
+    &lt;res-loaders:file-loader basedir="${profile_root}">
+        &lt;res-loaders:path>$1/$1$2&lt;/res-loaders:path>
+    &lt;/res-loaders:file-loader>
+&lt;/resource></programlisting>
+                            </listitem>
+                        </varlistentry>
+                    </variablelist>
+                </example>
+            </section>
+        </section>
+        <section xml:id="webx.resource.multi.loaders">
+            <title>在多个<code>ResourceLoader</code>中查找</title>
+            <para>假如，在我的Web应用中，我有一些配置文件放在<code>/WEB-INF</code>目录中，另外一部分配置放在classpath中。我可以这样做：</para>
+            <example>
+                <title>在多个<code>ResourceLoader</code>中查找</title>
+                <programlisting language="xml">&lt;resource-loading
+        xmlns="http://www.alibaba.com/schema/services"
+        xmlns:res-loaders="http://www.alibaba.com/schema/services/resource-loading/loaders">
+    ...
+
+    &lt;resource pattern="/myapp/conf">
+        &lt;res-loaders:super-loader name="/webroot/WEB-INF" /> <co xml:id="co.rl.multi.loaders.1.webroot" />
+        &lt;res-loaders:super-loader name="/classpath" /> <co xml:id="co.rl.multi.loaders.2.classpath" />
+    &lt;/resource>
+
+    &lt;resource pattern="/webroot" internal="true"> <co xml:id="co.rl.multi.loaders.define.webroot" />
+        &lt;res-loaders:webapp-loader />
+    &lt;/resource>
+    &lt;resource pattern="/classpath" internal="true"> <co xml:id="co.rl.multi.loaders.define.classpath" />
+        &lt;res-loaders:classpath-loader />
+    &lt;/resource>
+
+    ...
+&lt;/resource-loading></programlisting>
+                <calloutlist>
+                    <callout
+                        arearefs="co.rl.multi.loaders.1.webroot co.rl.multi.loaders.2.classpath">
+                        <para>依次尝试两个loaders。</para>
+                    </callout>
+                    <callout arearefs="co.rl.multi.loaders.define.webroot">
+                        <para>定义internal资源<code>/webroot/*</code>，从Web应用中装载资源。详见<xref
+                                linkend="webx.resource.loader.webapp" />。</para>
+                    </callout>
+                    <callout arearefs="co.rl.multi.loaders.define.classpath">
+                        <para>定义internal资源<code>/classpath/*</code>，从classpath中装载资源。详见<xref
+                                linkend="webx.resource.loader.classpath" />。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>Resource Loading服务根据上面的配置，会这样查找资源“<code>/myapp/conf/myFile.xml</code>”：<orderedlist>
+                    <listitem>
+                        <para>先查找：<code>/webroot/WEB-INF/myFile.xml</code>，如果找不到，</para>
+                    </listitem>
+                    <listitem>
+                        <para>则再查找：<code>/classpath/myFile.xml</code>，如果找不到，则放弃。</para>
+                    </listitem>
+                </orderedlist></para>
+            <para>在上例中，<code>&lt;super-loader></code>（详见<xref linkend="webx.resource.loader.super"
+                     />）是一种特殊的<code>ResourceLoader</code>，它等同于<code>&lt;resource-alias></code>。下面的两种写法是完全等同的：</para>
+            <example>
+                <title><code>&lt;super-loader></code>和等效的<code>&lt;resource-alias></code></title>
+                <programlisting language="xml">&lt;resource pattern="/myapp/conf">
+    &lt;res-loaders:super-loader name="/webroot/WEB-INF" />
+&lt;/resource>
+
+&lt;resource-alias pattern="/myapp/conf " name="/webroot/WEB-INF" /></programlisting>
+            </example>
+            <para>但是用<code>&lt;resource-alias></code>没有办法实现上面所述的多重查找的功能。</para>
+        </section>
+        <section xml:id="webx.resource.load.parent">
+            <title>装载parent容器中的资源</title>
+            <para>在Webx中，Spring容器被安排成级联的结构。</para>
+            <figure>
+                <title>Spring容器的级联结构</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/resource/context-hierarchy.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示，每个Spring容器都可以配置自己的Resource Loading服务。当调用子容器的Resource Loading服务时，遵循这样的逻辑：<orderedlist>
+                    <listitem>
+                        <para>先在子容器的Resource Loading服务中查找资源，如果找不到，</para>
+                    </listitem>
+                    <listitem>
+                        <para>则再到parent容器的Resource Loading服务中查找，如果找不到，则放弃。</para>
+                    </listitem>
+                </orderedlist></para>
+            <para>运用这种级联装载资源的方法，子应用可以把共享的资源定义在root context中，而把自己独享的资源定义在自己的容器当中。</para>
+            <para>前文所述的<code>&lt;super-loader></code>也支持级联装载资源。<code>&lt;super-loader></code>会先在当前容器的Resource
+                Loading服务中查找，如果找不到，就到parent容器的Resource
+                Loading服务中查找。利用<code>&lt;super-loader></code>，你甚至可以改变资源搜索的顺序。例如，你可以命令Resource
+                Loading服务先查找parent容器中的Resource
+                Loading服务，再查找当前容器中的<code>ResourceLoader</code>s：</para>
+            <example>
+                <title>利用<code>&lt;super-loader></code>改变资源搜索的顺序</title>
+                <programlisting language="xml">&lt;resource pattern="...">
+    &lt;res-loaders:super-loader /> <co xml:id="co.rl.load.parent.1.super" />
+    &lt;res-loaders:file-loader /> <co xml:id="co.rl.load.parent.2.file" />
+&lt;/resource></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.rl.load.parent.1.super">
+                        <para>先找parent容器中的Resource Loading服务。</para>
+                    </callout>
+                    <callout arearefs="co.rl.load.parent.2.file">
+                        <para>再找当前容器中的<code>ResourceLoader</code>s。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+        </section>
+        <section xml:id="webx.resource.modify.res">
+            <title>修改资源文件的内容</title>
+            <para>Resource Loading服务支持内容过滤 ——
+                你可以在获取资源以前读取甚至修改资源文件的内容。一种常见的情形是，将XML格式的资源文件用XSLT转换格式：</para>
+            <example>
+                <title>将XML格式的资源文件用XSLT转换格式</title>
+                <programlisting language="xml">&lt;resource-loading
+        xmlns="http://www.alibaba.com/schema/services"
+        xmlns:res-loaders="http://www.alibaba.com/schema/services/resource-loading/loaders">
+        xmlns:res-filters="http://www.alibaba.com/schema/services/resource-loading/filters">
+    ...
+
+    &lt;resource-filters pattern="test-*.xml">
+        &lt;res-filters:xslt-filter xslt="/stylesheet.for.test/test.xsl" saveTo="/tempdir" /> <co xml:id="co.rl.filter.xslt" />
+    &lt;/resource-filters>
+
+    &lt;resource pattern="/tempdir"> <co xml:id="co.rl.filter.tempdir" />
+        &lt;loaders:file-loader basedir="${project.home}/target/test" />
+    &lt;/resource>
+
+&lt;/resource-loading></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.rl.filter.xslt">
+                        <para>将<emphasis>所有目录下</emphasis>（因为是相对路径）的名称为<filename>test-*.xml</filename>文件，用指定的XSL文件进行转换。</para>
+                        <para>这里引进了一种新的扩展点：<code>ResourceFilter</code>。<code>ResourceFilter</code>可以在应用获取资源之前，取得控制，以便对资源做一点事。</para>
+                        <para><code>&lt;xslt-filter></code>是对<code>ResourceFilter</code>的扩展，它能够把XML资源用指定的xsl文件转换成新的格式。假如指定了<code>saveTo</code>参数，就可以把转换的结果保存下来，避免每次访问都重新转换。</para>
+                    </callout>
+                    <callout arearefs="co.rl.filter.tempdir">
+                        <para>此处定义<code>tempdir</code>目录资源，以便保存xslt转换的结果。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <note>
+                <para><code>&lt;xslt-filter></code>的参数<code>xslt</code>所指向的xsl文件，以及参数<code>saveTo</code>所指向的目录，它们本身也是由Resource
+                    Loading服务装载的。</para>
+            </note>
+            <para>有哪些情况需要这种内容过滤的功能呢？<itemizedlist>
+                    <listitem>
+                        <para>单元测试 —— 我们可能需要对单元测试的资源文件进行特殊的转换。</para>
+                    </listitem>
+                    <listitem>
+                        <para>高速缓存 ——
+                                有一些<code>ResourceLoader</code>可能会有性能的开销，例如：从数据库中装载资源。利用<code>ResourceFilter</code>功能，就可以把装载的资源缓存在高速cache中，以提高系统的性能。</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section xml:id="webx.resource.using.service">
+            <title>直接使用<code>ResourceLoadingService</code></title>
+            <para>前面所讲的Resource Loading服务的用法，对应用程序而言，是完全透明的。也就是说，应用程序并不需要关心Resource
+                Loading服务的存在，而是按照Spring <code>ResourceLoader</code>的老用法，就可以工作。</para>
+            <para>但是你也可以直接注入<code>ResourceLoadingService</code>对象，以取得更多的功能。</para>
+            <example>
+                <title>注入<code>ResourceLoadingService</code>对象</title>
+                <programlisting language="java">public class MyClass {
+    @Autowired
+    private ResourceLoadingService resourceLoadingService;
+}</programlisting>
+            </example>
+            <para>下面列举了可通过<code>ResourceLoadingService</code>接口实现的功能。</para>
+            <variablelist>
+                <varlistentry>
+                    <term>取得资源</term>
+                    <listitem>
+                        <example>
+                            <title>通过<code>ResourceLoadingService</code>接口取得资源</title>
+                            <programlisting language="java">Resource resource = resourceLoadingService.getResource("/myapp/conf/myFile.xml"); <co xml:id="co.rl.service.getres" />
+Resource resource = resourceLoadingService.getResource("/myapp/conf/myFile.xml",
+                                                       ResourceLoadingService.FOR_CREATE); <co xml:id="co.rl.service.getres2" /></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.rl.service.getres">
+                                    <para>和Spring不同的是，如果你直接调用<code>ResourceLoadingService</code>取得资源，当资源文件不存在时，你会得到一个<code>ResourceNotFoundException</code>。而Spring无论如何都会取得<code>Resource</code>对象，但随后你需要调用<code>Resource.exists()</code>方法来判断资源存在于否。</para>
+                                </callout>
+                                <callout arearefs="co.rl.service.getres2">
+                                    <para><code>ResourceLoadingService.getResource()</code>方法还支持一个选项：<code>FOR_CREATE</code>。如果提供了这个选项，那么对于某些类型的资源（如文件系统的资源），即使文件或目录不存在，仍然会返回结果。这样，你就可以创建这个文件或目录
+                                        —— 这就是<code>FOR_CREATE</code>参数的意思。</para>
+                                </callout>
+                            </calloutlist>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>取得特定类型的资源</term>
+                    <listitem>
+                        <example>
+                            <title>通过<code>ResourceLoadingService</code>接口取得特定类型的资源</title>
+                            <programlisting language="java">// 取得资源文件
+File file = resourceLoadingService.getResourceAsFile("/myapp/conf/myFile.xml");
+
+// 取得资源URL
+URL url = resourceLoadingService.getResourceAsURL("/myapp/conf/myFile.xml");
+
+// 取得资源输入流
+InputStream stream = resourceLoadingService.getResourceAsStream("/myapp/conf/myFile.xml");</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>判断资源存在于否</term>
+                    <listitem>
+                        <example>
+                            <title>通过<code>ResourceLoadingService</code>接口判断资源存在于否</title>
+                            <programlisting language="java">if (resourceLoadingService.exists("/myapp/conf/myFile.xml")) {
+    ...
+}</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>列举子资源</term>
+                    <listitem>
+                        <example>
+                            <title>通过<code>ResourceLoadingService</code>接口列举子资源</title>
+                            <programlisting language="java">String[] resourceNames = resourceLoadingService.list("/myapp/conf");
+Resource[] resources = resourceLoadingService.listResources("/myapp/conf");</programlisting>
+                        </example>
+                        <para>相当于列出当前目录下的所有子目录和文件。</para>
+                        <para>不是所有的<code>ResourceLoader</code>都支持这个操作 ——
+                                <code>FileResourceLoader</code>和<code>WebappResourceLoader</code>支持列举子资源，<code>ClasspathResourceLoader</code>则不支持。
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>跟踪取得资源的过程</term>
+                    <listitem>
+                        <example>
+                            <title>通过<code>ResourceLoadingService</code>接口跟踪取得资源的过程</title>
+                            <programlisting language="java">ResourceTrace trace = resourceLoadingService.trace("/myapp/conf/webx.xml");
+
+for (ResourceTraceElement element : trace) {
+    System.out.println(element);
+}</programlisting>
+                        </example>
+                        <para>这是用来方便调试的功能。有点像<code>Throwable.getStackTrace()</code>方法，可以得到每一个方法调用的历史记录
+                            ——
+                            <code>ResourceLoadingService.trace()</code>方法可以将取得资源的步骤记录下来。上面代码会在console中输出类似下面的内容：</para>
+                        <screen>"/myapp/conf/webx.xml" matched [resource-alias pattern="/myapp/conf"], at "resources.xml", beanName="resourceLoadingService"
+"/webroot/WEB-INF/webx.xml" matched [resource pattern="/webroot"], at "resources.xml", beanName="resourceLoadingService"
+</screen>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>列出所有可用的资源定义和别名的pattern</term>
+                    <listitem>
+                        <example>
+                            <title>通过<code>ResourceLoadingService</code>接口列出所有可用的资源定义和别名的pattern</title>
+                            <programlisting language="java">String[] patterns = resourceLoadingService.getPatterns(true);</programlisting>
+                        </example>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </section>
+        <section xml:id="webx.resource.using.service.nonweb">
+            <title>在非Web环境中使用Resource Loading服务</title>
+            <figure>
+                <title>在非Web环境中使用的<code>ResourceLoadingXmlApplicationContext</code></title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/resource/rl-non-web.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>在非Web环境中使用Resource
+                    Loading服务的最好方法，是创建<code>ResourceLoadingXmlApplicationContext</code>作为Spring容器。</para>
+            <example>
+                <title>创建<code>ResourceLoadingXmlApplicationContext</code>容器</title>
+                <programlisting language="java">ApplicationContext context = new ResourceLoadingXmlApplicationContext(
+                                                          new FileSystemResource("beans.xml"));</programlisting>
+            </example>
+            <para>只要<filename>beans.xml</filename>中包含<code>&lt;resource-loading></code>的配置，就会自动启用Resource
+                    Loading服务，并取代Spring原来的<code>ResourceLoader</code>机制。</para>
+        </section>
+    </section>
+    <section xml:id="webx.resource.loaders">
+        <title>ResourceLoader参考</title>
+        <para>Resource Loading服务的核心是<code>ResourceLoader</code>。和Spring
+            <code>ResourceLoader</code>不同，Resource
+                Loading服务的<code>ResourceLoader</code>是可扩展的轻量级对象，担负着装载某一种类型的资源的具体任务。例如<code>FileResourceLoader</code>负责装载文件系统的资源；<code>WebappResourceLoader</code>负责装载WEB应用中的资源等等。</para>
+        <para>当你需要新的资源装载方式时，你所要做的，就是实现一种新的<code>ResourceLoader</code>。例如，你想从数据库中装载资源，那么就可以实现一个<code>DatabaseResourceLoader</code>。</para>
+        <section xml:id="webx.resource.loader.file">
+            <title><code>FileResourceLoader</code></title>
+            <para><code>FileResourceLoader</code>的功能是：从文件系统中装载资源。</para>
+            <variablelist>
+                <varlistentry>
+                    <term>基本用法</term>
+                    <listitem>
+                        <example>
+                            <title><code>FileResourceLoader</code>的基本用法</title>
+                            <programlisting language="xml">&lt;resource pattern="/my/virtual">
+    &lt;res-loaders:file-loader />
+&lt;/resource></programlisting>
+                        </example>
+                        <para>这样，<code>file-loader</code>会从哪里装载资源呢？</para>
+                        <para>答案是：<emphasis>从当前配置文件所在的目录中装载</emphasis>。假如上述资源配置所在的配置文件是<code>c:/myapp/conf/resources.xml</code>，那么<code>file-loader</code>就会从<code>c:/myapp/conf/myFile.xml</code>文件中装载<code>/my/virtual/myFile.xml</code>资源。</para>
+                        <para>这样做的思路源自于Apache的一个项目：Ant。Ant是一个广为使用的build工具。每一个Ant项目，都有一个<filename>build.xml</filename>脚本，在里面定义了很多target，诸如编译项目、打包等。通常我们都会把<filename>build.xml</filename>这个文件放在项目的根目录中，然后<filename>build.xml</filename>中的命令全是使用相对于<filename>build.xml</filename>所在的项目根目录计算出来的相对路径。例如：</para>
+                        <example>
+                            <title>Ant脚本（<filename>build.xml</filename>）</title>
+                            <programlisting language="xml">&lt;project basedir=".">
+    ...
+    &lt;target ...>
+        &lt;copy todir="bin">
+            &lt;fileset dir="src"/>
+        &lt;/copy>
+    &lt;/target>
+    ...
+&lt;/project></programlisting>
+                        </example>
+                        <para>在上面的Ant脚本中，<code>bin</code>、<code>src</code>目录全是相对于<filename>build.xml</filename>所在目录的相对目录。这样做的好处是，当你把项目移到不同的环境中，你也无需改变配置文件和脚本。</para>
+                        <para><code>FileResourceLoader</code>采用了和Ant完全类似的想法。</para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>指定<code>basedir</code></term>
+                    <listitem>
+                        <example>
+                            <title>在<code>FileResourceLoader</code>中指定<code>basedir</code></title>
+                            <programlisting language="xml">&lt;resource pattern="/my/virtual">
+    &lt;res-loaders:file-loader basedir="${my.basedir}" />
+&lt;/resource></programlisting>
+                        </example>
+                        <para><code>FileResourceLoader</code>当然也支持指定<code>basedir</code>根目录。这样，它就会从指定的<code>basedir</code>的子目录中查找资源。</para>
+                        <para>一般来说，我们需要利用Spring Property
+                                Placeholder来设置<code>basedir</code>。在上面的例子中，我们可以在系统启动时，指定JVM参数：<code>-Dmy.basedir=c:/mydata</code>。在不同的系统环境中，必须指定正确的<code>basedir</code>，否则，<code>&lt;file-loader></code>有可能找不到资源。
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>搜索多个路径</term>
+                    <listitem>
+                        <example>
+                            <title>在<code>FileResourceLoader</code>中指定多个搜索路径</title>
+                            <programlisting language="xml">&lt;resource pattern="/my/virtual">
+    &lt;res-loaders:file-loader basedir="...">
+        &lt;res-loaders:path>relativePathToBasedir&lt;/res-loaders:path> <co xml:id="co.rl.loader.file.relpath" />
+        &lt;res-loaders:path type="absolute">c:/absolutePath&lt;/res-loaders:path> <co xml:id="co.rl.loader.file.abspath" />
+    &lt;/res-loaders:file-loader>
+&lt;/resource></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.rl.loader.file.relpath">
+                                    <para>搜索路径默认为相对路径，相对于指定的<code>basedir</code>。如果<code>basedir</code>未指定，则相对于当前<code>resource-loading</code>所在的配置文件的路径。</para>
+                                </callout>
+                                <callout arearefs="co.rl.loader.file.abspath">
+                                    <para>搜索路径也可以是绝对路径。</para>
+                                </callout>
+                            </calloutlist>
+                        </example>
+                        <para><code>FileResourceLoader</code>支持搜索多个路径，类似于操作系统在<code>PATH</code>环境变量所指定的路径中，搜索可执行文件；也类似于Java在<code>CLASSPATH</code>参数所指定的路径中，搜索classes。</para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </section>
+        <section xml:id="webx.resource.loader.webapp">
+            <title><code>WebappResourceLoader</code></title>
+            <para><code>WebappResourceLoader</code>的功能是：从当前WEB应用中装载资源，也就是从<code>ServletContext</code>对象中装载资源。</para>
+            <example>
+                <title>配置<code>WebappResourceLoader</code></title>
+                <programlisting language="xml">&lt;resource pattern="/my/virtual">
+    &lt;res-loaders:webapp-loader />
+&lt;/resource>
+</programlisting>
+            </example>
+        </section>
+        <section xml:id="webx.resource.loader.classpath">
+            <title><code>ClasspathResourceLoader</code></title>
+            <para><code>ClasspathResourceLoader</code>的功能是：从classpath中装载资源，也就是从当前的<code>ClassLoader</code>对象中装载资源。</para>
+            <example>
+                <title>配置<code>ClasspathResourceLoader</code></title>
+                <programlisting language="xml">&lt;resource pattern="/my/virtual">
+    &lt;res-loaders:classpath-loader />
+&lt;/resource>
+</programlisting>
+            </example>
+        </section>
+        <section xml:id="webx.resource.loader.super">
+            <title><code>SuperResourceLoader</code></title>
+            <para><code>SuperResourceLoader</code>的功能是：调用Resource
+                    Loading服务来取得资源。它有点像Java里面的<code>super</code>操作符。</para>
+            <variablelist>
+                <varlistentry>
+                    <term>取得新名字所代表的资源</term>
+                    <listitem>
+                        <example>
+                            <title>用<code>SuperResourceLoader</code>取得新名字所代表的资源</title>
+                            <programlisting>&lt;resource pattern="/my/virtual">
+    &lt;res-loaders:super-loader basedir="/webroot/WEB-INF" />
+&lt;/resource>
+</programlisting>
+                        </example>
+                        <para>这个操作类似于<code>&lt;resource-alias></code>。</para>
+                        <para>如果在当前context的Resource Loading服务中找不到资源，它会前往parent context中查找。 </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>在parent context中查找资源</term>
+                    <listitem>
+                        <example>
+                            <title>用<code>SuperResourceLoader</code>查找parent context中的资源</title>
+                            <programlisting>&lt;resource pattern="/my/virtual">
+    &lt;res-loaders:super-loader />
+&lt;/resource>
+</programlisting>
+                        </example>
+                        <para>如果你不指定<code>name</code>参数，那么<code>SuperResourceLoader</code>会直接去parent
+                            context中查找资源，而不会在当前context的Resource Loading服务中找。</para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+        </section>
+        <section xml:id="webx.resource.loader.other">
+            <title>关于<code>ResourceLoader</code>的其它考虑</title>
+            <para>以上所有的<code>ResourceLoader</code>都被设计成可以在任何环境中工作，即使当前环境不适用，也不会报错。</para>
+            <variablelist>
+                <varlistentry>
+                    <term><code>WebappResourceLoader</code>可以兼容非WEB环境</term>
+                    <listitem>
+                        <para>在非WEB环境中，例如单元测试环境、你直接通过<code>XmlApplicationContext</code>创建的Spring环境，<code>WebappResourceLoader</code>也不会出错
+                            —— 只不过它找不到任何资源而已。</para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term><code>SuperResourceLoader</code>可以工作于非级联的环境</term>
+                    <listitem>
+                        <para>也就是说，即使parent context不存在，或者parent context中没有配置Resource
+                                Loading服务，<code>SuperResourceLoader</code>也是可以工作的。</para>
+                    </listitem>
+                </varlistentry>
+            </variablelist>
+            <para>这样，同一套资源配置文件，可以被用于所有环境。</para>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>Resource Loading服务提供了一套高度可扩展的、强大的资源装载机制。这套机制和Spring
+            <code>ResourceLoader</code>无缝连接。使用它并不需要特殊的技能，只要掌握Spring的风格即可。</para>
+    </section>
+</chapter>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../target/pom.ent">
+  %placeholders;
+]>
+<book xml:id="webx.guide" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" xmlns:xi="http://www.w3.org/2001/XInclude" version="5.0"
+    xml:lang="zh-CN">
+    <info>
+        <title>Webx框架指南</title>
+        <author>
+            <personname>Michael Zhou</personname>
+            <email>zyh@alibaba-inc.com</email>
+        </author>
+        <pubdate>2010-11-13</pubdate>
+    </info>
+    <xi:include href="Webx3_Preface.xml" />
+    <part xml:id="webx.overview">
+        <title>Webx框架概览</title>
+        <xi:include href="overview/Webx3_Overview_1_Intro.xml" />
+        <xi:include href="overview/Webx3_Overview_2_SpringExt.xml" />
+        <xi:include href="overview/Webx3_Overview_3_Framework.xml" />
+        <xi:include href="overview/Webx3_Overview_4_Turbine.xml" />
+    </part>
+    <part xml:id="webx.basic.services">
+        <title>Webx基础设施服务</title>
+        <xi:include href="resource/Webx3_ResourceLoading.xml" />
+        <xi:include href="requestcontext/Webx3_Filter_RequestContexts_Pipeline.xml" />
+        <xi:include href="requestcontext/Webx3_RequestContexts.xml" />
+        <xi:include href="requestcontext/Webx3_RequestContext_Session.xml" />
+    </part>
+    <part xml:id="webx.services">
+        <title>Webx应用支持服务</title>
+        <xi:include href="form/Webx3_Form.xml" />
+    </part>
+    <part xml:id="webx.practicing">
+        <title>Webx应用实作</title>
+        <xi:include href="tutorial/Webx3_FirstApp.xml" />
+        <xi:include href="log/Webx3_Logging.xml" />
+    </part>
+    <part xml:id="webx.tools">
+        <title>辅助工具</title>
+        <xi:include href="tool/Tool_AutoConfig_Guide.xml" />
+        <xi:include href="tool/Tool_AutoExpand_Guide.xml" />
+    </part>
+</book>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <parent>
+        <groupId>com.alibaba.citrus.doc</groupId>
+        <artifactId>citrus-doc-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>webx-guide</artifactId>
+    <packaging>pom</packaging>
+    <name>Webx Guide Documentation</name>
+    <properties>
+        <webx-version>3.0.6</webx-version>
+        <log4j-version>1.2.16</log4j-version>
+        <logback-version>0.9.29</logback-version>
+        <jcl-version>1.1.1</jcl-version>
+        <slf4j-version>1.6.1</slf4j-version>
+        <antx-version>1.0.9</antx-version>
+    </properties>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.alibaba.citrus.tool</groupId>
+                <artifactId>maven-docbook-plugin</artifactId>
+                <executions>
+                    <!-- ==================================================== -->
+                    <!-- 生成分页的HTML -->
+                    <!-- ==================================================== -->
+                    <execution>
+                        <id>docbook-html-chunk</id>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <preProcess>
+                                <patternset id="doc.resources">
+                                    <include name="**/*.jpg" />
+                                    <include name="**/*.gif" />
+                                    <include name="**/*.png" />
+                                    <include name="**/*.css" />
+                                    <include name="**/*.js" />
+                                    <exclude name="**/*.graffle" />
+                                </patternset>
+                                <delete dir="${docs-dir}" />
+                                <copy todir="${docs-dir}/images">
+                                    <fileset dir="${docbook-xsl}/images">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                </copy>
+                                <copy todir="${docs-dir}">
+                                    <fileset dir="${project.parent.basedir}/src/main/docbook-css">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                    <fileset dir="${project.basedir}/src/main/docbook/overview">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                    <fileset dir="${project.basedir}/src/main/docbook/requestcontext">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                    <fileset dir="${project.basedir}/src/main/docbook/resource">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                    <fileset dir="${project.basedir}/src/main/docbook/form">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                    <fileset dir="${project.basedir}/src/main/docbook/log">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                    <fileset dir="${project.basedir}/src/main/docbook/tutorial">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                    <fileset dir="${project.basedir}/src/main/docbook/tool">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
+                                </copy>
+                            </preProcess>
+                        </configuration>
+                    </execution>
+                    <!-- ==================================================== -->
+                    <!-- 生成单个HTML文件 -->
+                    <!-- ==================================================== -->
+                    <execution>
+                        <id>docbook-html-single</id>
+                        <phase>prepare-package</phase>
+                        <configuration />
+                    </execution>
+                    <!-- ==================================================== -->
+                    <!-- 生成单个PDF文件 -->
+                    <!-- ==================================================== -->
+                    <execution>
+                        <id>docbook-pdf</id>
+                        <phase>prepare-package</phase>
+                        <configuration />
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- ==================================================== -->
+                    <!-- 公共配置 -->
+                    <!-- ==================================================== -->
+                    <includes>Webx3_Guide_Book.xml</includes>
+
+                    <entities>
+                        <entity>
+                            <name>zwsp</name>
+                            <value><![CDATA[&#8203;]]></value>
+                        </entity>
+                        <entity>
+                            <name>webx-version</name>
+                            <value><![CDATA[${webx-version}]]></value>
+                        </entity>
+                        <entity>
+                            <name>log4j-version</name>
+                            <value><![CDATA[${log4j-version}]]></value>
+                        </entity>
+                        <entity>
+                            <name>logback-version</name>
+                            <value><![CDATA[${logback-version}]]></value>
+                        </entity>
+                        <entity>
+                            <name>slf4j-version</name>
+                            <value><![CDATA[${slf4j-version}]]></value>
+                        </entity>
+                        <entity>
+                            <name>jcl-version</name>
+                            <value><![CDATA[${jcl-version}]]></value>
+                        </entity>
+                        <entity>
+                            <name>antx-version</name>
+                            <value><![CDATA[${antx-version}]]></value>
+                        </entity>
+                    </entities>
+
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

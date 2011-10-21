@@ -1,0 +1,482 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.overview.springext" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="springext.html" ?>
+    <title>SpringExt</title>
+    <para>Webx是一套基于Java Servlet
+        API的通用Web框架。Webx致力于提供一套极具扩展性的机制，来满足Web应用不断变化和发展的需求。而SpringExt正是这种扩展性的基石。SpringExt扩展了Spring，在Spring的基础上提供了一种扩展功能的新方法。</para>
+    <para>本章将告诉你SpringExt是什么？它能做什么？本章不会涉及太深的细节，如果你想了解更多，请参考其它文档。</para>
+    <section>
+        <title>用SpringExt装配服务</title>
+        <para>在Webx中有一个非常有用的ResourceLoadingService。现在我们以这个服务为例，来说明SpringExt的用途。</para>
+        <para>ResourceLoadingService是一个可以从各种输入源中（例如从File
+            System、Classpath、Webapp中）查找和读取资源文件的服务。有点像Linux的文件系统 ——
+            你可以在一个统一的树形目录结构中，定位（mount）任意文件系统，而应用程序不需要关心它所访问的资源文件属于哪个具体的文件系统。</para>
+        <para>ResourceLoadingService的结构如图所示。这是一个既简单又典型的面向对象的设计。 </para>
+        <figure>
+            <title>Resource Loading服务的设计</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata fileref="images/o2/resource-loading-design.png" />
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>下面我们尝试在Spring容器中装配ResourceLoadingService服务。为了更好地说明问题，下文所述的Spring配置是被简化的，未必和ResourceLoadingService的真实代码相吻合。</para>
+        <section>
+            <title>Spring Beans</title>
+            <para>在Spring 2.0以前，你只能装配beans，就像下面这样：</para>
+            <example xml:id="example.resource-loading.spring.beans">
+                <title>用Spring Beans装配Resource Loading服务</title>
+                <programlisting language="xml">&lt;bean id="resourceLoadingService" class="com.alibaba...ResourceLoadingServiceImpl">
+    &lt;property name="mappings">
+        &lt;map>
+            &lt;entry key="/file" value-ref="fileLoader" />
+            &lt;entry key="/webroot" value-ref="webappLoader" />
+        &lt;/map>
+    &lt;/property>
+&lt;/bean>
+
+&lt;bean id="fileLoader" class="com.alibaba...FileResourceLoader">
+    &lt;property name="basedir" value="${user.home}" />
+&lt;/bean>
+
+&lt;bean id="webappLoader" class=" com.alibaba...WebappResourceLoader" /></programlisting>
+            </example>
+            <para>以上是一个典型的Spring beans的配置方案。这种方案简单易行，很好地体现了Spring的基础理念：IoC（Inversion of
+                Control，依赖反转）。ResourceLoadingServiceImpl并不依赖FileResourceLoader和WebappResourceLoader，它只依赖它们的接口ResourceLoader。至于如何创建FileResourceLoader、WebappResourceLoader、需要提供哪些参数，这种琐事全由spring包办。</para>
+            <para>然而，其实spring本身并不了解如何创建ResourceLoader的对象、需要用哪些参数、如何装配和注入等知识。这些知识全靠应用程序的装配者（assembler）通过上述spring的配置文件来告诉spring的。也就是说，尽管ResourceLoaderServiceImpl类的作者不需要关心这些琐事，但还是有人得关心。</para>
+            <para>为了说明问题，我先定义两个角色：“服务提供者”和“服务使用者”（即“装配者”）。在上面的例子中，ResourceLoadingService的作者就是服务的提供者，使用ResourceLoadingService的人，当然就是服务使用者。服务使用者利用spring把ResourceLoadingService和ResourceLoader等其它服务装配在一起，使它们可以协同工作。当然这两个角色有时会是同一个人，但多数情况下会是两个人。因此有必要把这两个角色的职责区分清楚，才能合作。</para>
+            <figure>
+                <title>服务提供者和使用者的关系</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o2/roles.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示。虚线左边代表“服务提供者”的职责，虚线右边代表“服务使用者”（即“装配者”）的职责。</para>
+            <para>从图中可以看到，Spring的配置文件会依赖于服务实现类的公开API。装配者除非查看源代码（如ResourceLoadingServiceImpl的源码）或者API文档才能精确地获知这些API的细节。这有什么问题呢？<itemizedlist>
+                    <listitem>
+                        <para>没有检验机制，错误必须等到运行时才会被发现。装配者仅从spring配置文件中，无法直观地了解这个配置文件有没有写对？例如：应该从constructor
+                            args注入却配成了从properties注入；写错了property的名称；注入了错误的类型等等。</para>
+                    </listitem>
+                    <listitem>
+                        <para>无法了解更多约束条件。即使装配者查看API源码，也未必能了解到某些约束条件，例如：哪些properties是必须填写的，哪些是可选的，哪些是互斥的？</para>
+                    </listitem>
+                    <listitem>
+                        <para>当服务的实现被改变时，Spring配置文件可能会失败。因为Spring配置文件是直接依赖于服务的实现，而不是接口的。接口相对稳定，而实现是可被改变的。另一方面，这个问题也会阻碍服务提供者改进他们的服务实现。
+                        </para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>难怪有人诟病Spring说它只不过是用XML来写程序代码而已。</para>
+        </section>
+        <section>
+            <title>Spring Schema</title>
+            <para>这种情况直到Spring 2.0发布以后，开始有所改观。因为Spring 2.0支持用XML Schema来定义配置文件。同样的功能，用Spring
+                Schema来定义，可能变成下面的样子：</para>
+            <example xml:id="example.resource-loading.spring.schema">
+                <title>用Spring Schema装配Resource Loading服务</title>
+                <programlisting language="xml">&lt;resource-loading id="resourceLoadingService"
+                  xmlns="http://www.alibaba.com/schema/services/resource-loading">
+    &lt;resource pattern="/file">
+        &lt;file-loader basedir="${user.home}" />
+    &lt;/resource>
+    &lt;resource pattern="/webroot">
+        &lt;webapp-loader />
+    &lt;/resource>
+&lt;/resource-loading></programlisting>
+            </example>
+            <para>怎么样？这个配置文件是不是简单很多呢？和直接使用Spring Beans配置相比，这种方式有如下优点：<itemizedlist>
+                    <listitem>
+                        <para>很明显，这个配置文件比起前面的Spring
+                            Beans风格的配置文件简单易读得多。因为在这个spring配置文件里，它所用的“语言”是“领域相关”的，也就是说，和ResourceLoadingService所提供的服务内容相关，而不是使用像bean、property这样的编程术语。这样自然易读得多。</para>
+                    </listitem>
+                    <listitem>
+                        <para>它是可验证的。你不需要等到运行时就能验证其正确性。任何一个支持XML
+                            Schema的标准XML编辑器，包括Eclipse自带的XML编辑器，都可以告诉你配置的对错。</para>
+                    </listitem>
+                    <listitem>
+                        <para>包含更多约束条件。例如，XML Schema可以告诉你，哪些参数是可选的，哪些是必须填的；参数的类型是什么等等。</para>
+                    </listitem>
+                    <listitem>
+                        <para><emphasis>服务的实现细节对装配者隐藏</emphasis>。当服务实现改变时，只要XML
+                            Schema是不变的，那么Spring的配置就不会受到影响。 </para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>以上优点中，最后一点是最重要优点。通过Spring
+                Schema来定义配置文件，装配者无须再了解诸如“ResourceLoadingService的实现类是什么”、“需要什么参数”等细节。那么Spring是如何得知这些内容呢？</para>
+            <para>奥秘在于所有的schema都会有一个“解释器”和它对应（即BeanDefinitionParser）。这个解释器负责将符合schema定义的XML配置，转换成Spring能解读的beans定义。<emphasis>解释器是由服务的开发者来提供的</emphasis>
+                —— 在本例中，ResourceLoadingService的开发者会提供这个解释器。 </para>
+            <figure>
+                <title>用Schema改善服务角色之间的关系</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o2/roles-schema.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示，虚线右侧的装配者，不再需要了解服务具体实现类的API，它只要遵循标准的XML
+                Schema定义来书写spring配置文件，就可以得到正确的配置。这样一来，虚线左侧的服务提供者就有自由可以改变服务的实现类，他相信只要服务的接口和XML
+                Schema不改变，服务的使用者就不会受影响。</para>
+            <para><emphasis>将和具体实现相关的工作，例如提供类名、property名称和类型等工作，交还给服务的提供者，使服务的使用者（即装配者）可以用它所能理解的语言来装配服务，这是Spring
+                    Schema所带来的核心价值。</emphasis></para>
+            <para>然而，Spring Schema有一个问题 —— 它是不可扩展的。</para>
+            <para>仍以ResourceLoadingService为例。仅管在API层面，
+                ResourceLoadingService支持任何对ResourceLoader接口的扩展，例如，你可以添加一种新的DatabaseResourceLoader，以便读取数据库中的资源。但在Spring配置文件上，你却无法自由地添加新的元素。比如： </para>
+            <example xml:id="example.resource-loading.spring.schema.add.dbloader">
+                <title>尝试在Spring Schema所装配的Resource Loading服务中，添加新的装载器</title>
+                <programlisting language="xml">&lt;resource-loading id="resourceLoadingService"
+                  xmlns="http://www.alibaba.com/schema/services/resource-loading">
+    &lt;resource pattern="/file">
+        &lt;file-loader basedir="${user.home}" />
+    &lt;/resource>
+    &lt;resource pattern="/webroot">
+        &lt;webapp-loader />
+    &lt;/resource>
+    &lt;resource pattern="/db">
+        &lt;database-loader connection="jdbc:mysql:mydb" /> <co xml:id="co.add.dbloader" />
+    &lt;/resource>
+&lt;/resource-loading></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.add.dbloader">
+                        <para>装配者希望在这里添加一种新的装载器：<code>database-loader</code>。然而，如果在设计<code>&lt;resource-loading></code>的schema时，并没有预先考虑到<code>database-loader</code>这种情况，那么这段配置就会报错。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>使用Spring Schema时，装配者无法自主地往Spring配置文件中增加新的Resource
+                    Loader类型，除非通知服务提供者去修改<code>&lt;resource-loading></code>的schema ——
+                然而这违反了面向对象设计中的基本原则 —— OCP（Open Closed
+                Principle）。OCP原则是面向对象设计的强大之源。它使得我们可以轻易地添加新的功能，却不需要改动老的代码；它使设计良好的代码成果可以被叠加和组合，以便实现更复杂的功能。</para>
+            <para>从本质意义来讲，Schema是API的另一种表现形式。你可以把Schema看作一种接口，而接口的实质是服务的提供者与使用者之间的合约（contract）。可惜的是，我们只能在传统API层面来贯彻OCP原则，却无法在Schema上同样遵循它。我们无法做到不修改老的schema，就添加新的元素
+                —— 这导致Spring Schema的作用被大大削弱。 </para>
+        </section>
+        <section>
+            <title>SpringExt Schema</title>
+            <para>SpringExt改进了Spring，使得Spring Schema可以被扩展。下面的例子对<xref
+                    xl:href="#example.resource-loading.spring.schema" />作了少许修改，使之能被扩展。</para>
+            <example xml:id="example.resource-loading.springext.schema">
+                <title>用SpringExt Schema装配Resource Loading服务</title>
+                <programlisting language="xml">&lt;resource-loading id="resourceLoadingService"
+                  xmlns="http://www.alibaba.com/schema/services"
+                  xmlns:loaders="http://www.alibaba.com/schema/services/resource-loading/loaders"> <co xml:id="co.ns.loaders" />
+    &lt;resource pattern="/file">
+        &lt;loaders:file-loader basedir="${user.home}" /> <co xml:id="co.ns.loaders.prefix1" />
+    &lt;/resource>
+    &lt;resource pattern="/webroot">
+        &lt;loaders:webapp-loader /> <co xml:id="co.ns.loaders.prefix2" />
+    &lt;/resource>
+&lt;/resource-loading></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.ns.loaders">
+                        <para>重新定义namespaces ——
+                                将<code>ResourceLoader</code>和<code>&lt;resource-loading></code>所属的namespace分离。</para>
+                    </callout>
+                    <callout arearefs="co.ns.loaders.prefix1 co.ns.loaders.prefix2">
+                        <para>将<code>file-loader</code>和<code>webapp-loader</code>放在<code>loaders</code>名字空间中，表示它们是Resource
+                            Loaders的扩展。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>上面的配置文件和前例中使用Spring Schema的配置文件差别很小。没错，<emphasis>SpringExt Schema和Spring
+                    Schema是完全兼容的</emphasis>！唯一的差别是，我们把<code>ResourceLoader</code>和<code>&lt;resource-loading></code>所属的namespace分开了，然后将<code>ResourceLoader</code>的配置放在专属的namespace
+                    “loaders”中。例如：<code>&lt;loaders:file-loader></code>。这样一来，我们就有办法在不修改<code>&lt;resource-loading></code>的schema的前提下，添加新的ResourceLoader实现。例如我们要添加一种新的ResourceLoader扩展
+                —— <code>DatabaseResourceLoader</code>，只需要做以下两件事： <orderedlist>
+                    <listitem>
+                        <para>将包含<code>DatabaseResourceLoader</code>所在的jar包添加到项目的依赖中。如果你是用maven来管理项目，那么意味着你需要修改一下项目的<filename>pom.xml</filename>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>在spring配置文件中添加如下行：</para>
+                        <example xml:id="example.resource-loading.springext.schema.add.dbloader">
+                            <title>在SpringExt Schema所装配的Resource Loading服务中，添加新的装载器</title>
+                            <programlisting language="xml">&lt;resource-loading id="resourceLoadingService"
+                  xmlns="http://www.alibaba.com/schema/services"
+                  xmlns:loaders="http://www.alibaba.com/schema/services/resource-loading/loaders">
+    &lt;resource pattern="/file">
+        &lt;loaders:file-loader basedir="${user.home}" />
+    &lt;/resource>
+    &lt;resource pattern="/webroot">
+        &lt;loaders:webapp-loader />
+    &lt;/resource>
+    &lt;resource pattern="/db">
+        &lt;loaders:database-loader connection="jdbc:mysql:mydb" /> <co xml:id="co.add.dbloader.springext" />
+    &lt;/resource>
+&lt;/resource-loading></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.add.dbloader.springext">
+                                    <para>添加一个新的loader，而无须改变<code>&lt;resource-loading></code>的schema。</para>
+                                </callout>
+                            </calloutlist>
+                        </example>
+                    </listitem>
+                </orderedlist></para>
+            <para>完美！你无须通知ResourceLoadingService的作者去修改它的schema，一种全新的ResourceLoader扩展就这样被注入到ResourceLoadingService中。正如同你在程序代码里，无须通知ResourceLoadingService的作者去修改它的实现类，就可以创建一种新的、可被ResourceLoadingService调用的ResourceLoader实现类。这意味着，我们在Spring配置文件的层面上，也满足了OCP原则。</para>
+        </section>
+    </section>
+    <section>
+        <title>SpringExt原理</title>
+        <section>
+            <title>XML Schema中的秘密</title>
+            <para>下面这段配置是<xref xl:href="#example.resource-loading.springext.schema.add.dbloader"
+                 />的spring配置文件的片段。</para>
+            <programlisting language="xml">&lt;resource-loading>
+    ...
+    &lt;resource pattern="/db">
+        &lt;loaders:database-loader connection="jdbc:mysql:mydb" /> 
+    &lt;/resource>
+&lt;/resource-loading></programlisting>
+            <para>其中，<code>&lt;resource-loading></code>是由<filename>resource-loading.xsd</filename>这个schema来定义的。而在开发<code>resource-loading</code>服务的时候，<code>database-loader</code>这种新的扩展还不存在
+                ——
+                        也就是说，<emphasis><filename>resource-loading.xsd</filename>对于<code>database-loader</code>一无所知</emphasis>。可为什么以上配置能通过XML
+                    Schema的验证呢？我们只需要查看一下<filename>resource-loading.xsd</filename>就可以知道答案了： </para>
+            <example xml:id="example.resource-loading.schema.loaders">
+                <title>Schema片段：<code>&lt;resource-loading></code>中如何定义<code>loaders</code></title>
+                <programlisting language="xml">&lt;xsd:element name="resource" type="ResourceLoadingServiceResourceType">
+&lt;xsd:complexType name="ResourceLoadingServiceResourceType">
+    &lt;xsd:choice minOccurs="0" maxOccurs="unbounded">
+        &lt;xsd:any namespace="http://www.alibaba.com/schema/services/resource-loading/loaders" /> <co xml:id="co.resource-loading.loaders" />
+    &lt;/xsd:choice>
+    &lt;xsd:attribute name="pattern" type="xsd:string" use="required" />
+&lt;/xsd:complexType></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.resource-loading.loaders">
+                        <para>这里运用了XML
+                                Schema中的<code>&lt;xsd:any></code>定义，相当于说：<code>&lt;resource></code>
+                                element下面，可以跟任意多个<code>&lt;loaders:*></code> elements。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para><code>&lt;xsd:any></code>定义只关心namespace，不关心element的名称，自然可以接受未知的<code>&lt;database-loader></code>
+                    element，前提是<code>&lt;database-loader></code>的namespace是“<code>http://www.alibaba.com/schema/services/resource-loading/loaders</code>”。</para>
+            <para>在这段配置中，<code>&lt;loaders:database-loader></code>标签通知SpringExt：将<code>database-loader</code>的实现注入到<code>resource-loading</code>的服务中。这种对应关系是如何建立起来的呢？</para>
+            <para>在XML里，<code>loaders</code>前缀代表namespace：“<code>http://www.alibaba.com/schema/services/resource-loading/loaders</code>”；但对SpringExt而言，它还代表一个更重要的意义：<emphasis>扩展点</emphasis>，或称为<emphasis>ConfigurationPoint</emphasis>。ConfigurationPoint将namespace和可扩展的<code>ResourceLoader</code>接口关联起来。</para>
+            <para>在XML里，<code>database-loader</code>代表一个XML
+                    element；但对SpringExt而言，它还代表一个更重要的意义：<emphasis>捐献</emphasis>，或称为<emphasis>Contribution</emphasis>。Contribution将element和对<code>ResourceLoader</code>接口的具体扩展关联起来。</para>
+            <figure>
+                <title>SpringExt的概念：扩展点和捐献</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o2/springext-concept.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+        </section>
+        <section>
+            <title>扩展点，Configuration Point</title>
+            <para>SpringExt用“扩展点，Configuration Point”来代表一个可被扩展的接口。每个扩展点都：<itemizedlist>
+                    <listitem>
+                        <para>对应一个唯一的名称，例如：<emphasis><code>services/resource-loading/loaders</code></emphasis>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>对应一个唯一的namespace，例如：<code>http://www.alibaba.com/schema/</code><emphasis><code>services/resource-loading/loaders</code></emphasis>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>对应一个唯一的schema，例如：<emphasis><code>services-resource-loading-loaders</code></emphasis><code>.xsd</code>。
+                        </para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>捐献，Contribution</title>
+            <para>SpringExt把每一个对扩展点的具体扩展称作“捐献，Contriubtion”。每个捐献都：<itemizedlist>
+                    <listitem>
+                        <para>在对同一扩展点的所有捐献中，拥有一个唯一的名字，例如：<emphasis><code>file-loader</code></emphasis>，<emphasis><code>webapp-loader</code></emphasis>，<emphasis><code>database-loader</code></emphasis>等。</para>
+                    </listitem>
+                    <listitem>
+                        <para>对应一个唯一的schema，例如：<itemizedlist>
+                                <listitem>
+                                    <para><code>services/resource-loading/loaders/</code><emphasis><code>file-loader</code></emphasis><code>.xsd</code></para>
+                                </listitem>
+                                <listitem>
+                                    <para><code>services/resource-loading/loaders/</code><emphasis><code>webapp-loader</code></emphasis><code>.xsd</code></para>
+                                </listitem>
+                                <listitem>
+                                    <para><code>services/resource-loading/loaders/</code><emphasis><code>database-loader</code></emphasis><code>.xsd</code></para>
+                                </listitem>
+                            </itemizedlist></para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>组件和包</title>
+            <para>在前面的例子中，<code>resource-loading</code>服务调用了<code>loaders</code>扩展点，而<code>file-loader</code>、<code>webapp-loader</code>等则扩展了<code>loaders</code>扩展点。然而事实上，<code>resource-loading</code>服务本身也是对另一个扩展点“<code>services</code>”的扩展。<code>services</code>扩展点是Webx内部定义了一个<emphasis>顶级扩展点</emphasis>。</para>
+            <para>在SpringExt中，一个模块既可以成为别的模块的扩展，也可以被别的模块来扩展。这样的模块被称为“<emphasis>组件</emphasis>”。</para>
+            <figure>
+                <title>组件</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o2/springext-component.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示，<code>resource-loading</code>组件既扩展了<code>services</code>扩展点，又可被其它组件所扩展。</para>
+            <para>当你需要增加一种新的扩展时，你不需要改动原有包（例如<filename>resource-loadings.jar</filename>）中的任何内容，你只需要将新的扩展所在的jar包（例如<filename>database-loader.jar</filename>）加入到依赖表中即可。假如你使用maven来管理项目，意味着你需要修改项目的<filename>pom.xml</filename>描述文件，以便加入新的扩展包。</para>
+        </section>
+        <section>
+            <title>取得Schemas</title>
+            <para>最后剩下的一个问题是，如何找到Schemas？为了找到schema，我们必须在Spring配置文件中指定Schema的位置。</para>
+            <example xml:id="example.schema.locations">
+                <title>在XML中指定Schema Location</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8" ?>
+&lt;beans:beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://www.alibaba.com/schema/services"
+    xmlns:loaders="http://www.alibaba.com/schema/services/resource-loading/loaders"
+    xmlns:beans="http://www.springframework.org/schema/beans"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="
+        http://www.alibaba.com/schema/services
+            <emphasis>http://localhost:8080/schema/services.xsd</emphasis> <co xml:id="co.schema.location.services" />
+        http://www.alibaba.com/schema/services/resource-loading/loaders
+            <emphasis>http://localhost:8080/schema/services-resource-loading-loaders.xsd</emphasis> <co xml:id="co.schema.location.loaders" />
+        http://www.springframework.org/schema/beans
+            <emphasis>http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd</emphasis> <co xml:id="co.schema.location.beans" />
+    ">
+    ...
+    &lt;/beans:beans></programlisting>
+                <calloutlist>
+                    <callout
+                        arearefs="co.schema.location.services co.schema.location.loaders co.schema.location.beans">
+                        <para>指定schema的位置。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>这里看起来有一点奇怪，因为它把schema的位置（<code>xsi:schemaLocation</code>）指向了一台本地服务器：<code>localhost:8080</code>。为什么这样做呢？要回答这个问题，先要搞清楚另一个问题：<emphasis>有哪些部件需要用到schema？</emphasis></para>
+            <section>
+                <title>XML编辑器需要读取schemas</title>
+                <para>XML编辑器通过访问schema，可以实现两大功能：<itemizedlist>
+                        <listitem>
+                            <para>语法提示的功能。</para>
+                            <figure>
+                                <title>Eclipse XML编辑器弹出的语法提示</title>
+                                <mediaobject>
+                                    <imageobject>
+                                        <imagedata fileref="images/o2/popup-syntax.png" />
+                                    </imageobject>
+                                </mediaobject>
+                            </figure>
+                        </listitem>
+                        <listitem>
+                            <para>验证spring配置文件的正确性。</para>
+                            <figure>
+                                <title>Eclipse XML编辑器验证spring配置文件时，显示的错误信息</title>
+                                <mediaobject>
+                                    <imageobject>
+                                        <imagedata fileref="images/o2/validate-schema.png" />
+                                    </imageobject>
+                                </mediaobject>
+                            </figure>
+                        </listitem>
+                    </itemizedlist>
+                </para>
+                <para>XML编辑器取得schema内容的途径有两条，一条途径是访问<code>schemaLocation</code>所指示的网址。因此，<itemizedlist>
+                        <listitem>
+                            <para>假如你声明的<code>schemaLocation</code>为：<emphasis>http://www.alibaba.com/</emphasis><code>schema/services.xsd</code>，那么XML编辑器就会尝试访问<code>www.alibaba.com</code>服务器。</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如你声明的<code>schemaLocation</code>为：
+                                    <emphasis>http://www.springframework.org/</emphasis><code>schema/beans/spring-beans.xsd</code>，那么XML编辑器就会尝试访问<code>www.springframework.org</code>服务器。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>然而，在外部服务器（例如<code>www.alibaba.com</code>和<code>www.springframework.org</code>）上维护一套schema是很困难的，因为： <itemizedlist>
+                        <listitem>
+                            <para>你未必拥有外部服务器的控制权；</para>
+                        </listitem>
+                        <listitem>
+                            <para>你很难让外部服务器上的schema和你的组件版本保持一致；</para>
+                        </listitem>
+                        <listitem>
+                            <para>当你无法连接外部服务器的时候（例如离线状态），会导致XML编辑器无法帮你验证spring配置文件的正确性，也无法帮你弹出语法提示。</para>
+                        </listitem>
+                    </itemizedlist>
+                </para>
+                <para>XML编辑器取得schema内容的另一条途径是将所有的schema转换成静态文件，然后定义一个标准的XML
+                    Catalog来访问这些schema文件。然而这种方法的难点类似于将schema存放在外部服务器上 ——
+                    你很难让这些静态文件和你的组件版本保持一致。</para>
+                <para>SpringExt提供了一个解决方案，可以完全解决上述问题。你可以使用SpringExt所提供的maven插件，在<code>localhost</code>本机上启动一个监听<code>8080</code>端口的Schema
+                    Server，通过它就可以访问到所有的schema：</para>
+                <screen><command>mvn springext:run</command></screen>
+                <para>上述命令执行以后，打开浏览器，输入网址<code>http://localhost:8080/schema</code>就可以看到类似下面的内容：</para>
+                <figure>
+                    <title>用SpringExt maven插件罗列schemas</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/o2/schema-exporter.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+                <para>这就是为什么<xref xl:href="#example.schema.locations"
+                         />中，把<code>schemaLocation</code>指向<code>localhost:8080</code>的原因。只有这样，才能让任何普通的XML编辑器不需要任何特殊的设置，就可以读到正确的schema。</para>
+            </section>
+            <section>
+                <title>SpringExt需要读取schemas</title>
+                <para>当SpringExt在初始化容器时，需要读取schema以验证spring配置文件。</para>
+                <para>请记住，<emphasis>SpringExt永远不需要通过访问网络来访问schemas</emphasis>。事实上，即使你把<xref
+                        xl:href="#example.schema.locations" />中的schema的网址改成指向“外部服务器”的链接，SpringExt也不会真的去访问它们。例如：<itemizedlist>
+                        <listitem>
+                            <para>将：<code>http://localhost:8080/schema/</code><emphasis>services.xsd</emphasis></para>
+                            <para>改成：<code>http://www.alibaba.com/schema/</code><emphasis>services.xsd</emphasis></para>
+                        </listitem>
+                        <listitem>
+                            <para>将：<code>http://localhost:8080/schema/</code><emphasis>services-resource-loading-loaders.xsd</emphasis></para>
+                            <para>改成：<code>http://www.alibaba.com/schema/</code><emphasis>services-resource-loading-loaders.xsd</emphasis></para>
+                        </listitem>
+                        <listitem>
+                            <para>将：<code>http://localhost:8080/schema/</code><emphasis>www.springframework.org/schema/beans/spring-beans.xsd</emphasis></para>
+                            <para>改成：<code>http://</code><emphasis>www.springframework.org/schema/beans/spring-beans.xsd</emphasis>（这个就是spring原来的schema网址了）
+                            </para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>以上修改在任何时候都不会影响Spring的正常启动。Spring是通过一种SpringExt定制的<code>EntityResolver</code>来访问schemas的。SpringExt其实只关注例子中<emphasis>加亮</emphasis>部分的schema网址，而忽略前面部分。</para>
+                <para>然而，如前所述，上面两种网址对于普通的XML编辑器来说是有差别的。因此，<emphasis>SpringExt推荐总是以“<code>http://localhost:8080/schema</code>”作为你的<code>schemaLocation</code>网址的前缀</emphasis>。下面的图总结了SpringExt是如何取得schemas的。</para>
+                <figure>
+                    <title>SpringExt如何取得schemas</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/o2/get-schemas.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>SpringExt其它特性</title>
+        <para>SpringExt实际上是一个增强了的Spring的<code>ApplicationContext</code>容器。除了提供前面所说的Schema扩展机制以外，SpringExt还提供了一个增强的Resource
+            Loading机制。前文例子中所说的Resource
+                Loading服务是Webx中的真实功能，而且它能完全取代Spring原有的<code>ResourceLoader</code>功能 ——
+                也就是说，<emphasis>应用程序并不需要直接调用ResourceLoading服务，它们可以直接使用Spring本身的ResourceLoader功能，其背后的ResourceLoading机制就会默默地工作</emphasis>。</para>
+        <para>如果不加额外的配置，SpringExt
+                context所用的<code>ResourceLoader</code>实现和Spring自带的完全相同。然而，你只要添加类似下面的配置，Spring的<code>ResourceLoader</code>就会被增强：</para>
+        <example>
+            <title>配置Webx <code>resource-loading</code>服务</title>
+            <programlisting language="xml">&lt;services:resource-loading xmlns="http://www.alibaba.com/schema/services">
+    &lt;resource-alias pattern="/" name="/webroot" />
+
+    &lt;resource-alias pattern="/myapp" name="/webroot/WEB-INF" />
+
+    &lt;resource pattern="/webroot" internal="true">
+        &lt;res-loaders:webapp-loader />
+    &lt;/resource>
+    &lt;resource pattern="/classpath" internal="true">
+        &lt;res-loaders:classpath-loader />
+    &lt;/resource>
+&lt;/services:resource-loading></programlisting>
+        </example>
+        <para>一种典型的Resource
+                Loading服务的用途是读取CMS生成的模板。假设模板引擎从装载模板<code>/templates</code>，默认情况下，<code>/templates</code>就在webapp的根目录下。但是有一部分模板<code>/templates/cms</code>是由外部的内容管理系统（CMS）生成的，这些模板文件并不在webapp目录下。对此，我们只需要下面的配置：</para>
+        <example>
+            <title>配置CMS目录</title>
+            <programlisting language="xml">    &lt;resource pattern="/templates/cms">
+        &lt;res-loaders:file-loader basedir="${cms.dir}" />
+    &lt;/resource></programlisting>
+        </example>
+        <para>这样，在模板引擎浑然不知的情况下，我们就把<code>/templates/cms</code>目录指向webapp外部的一个文件系统目录，而保持<code>/templates</code>下其它模板的位置不变。</para>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>至此，我们简单领略了SpringExt所带来的好处和便利。SpringExt完全兼容Spring原来schema的概念和风格，但是却可以让schema像程序代码一样被扩展。Webx完全建立在SpringExt的基础上。这个基础决定了Webx是一个高度可扩展的框架，其配置虽然灵活，却又不失方便和直观。</para>
+    </section>
+</chapter>

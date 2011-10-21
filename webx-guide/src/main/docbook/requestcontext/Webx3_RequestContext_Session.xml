@@ -1,0 +1,1149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.requestcontext.session" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="session.html" ?>
+    <title>Request Context之Session指南</title>
+    <para>Webx实现了一套session框架。Session框架建立在request contexts机制之上。建议你先阅读<xref
+            xl:href="#webx.filter.requestcontexts.pipeline" />和<xref xl:href="#webx.requestcontexts"
+         />，以便了解request contexts是怎么回事。</para>
+    <section>
+        <title>Session概述</title>
+        <section>
+            <title>什么是Session</title>
+            <para>HTTP协议是无状态的，但通过session机制，就能把无状态的变成有状态的。Session的功能就是保存HTTP请求之间的状态数据。有了session的支持，就很容易实现诸如用户登录、购物车等网站功能。在Servlet
+                    API中，有一个<code>HttpSession</code>的接口。你可以这样使用它：</para>
+            <example>
+                <title>在Java代码中访问session</title>
+                <para>在一个请求中，保存session的状态</para>
+                <programlisting language="java">// 取得session对象
+HttpSession session = request.getSession();
+
+// 在session中保存用户状态
+session.setAttribute("loginId", "myName");</programlisting>
+                <para>在另一个请求中，取出session的状态：</para>
+                <programlisting language="java">// 得到"myName"
+String myName = (String) session.getAttribute("loginId");</programlisting>
+            </example>
+        </section>
+        <section>
+            <title>Session数据存在哪？</title>
+            <para>Session的状态数据是怎样保存的呢？</para>
+            <section>
+                <title>保存在应用服务器的内存中</title>
+                <para>一般的做法，是将session对象保存在内存里。同一时间，会有很多session被保存在服务器的内存里。由于内存是有限的，较好的服务器会把session对象的数据交换到文件中，以确保内存中的session数目保持在一个合理的范围内。</para>
+                <para>为了提高系统扩展性和可用性，我们会使用集群技术 ——
+                    就是一组独立的机器共同运行同一个应用。对用户来讲，集群相当于一台“大型服务器”。而实际上，同一用户的两次请求可能被分配到两台不同的服务器上来处理。这样一来，怎样保证两次请求中存取的session值一致呢？</para>
+                <para>一种方法是使用session复制：当session的值被改变时，将它复制到其它机器上。这个方案又有两种具体的实现，一种是广播的方式。这种方式下，任何一台服务器都保存着所有服务器所接受到的session对象。服务器之间随时保持着同步，因而所有服务器都是等同的。可想而知，当访问量增大的时候，这种方式花费在广播session上的带宽有多大，而且随着机器增加，网络负担成指数级上升，不具备高度可扩展性。</para>
+                <para>另一种方法是TCP-Ring的方式，也就是把集群中所有的服务器看成一个环，A→B→C→D→A，首尾相接。把A的session复制到B，B的session复制到C，……，以此类推，最后一台服务器的session复制到A。这样，万一A宕机，还有B可以顶上来，用户的session数据不会轻易丢失。但这种方案也有缺点：一是配置复杂；二是每增添/减少一台机器时，ring都需要重新调整，这将成为性能瓶颈；三是要求前端的Load
+                    Balancer具有相当强的智能，才能将用户请求分发到正确的机器上。</para>
+            </section>
+            <section>
+                <title>保存在单一数据源中</title>
+                <para>也可以将session保存在单一的数据源中，这个数据源可被集群中所有的机器所共享。这样一来，就不存在复制的问题了。</para>
+                <para>然而单一数据源的性能成了问题。每个用户请求，都需要访问后端的数据源（很可能是数据库）来存取用户的数据。</para>
+                <para>这种方案的第二个问题是：缺少应用服务厂商的支持 ——
+                    很少有应用服务器直接支持这种方案。更不用说数据源有很多种（MySQL、Oracle、Hsqldb等各种数据库、专用的session
+                    server等）了。</para>
+                <para>第三个问题是：数据源成了系统的瓶颈，一但这个数据源崩溃，所有的应用都不可能正常运行了。</para>
+            </section>
+            <section>
+                <title>保存在客户端</title>
+                <para>把session保存在客户端。这样一来，由于不需要在服务器上保存数据，每台服务器就变得独立，能够做到线性可扩展和极高的可用性。</para>
+                <para>具体怎么做呢？目前可用的方法，恐怕就是保存在cookie中了。但需要提醒的是，cookie具有有以下限制，因此不可无节制使用该方案：<itemizedlist>
+                        <listitem>
+                            <para>Cookie数量和长度的限制。每个domain最多只能有20条cookie，每个cookie长度不能超过4KB，否则会被截掉。</para>
+                        </listitem>
+                        <listitem>
+                            <para>安全性问题。如果cookie被人拦截了，那人就可以取得所有的session信息。即使加密也与事无补，因为拦截者并不需要知道cookie的意义，他只要原样转发cookie就可以达到目的了。</para>
+                        </listitem>
+                        <listitem>
+                            <para>有些状态不可能保存在客户端。例如，为了防止重复提交表单，我们需要在服务器端保存一个计数器。如果我们把这个计数器保存在客户端，那么它起不到任何作用。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>虽然有上述缺点，但是对于其优点（极高的扩展性和可用性）来说，就显得微不足道。我们可以用下面的方法来回避上述的缺点：<itemizedlist>
+                        <listitem>
+                            <para>通过良好的编程，控制保存在cookie中的session对象的大小。</para>
+                        </listitem>
+                        <listitem>
+                            <para>通过加密和安全传输技术（SSL），减少cookie被破解的可能性。</para>
+                        </listitem>
+                        <listitem>
+                            <para>只在cookie中存放不敏感数据，即使被盗也不会有重大损失。</para>
+                        </listitem>
+                        <listitem>
+                            <para>控制cookie的生命期，使之不会永远有效。偷盗者很可能拿到一个过期的cookie。 </para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>将客户端、服务器端组合的方案</title>
+                <para>任何一种session方案都有其优缺点。最好的方法是把它们结合起来。这样就可以弥补各自的缺点。</para>
+                <para>将大部分session数据保存在cookie中，将小部分关键和涉及安全的数据保存在服务器上。由于我们只把少量关键的信息保存在服务端，因而服务器的压力不会非常大。</para>
+                <para>在服务器上，单一的数据源比复制session的方案，更简单可靠。我们可以使用数据库来保存这部分session，也可以使用更廉价、更简单的存储，例如Berkeley
+                    DB就是一种不错的服务器存储方案。将session数据保存在cookie和Berkeley
+                    DB（或其它类似存储技术）中，就可以解决我们的绝大部分问题。</para>
+            </section>
+        </section>
+        <section>
+            <title>创建通用的session框架</title>
+            <para>多数应用服务器并没有留出足够的余地，来让你自定义session的存储方案。纵使某个应用服务器提供了对外扩展的接口，可以自定义session的方案，我们也不大可能使用它。为什么呢？因为我们希望保留选择应用服务器软件的自由。</para>
+            <para>因此，最好的方案，不是在应用服务器上增加什么新功能，而是在WEB应用框架上做手术。一但我们在WEB应用框架中实现了这种灵活的session框架，那么我们的应用可以跑在任何标准的JavaEE应用服务器上。</para>
+            <para>除此之外，一个好的session框架还应该做到对应用程序透明。具体表现在：<itemizedlist>
+                    <listitem>
+                        <para>使用标准的<code>HttpSession</code>接口，而不是增加新的API。这样任何WEB应用，都可以轻易在两种不同的session机制之间切换。</para>
+                    </listitem>
+                    <listitem>
+                        <para>应用程序不需要知道session中的对象是被保存到了cookie中还是别的什么地方。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Session框架可以把同一个session中的不同的对象分别保存到不同的地方去，应用程序同样不需要关心这些。例如，把一般信息放到cookie中，关键信息放到Berkeley
+                            DB中。甚至同是cookie，也有持久和临时之分，有生命期长短之分。 </para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>Webx实现了这种session框架，把它建立在Request Contexts的基础上。</para>
+        </section>
+    </section>
+    <section>
+        <title>Session框架</title>
+        <section>
+            <title>最简配置</title>
+            <example>
+                <title>Session框架基本配置（<filename>/WEB-INF/webx.xml</filename>）</title>
+                <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;buffered />
+    &lt;lazy-commit />
+    ...
+    &lt;session>
+        &lt;stores>
+            &lt;session-stores:simple-memory-store id="simple" /> <co xml:id="co.session.store.simple1" />
+        &lt;/stores>
+        &lt;store-mappings>
+            &lt;match name="*" store="simple" /> <co xml:id="co.session.store.simple1.maptoall" />
+        &lt;/store-mappings>
+    &lt;/session>
+&lt;/services:request-contexts></programlisting>
+            </example>
+            <para>以上的配置，创建了一个最基本的session实现：将所有数据（<coref linkend="co.session.store.simple1.maptoall" />
+                <code>name=*</code>）保存在内存里（<coref linkend="co.session.store.simple1" />
+                <code>simple-memory-store</code>）。</para>
+            <warning>
+                <para>最简配置只能用于开发，<emphasis>请不要将上述配置用在生产环境</emphasis>。因为<code>simple-memory-store</code>只是将数据保存在内存里。在生产环境中，内存有被耗尽的可能。这段配置也不支持服务器集群。</para>
+            </warning>
+        </section>
+        <section>
+            <title>Session ID</title>
+            <para>Session ID唯一标识了一个session对象。把session
+                ID保存在cookie里是最方便的。这样，凡是cookie值相同的所有的请求，就被看作是在同一个session中的请求。在servlet中，还可以把session
+                ID编码到URL中。Session框架既支持把session ID保存在cookie中，也支持把session ID编码到URL中。</para>
+            <para>完整的session ID配置如下： </para>
+            <example>
+                <title>Session ID的配置</title>
+                <programlisting language="xml">&lt;session>
+    &lt;id cookieEnabled="true" urlEncodeEnabled="false">
+        &lt;cookie name="JSESSIONID" domain="" maxAge="0" path="/" httpOnly="true" secure="false" />
+        &lt;url-encode name="JSESSIONID" />
+        &lt;session-idgens:uuid-generator />
+    &lt;/id>
+&lt;/session></programlisting>
+            </example>
+            <para>上面这段配置包含了关于Session ID的所有配置以及默认值。如果不指定上述参数，则系统将使用默认值，其效果等同于上述配置。</para>
+            <table frame="none">
+                <title>Session ID的配置说明</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.17*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c2">配置<code>&lt;session>&lt;id></code> ——
+                                将Session ID保存于何处？</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>cookieEnabled</code></entry>
+                            <entry>
+                                <para>是否把session ID保存在cookie中，如若不是，则只能保存的URL中。</para>
+                                <para>默认为开启：<code>true</code>。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>urlEncodeEnabled</code></entry>
+                            <entry>
+                                <para>是否支持把session
+                                        ID编码在URL中。如果为<code>true</code>开启，应用必须调用<code>response.encodeURL()</code>或<code>response.encodeRedirectURL()</code>来将<code>JSESSIONID</code>编码到URL中。</para>
+                                <para>默认为关闭：<code>false</code>。</para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.17*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c2"
+                                    >配置<code>&lt;session>&lt;id>&lt;cookie></code> —— 将Session
+                                ID存放于cookie的设置</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>name</code></entry>
+                            <entry>
+                                <para>Session ID cookie的名称。</para>
+                                <para>默认为<code>JSESSIONID</code>。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>domain</code></entry>
+                            <entry>
+                                <para>Session ID cookie的domain。</para>
+                                <para>默认为空，表示根据当前请求自动设置domain。这意味着浏览器认为你的cookie属于当前域名。如果你的应用包含多个子域名，例如：<code>www.alibaba.com</code>、<code>china.alibaba.com</code>，而你又希望它们能共享session的话，请把域名设置成“<code>alibaba.com</code>”。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>maxAge</code></entry>
+                            <entry>
+                                <para>Session ID cookie的最长存活时间（秒）。</para>
+                                <para>默认为<code>0</code>，表示临时cookie，随浏览器的关闭而消失。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>path</code></entry>
+                            <entry>
+                                <para>Session ID cookie的path。</para>
+                                <para>默认为<code>/</code>，表示根路径。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>httpOnly</code></entry>
+                            <entry>
+                                <para>在session ID cookie上设置<code>HttpOnly</code>标记。</para>
+                                <para>在IE6及更新版本中，可以缓解XSS攻击的危险。默认为<code>true</code>。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>secure</code></entry>
+                            <entry>
+                                <para>在session ID cookie上设置<code>Secure</code>标记。</para>
+                                <para>这样，只有在https请求中才可访问该cookie。默认为<code>false</code>。</para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.17*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c2"
+                                    >配置<code>&lt;session>&lt;id>&lt;url-encode></code> —— 将Session
+                                ID编码到URL的设置</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>name</code></entry>
+                            <entry>
+                                <para>指定在URL中表示session ID的名字，默认也是<code>JSESSIONID</code>。</para>
+                                <para>此时，如果<code>urlEncodeEnabled</code>为<code>true</code>的话，调用：</para>
+                                <programlisting language="java">response.encodeURL("http://localhost:8080/test.jsp?id=1")</programlisting>
+                                <para>将得到类似这样的结果：</para>
+                                <para>
+                                    <screen>http://localhost:8080/test.jsp;JSESSIONID=xxxyyyzzz?id=1</screen>
+                                </para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.17*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c2"
+                                    >配置<code>&lt;session>&lt;id>&lt;session-idgens:*></code> ——
+                                如何生成session ID？</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>uuid-generator</code></entry>
+                            <entry>
+                                <para>以UUID作为新session ID的生成算法。</para>
+                                <para>这是默认的session ID生成算法。</para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>为了达到最大的兼容性，我们分两种情况来处理<code>JSESSIONID</code>：<orderedlist>
+                    <listitem>
+                        <para>当一个新session到达时，假如cookie或URL中已然包含了<code>JSESSIONID</code>，那么我们将直接利用这个值。为什么这样做呢？因为这个<code>JSESSIONID</code>可能是由同一域名下的另一个不相关应用生成的。如果我们不由分说地将这个cookie覆盖掉，那么另一个应用的session就会丢失。</para>
+                    </listitem>
+                    <listitem>
+                        <para>多数情况下，对于一个新session，应该是不包含<code>JSESSIONID</code>的。这时，我们需要利用<code>SessionIDGenerator</code>来生成一个唯一的字符串，作为<code>JSESSIONID</code>的值。<code>SessionIDGenerator</code>的默认实现<code>UUIDGenerator</code>。
+                        </para>
+                    </listitem>
+                </orderedlist></para>
+        </section>
+        <section>
+            <title>Session的生命期</title>
+            <para>所谓生命期，就是session从创建到失效的整个过程。其状态变迁如下图所示：</para>
+            <figure>
+                <title>Session生命期</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/session/session-lifecycle.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>总结一下，其实很简单：<orderedlist>
+                    <listitem>
+                        <para>第一次打开浏览器时，<code>JSESSIONID</code>还不存在，或者存在由同一域名下的其它应用所设置的无效的<code>JSESSIONID</code>。这种情况下，<code>session.isNew()</code>返回<code>true</code>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>随后，只要在规定的时间间隔内，以及cookie过期之前，每一次访问系统，都会使session得到更新。此时<code>session.isNew()</code>总是返回<code>false</code>。Session中的数据得到保持。</para>
+                    </listitem>
+                    <listitem>
+                        <para>如果用户有一段时间不访问系统了，超过指定的时间，那么系统会清除所有的session内容，并将session看作是新的session。</para>
+                    </listitem>
+                    <listitem>
+                        <para>用户可以调用<code>session.invalidate()</code>方法，直接清除所有的session内容。此后所有试图<code>session.getAttribute()</code>或<code>session.setAttribute()</code>等操作，都会失败，得到<code>IllegalStateException</code>异常，直到下一个请求到来。</para>
+                    </listitem>
+                </orderedlist></para>
+            <para>在session框架中，有一个重要的特殊对象，用来保存session生命期的状态。这个对象叫作session
+                    model。它被当作一个普通的对象存放在session中，但是通过<code>HttpSession</code>接口不能直接看到它。</para>
+            <para>关于session生命期的完整配置如下：</para>
+            <example>
+                <title>关于Session生命期的配置</title>
+                <programlisting language="xml">&lt;session maxInactiveInterval="0" keepInTouch="false" forceExpirationPeriod="14400"
+         modelKey="SESSION_MODEL">
+    ...
+&lt;/session></programlisting>
+            </example>
+            <para>参数的意思是：</para>
+            <table frame="none">
+                <title>Session生命期的配置参数</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.41*" />
+                    <thead>
+                        <row>
+                            <entry>参数名</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>maxInactiveInterval</code></entry>
+                            <entry>
+                                <para>指定session不活动而失效的期限，单位是秒。</para>
+                                <para>默认为<code>0</code>，也就是永不失效（除非cookie失效）。例如，设置<code>3600</code>秒，表示用户离开浏览器1小时以后再回来，session将重新开始，老数据将被丢弃。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>keepInTouch</code></entry>
+                            <entry>
+                                <para>是否每次都touch session（即更新最近访问时间）。</para>
+                                <para>如果是<code>false</code>，那么只在session值有改变时touch。当将session
+                                        model保存在cookie中时，设为<code>false</code>可以减少网络流量。但如果session值长期不改变，由于最近访问时间一直无法更新，将会使session超过<code>maxInactiveInterval</code>所设定的秒数而失效。</para>
+                                <para>默认为<code>false</code>。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>forceExpirationPeriod</code></entry>
+                            <entry>
+                                <para>指定session强制作废期限，单位是秒。</para>
+                                <para>无论用户活动与否，从session创建之时算起，超过这个期限，session将被强制作废。这是一个安全选项：万一cookie被盗，过了这个期限的话，那么无论如何，被盗的cookie就没有用了。</para>
+                                <para>默认为<code>0</code>，表示无期限。 </para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>modelKey</code></entry>
+                            <entry>
+                                <para>指定用于保存session状态的对象的名称。</para>
+                                <para>默认为"<code>SESSION_MODEL</code>"。一般没必要修改这个值。 </para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+        <section>
+            <title>Session Store</title>
+            <para>Session Store是session框架中最核心的部分。Session框架最强大的部分就在于此。我们可以定义很多个session
+                stores，让不同的session对象分别存放到不同的Session
+                Store中。前面提到有一个特殊的对象“<code>SESSION_MODEL</code>”也必须保存在一个session store中。</para>
+            <figure>
+                <title>Session和Stores</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/session/session-stores.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>类似于Servlet的配置，Session store的配置也包含两部分内容：session store的定义，和session
+                store的映射（mapping）。</para>
+            <example>
+                <title>Session Store的配置</title>
+                <programlisting language="xml">    &lt;session>
+        &lt;stores>
+            &lt;session-stores:store id="store1" /> <co xml:id="co.session.stores.store1" />
+            &lt;session-stores:store id="store2" /> <co xml:id="co.session.stores.store2" />
+            &lt;session-stores:store id="store3" /> <co xml:id="co.session.stores.store3" />
+        &lt;/stores>
+        &lt;store-mappings>
+            &lt;match name="*" store="store1" /> <co xml:id="co.session.stores.store1.mapping" />
+            &lt;match name="loginName" store="store2" /> <co xml:id="co.session.stores.store2.mapping" />
+            &lt;matchRegex pattern="key.*" store="store3" /> <co xml:id="co.session.stores.store3.mapping" />
+        &lt;/store-mappings>
+    &lt;/session></programlisting>
+                <calloutlist>
+                    <callout
+                        arearefs="co.session.stores.store1 co.session.stores.store2 co.session.stores.store3">
+                        <para>定义session stores：你可以配置任意多个session
+                                store，只要ID不重复。此处，<code>store1</code>、<code>store2</code>和<code>store3</code>分别是三个session
+                            store的名称。</para>
+                    </callout>
+                    <callout
+                        arearefs="co.session.stores.store1.mapping co.session.stores.store2.mapping">
+                        <para>映射session stores：<code>match</code>标签用来精确匹配attribute
+                                name。一个特别的值是“<code>*</code>”，它代表默认匹配所有的names。</para>
+                        <para>本例中， 如果调用<code>session.setAttribute("loginName",
+                                user.getId())</code>，那么这个值将被保存到<code>store2</code>里；如果调用<code>session.setAttribute("other",
+                                value)</code>将被默认匹配到<code>store1</code>中。</para>
+                    </callout>
+                    <callout arearefs="co.session.stores.store3.mapping">
+                        <para>映射session stores：<code>matchRegexp</code>标签用正则表达式来匹配attribute
+                            names。</para>
+                        <para>本例中，
+                            <code>key_a</code>、<code>key_b</code>等值都将被保存到<code>store3</code>里。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>需要注意以下几点：<itemizedlist>
+                    <listitem>
+                        <para><emphasis>在整个session配置中，只能有一个store拥有默认的匹配</emphasis>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>假如有多个<code>match</code>或<code>matchRegex</code>同时匹配某个attribute name，那么遵循以下匹配顺序：<orderedlist>
+                                <listitem>
+                                    <para><emphasis>精确的匹配</emphasis>最优先。</para>
+                                </listitem>
+                                <listitem>
+                                    <para>正则表达式的匹配遵循最大匹配的原则，假如有两个以上的正则表达式被同时匹配，<emphasis>长度较长的匹配</emphasis>胜出。</para>
+                                </listitem>
+                                <listitem>
+                                    <para><emphasis>默认匹配<code>*</code></emphasis>总是在所有的匹配都失败以后才会被激活。
+                                    </para>
+                                </listitem>
+                            </orderedlist></para>
+                    </listitem>
+                    <listitem>
+                        <para>必须有一个session store能够用来存放session model。<itemizedlist>
+                                <listitem>
+                                    <para>你可以用<code>&lt;match name="*"></code>来匹配session
+                                        model；</para>
+                                </listitem>
+                                <listitem>
+                                    <para>也可以用精确匹配：<code>&lt;match name="SESSION_MODEL"
+                                        /></code>。其中session
+                                            model的名字是必须和前述modelKey配置的值相同，其默认值为“<code>SESSION_MODEL</code>”。
+                                    </para>
+                                </listitem>
+                            </itemizedlist></para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>Session Model</title>
+            <para>Session Model是用来记录当前session的生命期数据的，例如：session的创建时间、最近更新时间等。默认情况下，<itemizedlist>
+                    <listitem>
+                        <para>当需要保存session数据时，<code>SessionModel</code>对象将被转换成一个JSON字符串（如下所示），然后这个字符串将被保存在某个session
+                            store中：</para>
+                        <screen language="javascript">{id:"SESSION_ID",ct:创建时间,ac:最近访问时间,mx:最长不活动时间}</screen>
+                    </listitem>
+                    <listitem>
+                        <para>需要读取时，先从store中读到上述格式的字符串数据，然后再把它解码成真正的<code>SessionModel</code>对象。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>以上转换过程是通过一个<code>SessionModelEncoder</code>接口来实现的。为了提供更好的移植性，Session框架可同时支持多个<code>SessionModelEncoder</code>的实现。配置如下：</para>
+            <example>
+                <title>Session Model编码器的配置</title>
+                <programlisting language="xml">&lt;session>
+    &lt;session-model-encoders>
+        &lt;model-encoders:default-session-model-encoder />
+        &lt;model-encoders:model-encoder class="..." />
+        &lt;model-encoders:model-encoder class="..." />
+    &lt;/session-model-encoders>
+&lt;/session></programlisting>
+            </example>
+            <para>在上面的例子中，提供了三个<code>SessionModelEncoder</code>的实现。第一个是默认的实现，第二、第三个是任意实现。<itemizedlist>
+                    <listitem>
+                        <para>当从store取得<code>SessionModel</code>对象时，框架将依次尝试所有的encoder，直到解码成功为止。</para>
+                    </listitem>
+                    <listitem>
+                        <para>当将<code>SessionModel</code>对象保存到store之前，框架将使用第一个encoder来编码对象。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>当你从不同的<code>SessionModel</code>编码方案中移植的时候，上述多encoders共存的方案可以实现平滑的过渡。</para>
+        </section>
+        <section>
+            <title>Session Interceptor</title>
+            <para>Session Interceptor拦截器的作用是拦截特定的事件，甚至干预该事件的执行结果。目前有两种拦截器接口：</para>
+            <table frame="none">
+                <title>Session Interceptor拦截器接口</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.82*" />
+                    <thead>
+                        <row>
+                            <entry>接口</entry>
+                            <entry>功能</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>SessionLifecycleListener</code></entry>
+                            <entry>
+                                <para>监听以下session生命期事件：<itemizedlist>
+                                        <listitem>
+                                            <para>Session被创建</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>Session被访问</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>Session被作废 </para>
+                                        </listitem>
+                                    </itemizedlist></para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>SessionAttributeInterceptor</code></entry>
+                            <entry>
+                                <para>拦截以下session读写事件：<itemizedlist>
+                                        <listitem>
+                                            <para><code>onRead</code> –
+                                                  拦截<code>session.getAttribute()</code>方法，可以修改所读取的数据。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para><code>onWrite</code> –
+                                                  拦截<code>session.setAttribute()</code>方法，可以修改所写到store中的数据。
+                                            </para>
+                                        </listitem>
+                                    </itemizedlist></para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>Session框架自身已经提供了两个有用的拦截器：</para>
+            <table frame="none">
+                <title>Session Interceptor的实现</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.82*" />
+                    <thead>
+                        <row>
+                            <entry>名称</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>&lt;lifecycle-logger></code></entry>
+                            <entry>
+                                <para>监听session生命期事件，并记录日志。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;attribute-whitelist></code></entry>
+                            <entry>
+                                <para>控制session中的attributes，只允许白名单中所定义的attribute名称和类型被写入到或读出于session
+                                    store中。</para>
+                                <para>这个功能对于cookie
+                                    store是很有用的。因为cookie有长度的限制，所以需要用白名单来限制写入到cookie中的数据数量和类型。 </para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>你可以同时配置多种拦截器，如下所示。</para>
+            <example>
+                <title>配置session interceptors</title>
+                <programlisting language="xml">&lt;session>
+  &lt;request-contexts:interceptors
+        xmlns="http://www.alibaba.com/schema/services/request-contexts/session/interceptors">
+
+    &lt;lifecycle-logger />
+
+    &lt;attribute-whitelist>
+      &lt;attribute name="_csrf_token" />
+      &lt;attribute name="_lang" />
+      &lt;attribute name="loginUser" type="com.alibaba...MyUser" />
+      &lt;attribute name="shoppingCart" type="com.alibaba....ShoppingCart" />
+    &lt;/attribute-whitelist>
+
+    &lt;interceptor class="..." />
+
+  &lt;/request-contexts:interceptors>
+&lt;/session></programlisting>
+            </example>
+        </section>
+    </section>
+    <section>
+        <title>Cookie Store</title>
+        <para>Cookie Store的作用，是将session对象保存在客户端cookie中。Cookie
+            Store减轻了服务器维护session数据的压力，从而提高了应用的扩展性和可用性。</para>
+        <para>另一方面，在现实应用中，很多地方都会直接读写cookie。读写cookie是一件麻烦的事，因为你必须要设置很多参数：<code>domain</code>、<code>path</code>、<code>httpOnly</code>...等很多参数。而操作<code>HttpSession</code>是一件相对简单的事。因此，<emphasis>webx主张把一切对cookie的读写，都转换成对session的读写</emphasis>。</para>
+        <section>
+            <title>多值Cookie Store</title>
+            <section>
+                <title>最简配置</title>
+                <example>
+                    <title>最基本的cookie配置（<filename>/WEB-INF/webx.xml</filename>）</title>
+                    <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;buffered /> <co xml:id="co.session.dep.buffered" />
+    &lt;lazy-commit /> <co xml:id="co.session.dep.lazycommit" />
+    ...
+    &lt;session>
+        &lt;stores>
+            &lt;session-stores:cookie-store id="temporaryClientStore">
+                &lt;session-stores:cookie name="tmp" />
+            &lt;/session-stores:cookie-store>
+        &lt;/stores>
+        &lt;store-mappings>
+            &lt;match name="*" store="temporaryClientStore" />
+        &lt;/store-mappings>
+    &lt;/session>
+&lt;/services:request-contexts></programlisting>
+                </example>
+                <para>上面的配置创建了一个“临时”cookie（即随着浏览器关闭而清除），来作为默认的session对象的存储。</para>
+                <para><emphasis>Cookie Store依赖其它两个Request Contexts：<coref
+                            linkend="co.session.dep.buffered" />
+                        <code>&lt;buffered></code> 和 <coref linkend="co.session.dep.lazycommit" />
+                        <code>&lt;lazy-commit></code></emphasis>。没有它们，就不能实现基于cookie的session。为什么呢？这要从HTTP协议谈起。下面是一个标准的HTTP响应的文本。无论你的服务器使用了何种平台（Apache
+                    HTTPD Server、Java Servlet/JSP、Microsoft
+                    IIS，……），只要你通过浏览器来访问，必须返回类似下面的HTTP响应：</para>
+                <screen>HTTP/1.1 200 OK
+Server: Apache-Coyote/1.1
+Set-Cookie: JSESSIONID=AywiPrQKPEzfF9OZ; Path=/
+Content-Type: text/html;charset=GBK
+Content-Language: zh-CN
+Content-Length: 48
+Date: Mon, 06 Nov 2006 07:59:38 GMT
+
+
+&lt;html>
+&lt;body>
+……</screen>
+                <para>我们注意到，HTTP响应分为Header和Content两部分。从“<code>HTTP/1.1 200
+                        OK</code>”开始，到“<code>&lt;html></code>”之前，都是HTTP
+                    <emphasis>Header</emphasis>，后面则为HTTP
+                    <emphasis>Content</emphasis>。而cookie是在header中指定的。一但应用服务器开始向浏览器输出content，那就再也没有机会修改header了。问题就出在这里。作为session的cookie可以在应用程序的任何时间被修改，甚至可能在content开始输出之后被修改。但是此后修改的session将不能被保存到cookie中。</para>
+                <para>Java Servlet
+                        API的术语称“应用服务器开始输出content”为“response被提交”。你可以通过<code>response.isCommitted()</code>方法来判断这一点。那么，哪些操作会导致response被提交呢？<itemizedlist>
+                        <listitem>
+                            <para>向<code>response.getWriter()</code>或<code>getOutputStream()</code>所返回的流中输出，累计达到服务器所设定的一个chunk的大小，通常为<code>8K</code>。</para>
+                        </listitem>
+                        <listitem>
+                            <para>用户程序或系统调用<code>response.flushBuffer()</code>。</para>
+                        </listitem>
+                        <listitem>
+                            <para>用户程序或系统调用<code>response.sendError()</code>转到错误页面。</para>
+                        </listitem>
+                        <listitem>
+                            <para>用户程序或系统调用<code>response.sendRedirect()</code>重定向。 </para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>只要避免上述情形的出现，就可以确保cookie可以被随时写入。前两个Request Contexts ——
+                        <code>&lt;buffered></code>和<code>&lt;lazy-commit></code>正好解决了上面的问题。第一个<code>&lt;buffered></code>将所有的输出到<code>response.getWriter()</code>或<code>getOutputStream()</code>的内容缓存在内存里，直到最后一刻才真正输出到浏览器；第二个<code>&lt;lazy-commit></code>拦截了response对象中引起提交的方法，将它们延迟到最后才执行。这样就保证了在cookie被完整写入之前，response绝不会被任何因素提交。</para>
+                <para>此外，<code>&lt;buffered></code>不是专为session框架而设计的。Webx的页面布局系统也依赖于这个Request
+                    Context。 </para>
+            </section>
+            <section>
+                <title>Cookie的参数</title>
+                <example>
+                    <title>Cookie的参数</title>
+                    <programlisting language="xml">&lt;session-stores:cookie-store id="temporaryClientStore"
+        maxLength="3896" maxCount="5" checksum="false">
+
+    &lt;session-stores:cookie name="tmp" domain="" path="/" maxAge="0" httpOnly="true"
+        secure="false" survivesInInvalidating="false" />
+
+&lt;/session-stores:cookie-store></programlisting>
+                </example>
+                <para>上例中列出了所有关于cookie的参数，解释如下：</para>
+                <table frame="none">
+                    <title>Cookie的参数</title>
+                    <tgroup cols="3">
+                        <colspec colname="c1" colnum="1" colwidth="1.16*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.78*" />
+                        <colspec colname="c3" colnum="3" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>参数名称</entry>
+                                <entry namest="c2" nameend="c3">说明</entry>
+                            </row>
+                        </thead>
+                        <tbody valign="middle">
+                            <row>
+                                <entry><code>name</code></entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>指定cookie的名称。</para>
+                                    <para>假设名称为“<code>tmp</code>”，那么将生成<code>tmp0</code>、<code>tmp1</code>、<code>tmp2</code>等cookie。</para>
+                                    <para>多个cookie stores的cookie名称不能重复。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>domain</code></entry>
+                                <entry>
+                                    <para>指定cookie的域名。</para>
+                                </entry>
+                                <entry morerows="4">
+                                    <para>这几个参数的默认值，均和Session ID
+                                            cookie的设置相同。因此，<emphasis>一般不需要特别设置它们</emphasis>。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>path</code></entry>
+                                <entry>
+                                    <para>指定cookie的路径。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>maxAge</code></entry>
+                                <entry>
+                                    <para>指定cookie的过期时间，单位是秒。</para>
+                                    <para>如果值为<code>0</code>，意味着cookie持续到浏览器被关闭（或称临时cookie）。</para>
+                                    <para>有效值必须大于<code>0</code>，否则均被认为是临时cookie。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>httpOnly</code></entry>
+                                <entry>
+                                    <para>在cookie上设置<code>HttpOnly</code>标记。</para>
+                                    <para>在IE6及更新版本中，可以缓解XSS攻击的危险。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>secure</code></entry>
+                                <entry>
+                                    <para>在cookie上设置<code>Secure</code>标记。</para>
+                                    <para>这样，只有在https请求中才可访问该cookie。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>survivesInInvalidating</code></entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>这是一个特殊的设置。如果它被设置成<code>true</code>，那么当session被作废（invalidate）时，这个cookie
+                                        store中的对象会幸存下来，并带入下一个新的session中。</para>
+                                    <para>如果这个值为<code>true</code>，必须同时设置一个大于<code>0</code>的<code>maxAge</code>。</para>
+                                    <para>这个设置有什么用呢？比如，我们希望在cookie中记录最近登录的用户名，以方便用户再次登录。可以把这个用户名记录在一个cookie
+                                            store中，并设置<code>survivesInInvalidating=true</code>。即使用户退出登录，或当前session过期，新的session仍然可以读到这个store中所保存的对象。
+                                    </para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>maxLength</code></entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>指定每个cookie的最大长度。默认为<code>3896</code>，约<code>3.8K</code>。</para>
+                                    <para>Cookie
+                                            store会把所有对象序列化到cookie中。但是cookie的长度是不能超过<code>4K</code>的。如果cookie的长度超过这个设定，就把数据分发到新的cookie中去。因此每个cookie
+                                        store实际可能产生好几个cookie。</para>
+                                    <para>假设cookie
+                                            name为<code>tmp</code>，那么所生成的cookie的名称将分别为：<code>tmp0</code>、<code>tmp1</code>、<code>tmp2</code>，以此类推。
+                                    </para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>maxCount</code></entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>指定cookie的最大个数。默认为<code>5</code>。</para>
+                                    <para>因此，实际cookie store可生成的cookie总长度为：<code>maxLength *
+                                            maxCount</code>。如果超过这个长度，cookie
+                                            store将会在日志里面发出警告（<code>WARN</code>级别），并忽略store中的所有对象。
+                                    </para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>checksum</code></entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>是否创建概要cookie。默认为<code>false</code>。</para>
+                                    <para>有时由于域名、路径等设置的问题，会导致cookie紊乱。例如：发现同名的cookie、cookie缺失等错误。这些问题很难跟踪。概要cookie就是为检查这类问题提供一个线索。如果把这个开关打开，将会产生一个概要性的cookie。假如cookie
+                                            name为<code>tmp</code>，那么概要cookie的名字将是<code>tmpsum</code>。概要cookie会指出当前store共有几个cookie，每个cookie的前缀等内容。当cookie的总数和内容与概要cookie不符时，系统将会在日志中提出详细的警告信息（<code>DEBUG</code>级别）。</para>
+                                    <para>请尽量不要在生产系统中使用这个功能。 </para>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>Session Encoders</title>
+                <para>Session里保存的是Java对象，而cookie中只能保存字符串。如何把Java对象转换成合法的cookie字符串（或者将字符串恢复成对象）呢？这就是Session
+                    Encoder所要完成的任务。</para>
+                <example>
+                    <title>配置Session Encoders</title>
+                    <programlisting language="xml">&lt;session-stores:cookie-store>
+    ...
+    &lt;session-stores:encoders>
+        &lt;session-encoders:encoder class="..." />
+        &lt;session-encoders:encoder class="..." />
+        &lt;session-encoders:encoder class="..." />
+    &lt;/session-stores:encoders>
+&lt;/session-stores:cookie-store></programlisting>
+                </example>
+                <para>和<code>SessionModelEncoder</code>类似，session框架也支持多个session encoders同时存在。<itemizedlist>
+                        <listitem>
+                            <para>保存session数据时，session框架将使用第一个encoder来将对象转换成cookie可接受的字符串；</para>
+                        </listitem>
+                        <listitem>
+                            <para>读取session数据时，session框架将依次尝试所有的encoders，直到解码成功为止。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>这种编码、解码方案可让使用不同session encoders的系统之间共享cookie数据，也有利于平滑迁移系统。</para>
+                <para>Session框架提供了一种encoder的实现，编码的基本过程为：序列化、加密（可选）、压缩、Base64编码、URL
+                    encoding编码。</para>
+                <example>
+                    <title>配置Session Encoders的几种方案</title>
+                    <itemizedlist>
+                        <listitem>
+                            <para>基本配置：用hessian算法（默认）来序列化，不加密。</para>
+                            <programlisting language="xml">&lt;session-stores:cookie-store>
+    &lt;session-stores:encoders>
+        &lt;session-encoders:serialization-encoder /> <co xml:id="co.session.encoders.default" />
+    &lt;/session-stores:encoders>
+&lt;/session-stores:cookie-store></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.session.encoders.default">
+                                    <para>这是默认实现。</para>
+                                </callout>
+                            </calloutlist>
+                        </listitem>
+                        <listitem>
+                            <para>用aes算法加密。AES算法可支持<code>128</code>、<code>192</code>、<code>256</code>位的密钥，默认为<code>keySize=128</code>。</para>
+                            <programlisting language="xml">&lt;session-stores:cookie-store>
+    &lt;session-stores:encoders>
+        &lt;session-encoders:serialization-encoder>
+            &lt;session-serializers:hessian-serializer /> <co xml:id="co.session.encoders.hession" />
+            &lt;session-encrypters:aes-encrypter key="0123456789abcdef" /> <co xml:id="co.session.encoders.aes" />
+        &lt;/session-encoders:serialization-encoder>
+    &lt;/session-stores:encoders>
+&lt;/session-stores:cookie-store></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.session.encoders.hession">
+                                    <para>也可以明确指定hession序列化。</para>
+                                </callout>
+                                <callout arearefs="co.session.encoders.aes">
+                                    <para>添加AES加密算法，并提供密钥。</para>
+                                </callout>
+                            </calloutlist>
+                        </listitem>
+                        <listitem>
+                            <para>改用java原生的序列化算法。使用hessian算法（默认）可大幅缩短序列化的长度，但使用java原生的序列化算法，具有最好的可移植性。</para>
+                            <programlisting language="xml">&lt;session-stores:cookie-store>
+    &lt;session-stores:encoders>
+        &lt;session-encoders:serialization-encoder>
+            &lt;session-serializers:java-serializer /> <co xml:id="co.session.encoders.java" />
+        &lt;/session-encoders:serialization-encoder>
+    &lt;/session-stores:encoders>
+&lt;/session-stores:cookie-store></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.session.encoders.java">
+                                    <para>指定java序列化。</para>
+                                </callout>
+                            </calloutlist>
+                        </listitem>
+                    </itemizedlist>
+                </example>
+            </section>
+        </section>
+        <section>
+            <title>单值Cookie Store</title>
+            <para>前面所描述的cookie store，是在一组cookie（如<code>tmp0</code>, <code>tmp1</code>,
+                ...）中保存一组attributes的名称和对象。它所创建的cookie值，只有session框架自己才能解读。</para>
+            <para>假如有一些非webx的代码想要共享保存在cookie中的session数据，例如，Java
+                Script代码、其它未使用webx框架的应用，希望能读取session数据，应该怎么办呢？Session框架提供了一种相对简单的“单值cookie
+                store”可用来解决这个问题。顾名思义，单值cookie store就是在一个cookie中仅保存一个值或对象。</para>
+            <section>
+                <title>最简配置</title>
+                <example>
+                    <title>单值cookie store基本配置</title>
+                    <programlisting language="xml">&lt;session>
+    &lt;stores>
+        ...
+        &lt;stores:single-valued-cookie-store id="loginNameCookie"> <co xml:id="co.session.singlevalued.cookie.store" />
+            &lt;stores:cookie name="login" /> <co xml:id="co.session.singlevalued.cookie" />
+        &lt;/stores:single-valued-cookie-store>
+    &lt;/stores>
+    &lt;store-mappings>
+        ...
+        &lt;match name="loginName" store="loginNameCookie" /> <co xml:id="co.session.singlevalued.cookie.store.mapping" />
+    &lt;/store-mappings>
+&lt;/session></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.session.singlevalued.cookie.store">
+                            <para>单值cookie store的ID是<code>loginNameCookie</code>。</para>
+                        </callout>
+                        <callout arearefs="co.session.singlevalued.cookie">
+                            <para>Cookie的名称是<code>login</code>。</para>
+                        </callout>
+                        <callout arearefs="co.session.singlevalued.cookie.store.mapping">
+                            <para>Session
+                                attribute的名称是<code>loginName</code>，attribute名称和cookie名称不必相同。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>根据上面的配置，下面程序会生成cookie：<code>login=myname</code>。</para>
+                <example>
+                    <title>访问单值cookie的代码</title>
+                    <programlisting language="java">session.setAttribute("loginName", "myname");</programlisting>
+                </example>
+                <para>需要注意的是，上述最简配置，只能用来存取字符串值。如果需要存取其它类型的对象，则需要配置Session Value Encoder。详见<xref
+                        xl:href="#webx.requestcontexts.session.value.encoders" />。</para>
+            </section>
+            <section>
+                <title>Cookie的参数</title>
+                <example>
+                    <title>单值cookie的参数配置</title>
+                    <programlisting language="xml">&lt;session-stores:single-valued-cookie-store id="loginNameCookie">
+
+    &lt;session-stores:cookie name="login" domain="" path="/" maxAge="0" httpOnly="true"
+        secure="false" survivesInInvalidating="false" />
+
+&lt;/session-stores:single-valued-cookie-store></programlisting>
+                </example>
+                <para>单值cookie的参数设置完全类似于普通cookie store的设置。唯一的差别是，单值cookie只生成一个cookie，而普通的cookie
+                    store则可能生成多个相关的cookies。</para>
+                <table frame="none">
+                    <title>Cookie的参数</title>
+                    <tgroup cols="3">
+                        <colspec colname="c1" colnum="1" colwidth="1.16*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.78*" />
+                        <colspec colname="c3" colnum="3" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>参数名称</entry>
+                                <entry namest="c2" nameend="c3">说明</entry>
+                            </row>
+                        </thead>
+                        <tbody valign="middle">
+                            <row>
+                                <entry><code>name</code></entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>指定cookie的名称。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>domain</code></entry>
+                                <entry>
+                                    <para>指定cookie的域名。</para>
+                                </entry>
+                                <entry morerows="4">
+                                    <para>这几个参数的默认值，均和Session ID
+                                            cookie的设置相同。因此，<emphasis>一般不需要特别设置它们</emphasis>。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>path</code></entry>
+                                <entry>
+                                    <para>指定cookie的路径。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>maxAge</code></entry>
+                                <entry>
+                                    <para>指定cookie的过期时间，单位是秒。</para>
+                                    <para>如果值为<code>0</code>，意味着cookie持续到浏览器被关闭（或称临时cookie）。</para>
+                                    <para>有效值必须大于<code>0</code>，否则均被认为是临时cookie。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>httpOnly</code></entry>
+                                <entry>
+                                    <para>在cookie上设置<code>HttpOnly</code>标记。</para>
+                                    <para>在IE6及更新版本中，可以缓解XSS攻击的危险。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>secure</code></entry>
+                                <entry>
+                                    <para>在cookie上设置<code>Secure</code>标记。</para>
+                                    <para>这样，只有在https请求中才可访问该cookie。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>survivesInInvalidating</code></entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>这是一个特殊的设置。如果它被设置成<code>true</code>，那么当session被作废（invalidate）时，这个cookie
+                                        store中的对象会幸存下来，并带入下一个新的session中。</para>
+                                    <para>如果这个值为<code>true</code>，必须同时设置一个大于<code>0</code>的<code>maxAge</code>。</para>
+                                    <para>这个设置有什么用呢？比如，我们希望在cookie中记录最近登录的用户名，以方便用户再次登录。可以把这个用户名记录在一个cookie
+                                            store中，并设置<code>survivesInInvalidating=true</code>。即使用户退出登录，或当前session过期，新的session仍然可以读到这个store中所保存的对象。
+                                    </para>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section xml:id="webx.requestcontexts.session.value.encoders">
+                <title>Session Value Encoders</title>
+                <para>单值cookie
+                    store可以保存任意的Java对象，只要这个Java对象能够被转换成字符串，以及从字符串中恢复。将Java对象转换成字符串，以及从字符串中恢复，就是Session
+                    Value Encoder的任务。和前面所说的Session Encoder不同，Session Value Encoder只转换session
+                    attribute的值，而Session Encoder需要转换一组session attributes的key-values。</para>
+                <example>
+                    <title>Session Value Encoders的配置</title>
+                    <programlisting language="xml">&lt;session-stores:single-valued-cookie-store>
+    ...
+    &lt;session-stores:encoders>
+        &lt;session-value-encoders:encoder class="..." />
+        &lt;session-value-encoders:encoder class="..." />
+        &lt;session-value-encoders:encoder class="..." />
+    &lt;/session-stores:encoders>
+&lt;/session-stores:single-valued-cookie-store></programlisting>
+                </example>
+                <para>和<code>SessionModelEncoder</code>以及<code>SessionEncoder</code>类似，session框架也支持多个session
+                    value encoders同时存在。<itemizedlist>
+                        <listitem>
+                            <para>保存session数据时，session框架将使用第一个encoder来将对象转换成cookie可接受的字符串；</para>
+                        </listitem>
+                        <listitem>
+                            <para>读取session数据时，session框架将依次尝试所有的encoders，直到解码成功为止。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>这种编码、解码方案可让使用不同session value encoders的系统之间共享cookie数据，也有利于平滑迁移系统。</para>
+                <para>目前有两种基本的session value
+                        encoders实现。<code>&lt;simple-value-encoder></code>和<code>&lt;mapped-values-encoder></code>。下面举例说明。 </para>
+                <example>
+                    <title>配置Session Value Encoders的几种方案</title>
+                    <itemizedlist>
+                        <listitem>
+                            <para>编码字符串值，以指定的charset对字符串进行URL encoding。</para>
+                            <programlisting language="xml">&lt;session-stores:encoders>
+    &lt;session-value-encoders:simple-value-encoder charset="GBK" /> <co xml:id="co.session.singlevalued.cookie.store.encoders.simple" />
+&lt;/session-stores:encoders></programlisting>
+                            <calloutlist>
+                                <callout
+                                    arearefs="co.session.singlevalued.cookie.store.encoders.simple">
+                                    <para>如不指定<code>charset</code>参数，默认charset为“<code>UTF-8</code>”。</para>
+                                </callout>
+                            </calloutlist>
+                        </listitem>
+                        <listitem>
+                            <para>编码指定类型的值，该值具有默认的<code>PropertyEditor</code>，可以转换成<code>String</code>，或从<code>String</code>中恢复。</para>
+                            <programlisting language="xml">&lt;session-stores:encoders>
+    &lt;session-value-encoders:simple-value-encoder type="com.alibaba...MyEnum" /> <co xml:id="co.session.singlevalued.cookie.store.encoders.simple.enum" />
+&lt;/session-stores:encoders></programlisting>
+                            <calloutlist>
+                                <callout
+                                    arearefs="co.session.singlevalued.cookie.store.encoders.simple.enum">
+                                    <para>Spring直接支持将<code>Enum</code>类型的值转成<code>String</code>类型，或反之。</para>
+                                </callout>
+                            </calloutlist>
+                        </listitem>
+                        <listitem>
+                            <para>编码指定类型的值，注册相应的registrar来进行类型转换。</para>
+                            <programlisting language="xml">&lt;session-stores:encoders>
+    &lt;session-value-encoders:simple-value-encoder type="java.util.Date">
+        &lt;session-value-encoders:property-editor-registrar
+            class="com.alibaba.citrus.service.configuration.support.CustomDateRegistrar"
+            p:timeZone="GMT+8" p:format="yyyy-MM-dd" /> <co xml:id="co.session.singlevalued.cookie.store.encoders.simple.registrar" />
+    &lt;/session-value-encoders:simple-value-encoder>
+&lt;/session-stores:encoders></programlisting>
+                            <calloutlist>
+                                <callout
+                                    arearefs="co.session.singlevalued.cookie.store.encoders.simple.registrar">
+                                    <para>注册registrar，将<code>Date</code>类型按格式<code>yyyy-MM-dd</code>转成字符串，或从该格式的字符串中恢复。</para>
+                                </callout>
+                            </calloutlist>
+                        </listitem>
+                        <listitem>
+                            <para>在上面例子的基础上，可增加encrypter，对value进行加密。</para>
+                            <programlisting language="xml">&lt;session-stores:encoders>
+    &lt;session-value-encoders:simple-value-encoder type="java.util.Date">
+        &lt;session-value-encoders:property-editor-registrar
+            class="com.alibaba.citrus.service.configuration.support.CustomDateRegistrar"
+            p:timeZone="GMT+8" p:format="yyyy-MM-dd" />
+
+        &lt;session-encrypters:aes-encrypter key="0123456789abcdef" /> <co xml:id="co.session.singlevalued.cookie.store.encoders.simple.aes" />
+
+    &lt;/session-value-encoders:simple-value-encoder>
+&lt;/session-stores:encoders></programlisting>
+                            <calloutlist>
+                                <callout
+                                    arearefs="co.session.singlevalued.cookie.store.encoders.simple.aes">
+                                    <para>用AES和指定密钥进行加密。</para>
+                                </callout>
+                            </calloutlist>
+                        </listitem>
+                        <listitem>
+                            <para><code>&lt;mapped-values-encoder></code>和<code>&lt;simple-value-encoder></code>类似，差别在于，前者只接受<code>java.util.Map</code>数据类型，并将其编码成“<code>key:value&amp;key:value</code>”的格式。下面的例子可接受<code>Map&lt;String,
+                                    Date></code>类型的数据：</para>
+                            <programlisting language="xml">&lt;session-stores:encoders>
+    &lt;session-value-encoders:mapped-values-encoder valueType="com.alibaba...MyEnum" /> <co xml:id="co.session.singlevalued.cookie.store.encoders.mapped" />
+&lt;/session-stores:encoders></programlisting>
+                            <calloutlist>
+                                <callout
+                                    arearefs="co.session.singlevalued.cookie.store.encoders.mapped">
+                                    <para>注意此处所指定的类型为map中的value的类型。</para>
+                                </callout>
+                            </calloutlist>
+                            <para>当你用下面的代码，可设置cookie值“<code>key1:value1&amp;key2:value2</code>”：</para>
+                            <programlisting language="java">Map&lt;String, MyEnum> mappedValue = new HashMap&lt;String, MyEnum>();
+
+mappedValue.put("key1", MyEnum.value1);
+mappedValue.put("key2", MyEnum.value2);
+
+session.setAttribute("cookie", mappedValue); <co xml:id="co.session.singlevalued.cookie.store.encoders.mapped.code" /></programlisting>
+                            <calloutlist>
+                                <callout
+                                    arearefs="co.session.singlevalued.cookie.store.encoders.mapped.code">
+                                    <para>将整个map作为session
+                                        attribute的值，其中，map的value类型必须符合配置文件中指定的类型。</para>
+                                </callout>
+                            </calloutlist>
+                        </listitem>
+                        <listitem>
+                            <para>类似的，你同样可以对<code>&lt;mapped-values-encoder></code>指定registrar和encrypter，不再赘述。</para>
+                        </listitem>
+                    </itemizedlist>
+                </example>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>其它Session Store</title>
+        <section>
+            <title>Simple Memory Store</title>
+            <para><code>SimpleMemoryStore</code>是最简单的session
+                store。它将所有的session对象都保存在内存里面。这种store不支持多台机器的session同步，而且也不关心内存是否被用尽。因此这种简单的store一般只应使用于测试环境。</para>
+            <example>
+                <title>配置simple memory store</title>
+                <programlisting language="xml">&lt;stores>
+    &lt;session-stores:simple-memory-store id="simple" />
+&lt;/stores></programlisting>
+            </example>
+            <warning>
+                <para>鉴于<code>simple-memory-store</code>的实现的简单性，<emphasis>请不要将它应用在生产环境</emphasis>。</para>
+            </warning>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>Session是个难题，特别是对于要求高扩展性和高可用性的网站来说。</para>
+        <para>我们在标准的Java Servlet
+            API的基础之上，实现了一套全新的session框架。在此基础上可以进一步实现多种session的技术，例如：基于cookie的session、基于数据库的session、基于Berkeley
+            DB的session、基于内存的session，甚至也可以实现基于TCP-ring的session等等。最重要的是，我们能把这些技术结合起来，使每种技术的优点能够互补，缺点可以被避免。</para>
+        <para>所有这一切，对应用程序是完全透明的 —— 应用程序不用知道session是如何实现的、它们的对象被保存到哪个session store中等问题 ——
+            session框架可以妥善地处理好这一切。</para>
+    </section>
+</chapter>

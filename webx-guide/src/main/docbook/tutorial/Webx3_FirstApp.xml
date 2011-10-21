@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+<!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+%placeholders;
+]>
+<chapter id="webx.tutorial.simple" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="firstapp.html" ?>
+    <title>创建第一个Webx应用</title>
+    <para>本章将帮助你快速创建一个可运行的Webx应用。你可以把它作为你的Webx新项目的开端。</para>
+    <section>
+        <title>准备工作</title>
+        <para>请耐心，准备工作比创建一个最简单的Webx应用需要花费更多时间。但是磨刀不误砍柴工，做好准备工作将为你将来的开发节省大量时间。</para>
+        <section>
+            <title>安装JDK</title>
+            <para>Webx需要JDK 5.0以上的版本。请从这里下载并安装它：<link
+                    xl:href="http://www.oracle.com/technetwork/java/javase/" />。</para>
+        </section>
+        <section>
+            <title>安装和配置maven</title>
+            <para>Webx需要maven 2或更高版本。请从这里下载并安装它：<link xl:href="http://maven.apache.org/" />。</para>
+            <para>请在maven配置中添加Webx所在的repository，以便取得Webx发布版、archetypes、以及相关插件。</para>
+            <example>
+                <title>创建maven配置文件（<filename>$HOME/.m2/settings.xml</filename>）</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+    xsi:schemaLocation="
+        http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd
+    ">
+
+    &lt;profiles>
+        &lt;profile>
+            &lt;id>code.taobao.org&lt;/id> <co xml:id="co.firstapp.maven.profile" />
+
+            &lt;repositories>
+                &lt;repository>
+                    &lt;id>code.taobao.org&lt;/id>
+                    &lt;name>Repository of code.taobao.org&lt;/name>
+                    &lt;url>http://code.taobao.org/mvn/repository&lt;/url> <co xml:id="co.firstapp.maven.repo" />
+                    &lt;layout>default&lt;/layout>
+                &lt;/repository>
+            &lt;/repositories>
+
+            &lt;pluginRepositories>
+                &lt;pluginRepository>
+                    &lt;id>code.taobao.org&lt;/id>
+                    &lt;name>Repository of code.taobao.org&lt;/name>
+                    &lt;url>http://code.taobao.org/mvn/repository&lt;/url> <co xml:id="co.firstapp.maven.repo.plugin" />
+                    &lt;layout>default&lt;/layout>
+                &lt;/pluginRepository>
+            &lt;/pluginRepositories>
+
+        &lt;/profile>
+    &lt;/profiles>
+
+    &lt;activeProfiles>
+        &lt;activeProfile>code.taobao.org&lt;/activeProfile> <co xml:id="co.firstapp.maven.profile.active" />
+    &lt;/activeProfiles>
+
+&lt;/settings></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.firstapp.maven.profile">
+                        <para>创建一个名为<code>code.taobao.org</code>的profile。</para>
+                    </callout>
+                    <callout arearefs="co.firstapp.maven.repo co.firstapp.maven.repo.plugin">
+                        <para>定义repository
+                            URL：<code>http://code.taobao.org/mvn/repository</code>。</para>
+                    </callout>
+                    <callout arearefs="co.firstapp.maven.profile.active">
+                        <para>可选设置：默认激活<code>code.taobao.org</code> profile。</para>
+                        <para>如果你选择不激活该profile，那么将来你build项目时，需要在命令行上输入参数：<screen>mvn -Pcode.taobao.org ...</screen></para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>你也可以把上述maven配置的内容合并到<filename>$MAVEN_HOME/conf/settings.xml</filename>。这样做将会影响所有使用同一个maven安装的用户。</para>
+        </section>
+        <section>
+            <title>安装集成开发环境</title>
+            <para>很难想像不用集成开发环境（IDE）来帮助开发Java应用会变成怎样。</para>
+            <para>如果你使用Eclipse（从这里下载：<link xl:href="http://www.eclipse.org/" />），建议安装如下插件：<itemizedlist>
+                    <listitem>
+                        <para>Maven eclipse插件：<link xl:href="http://m2eclipse.sonatype.org/"
+                             /></para>
+                    </listitem>
+                    <listitem>
+                        <para>Subversion eclipse插件：<link xl:href="http://subclipse.tigris.org/"
+                             /></para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+    </section>
+    <section>
+        <title>创建应用</title>
+        <para>请打开命令行工具（Windows <command>cmd</command>或Unix/Linux
+            <command>bash</command>），输入如下命令：</para>
+        <example>
+            <title>从archetype创建Webx应用</title>
+            <programlisting>mvn archetype:generate \
+ -DgroupId=com.alibaba.webx \<co xml:id="co.firstapp.archetype.groupId" />
+ -DartifactId=tutorial1 \<co xml:id="co.firstapp.archetype.artifactId" />
+ -Dversion=1.0-SNAPSHOT \<co xml:id="co.firstapp.archetype.version" />
+ -Dpackage=com.alibaba.webx.tutorial1 \<co xml:id="co.firstapp.archetype.package" />
+ -DarchetypeArtifactId=archetype-webx-quickstart \
+ -DarchetypeGroupId=com.alibaba.citrus.sample \
+ -DarchetypeVersion=1.0-SNAPSHOT \
+ -DinteractiveMode=false</programlisting>
+            <para>由于Windows下不支持命令换行，请改用<emphasis>非换行版</emphasis>：</para>
+            <programlisting>mvn archetype:generate -DgroupId=com.alibaba.webx -DartifactId=tutorial1 -Dversion=1.0-SNAPSHOT -Dpackage=com.alibaba.webx.tutorial1 -DarchetypeArtifactId=archetype-webx-quickstart -DarchetypeGroupId=com.alibaba.citrus.sample -DarchetypeVersion=1.0-SNAPSHOT -DinteractiveMode=false</programlisting>
+            <para>命令执行完后，你会看见一个新目录：<code>tutorial1</code>。它就是我们刚刚创建的新项目。项目的各项参数如下所示：</para>
+            <calloutlist>
+                <callout arearefs="co.firstapp.archetype.groupId">
+                    <para>项目组（<code>groupId</code>）：<code>com.alibaba.webx</code>。</para>
+                </callout>
+                <callout arearefs="co.firstapp.archetype.artifactId">
+                    <para>项目名称（<code>artifactId</code>）：<code>tutorial1</code>。</para>
+                </callout>
+                <callout arearefs="co.firstapp.archetype.version">
+                    <para>项目版本（<code>version</code>）：<code>1.0-SNAPSHOT</code>。</para>
+                </callout>
+                <callout arearefs="co.firstapp.archetype.package">
+                    <para>项目中Java类的包名（<code>package</code>）：<code>com.alibaba.webx.tutorial1</code>。</para>
+                </callout>
+            </calloutlist>
+        </example>
+        <note>
+            <para>你完全可以根据你的需要来调整上述命令中的参数，改用其它的<code>groupId</code>、<code>artifactId</code>、<code>version</code>以及<code>package</code>。</para>
+        </note>
+    </section>
+    <section>
+        <title>运行应用</title>
+        <para>进入刚创建的<code>tutorial1</code>目录，在此目录下执行maven命令：</para>
+        <example>
+            <title>启动Jetty服务器</title>
+            <programlisting>mvn jetty:run</programlisting>
+        </example>
+        <para>这条命令会启动Jetty Server，默认的端口是<code>8081</code>。请在浏览器地址栏输入地址，或直接点击这个链接：<link
+                xl:href="http://localhost:8081/" />。你应该可以看到类似下面的结果：</para>
+        <figure>
+            <title>Webx开发者首页</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata fileref="images/tut/firstapp-home.png" />
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>这是一个“开发者首页”。它不是真正的应用程序首页，而是一个<emphasis>专为开发者准备的</emphasis>首页。这个页面显示了一些诸如Webx版本、Java版本、OS类型、IP地址、内存等信息。</para>
+        <para>请点击页面顶部的菜单中的Application Home，</para>
+        <informalfigure>
+            <mediaobject>
+                <imageobject>
+                    <imagedata fileref="images/tut/firstapp-apphome-link.png" />
+                </imageobject>
+            </mediaobject>
+        </informalfigure>
+        <para>这样就可以进入<emphasis>真正的应用程序首页</emphasis>：</para>
+        <figure>
+            <title>Webx应用首页</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata fileref="images/tut/firstapp-apphome.png" />
+                </imageobject>
+            </mediaobject>
+        </figure>
+    </section>
+    <section>
+        <title>提问和解答</title>
+        <section>
+            <title>在生产环境的应用上，也会出现前述的“开发者首页”吗？</title>
+            <para>不会的。</para>
+            <para>事实上，之所以刚才的运行会产生“开发者首页”，是因为在jetty启动时，定义了一个启动参数。请打开<filename>pom.xml</filename>看一下：</para>
+            <example>
+                <title>定义“开发者模式”的启动参数</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    ...
+    &lt;build>
+        &lt;plugins>
+            ...
+            &lt;plugin>
+                &lt;groupId>org.mortbay.jetty&lt;/groupId>
+                &lt;artifactId>maven-jetty-plugin&lt;/artifactId>
+                &lt;configuration>
+                    &lt;contextPath>/&lt;/contextPath>
+                    &lt;connectors>
+                        &lt;connector implementation="org.mortbay.jetty.nio.SelectChannelConnector">
+                            &lt;port>8081&lt;/port>
+                            &lt;maxIdleTime>60000&lt;/maxIdleTime>
+                        &lt;/connector>
+                    &lt;/connectors>
+                    &lt;requestLog implementation="org.mortbay.jetty.NCSARequestLog">
+                        &lt;filename>target/access.log&lt;/filename>
+                        &lt;retainDays>90&lt;/retainDays>
+                        &lt;append>false&lt;/append>
+                        &lt;extended>false&lt;/extended>
+                        &lt;logTimeZone>GMT+8:00&lt;/logTimeZone>
+                    &lt;/requestLog>
+                    &lt;systemProperties>
+                        &lt;systemProperty>
+                            &lt;name>productionMode&lt;/name> <co xml:id="co.firstapp.pom.productionMode" />
+                            &lt;value>false&lt;/value>
+                        &lt;/systemProperty>
+                    &lt;/systemProperties>
+                &lt;/configuration>
+            &lt;/plugin>
+            ...
+        &lt;/plugins>
+    &lt;/build>
+&lt;/project></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.firstapp.pom.productionMode">
+                        <para>设定JVM启动参数：<code>productionMode=false</code>。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>如果不加特别设置，系统的默认状态是“生产模式”，即<code>productionMode</code>默认为<code>true</code>。因此，生产环境的服务器总是运行在“生产模式”而不是“开发模式”下的。而“开发者首页”只会出现在“开发模式”下面。</para>
+            <para>你可以用下面的命令来覆盖<filename>pom.xml</filename>的设置：</para>
+            <example>
+                <title>在命令行上指定JVM参数</title>
+                <programlisting>mvn jetty:run -DproductionMode=true</programlisting>
+            </example>
+            <para>然后在浏览器地址栏输入地址，或直接点击这个链接：<link xl:href="http://localhost:8081/"
+                 />，你将直接被带入应用首页，而不是“开发者首页”。</para>
+        </section>
+        <section>
+            <title>“开发模式”是什么意思？</title>
+            <para>开发模式是为了方便应用开发，Webx所提供的额外功能。具体请见：<xref linkend="webx.overview.framework.devmode"
+                 />。</para>
+        </section>
+        <section>
+            <title>所生成的应用中包含了什么？</title>
+            <para>这个应用程序包含了几个Webx应用的常见元素：<itemizedlist>
+                    <listitem>
+                        <para>一个欢迎页面（index screen）</para>
+                    </listitem>
+                    <listitem>
+                        <para>一个页面布局（layout）</para>
+                    </listitem>
+                    <listitem>
+                        <para>一个表单验证（form）</para>
+                    </listitem>
+                    <listitem>
+                        <para>一个action，用来处理用户提交的数据</para>
+                    </listitem>
+                    <listitem>
+                        <para>Logback日志被打印在屏幕上</para>
+                    </listitem>
+                </itemizedlist>
+            </para>
+        </section>
+    </section>
+</chapter>

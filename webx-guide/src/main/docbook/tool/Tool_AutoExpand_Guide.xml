@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+<!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+%placeholders;
+]>
+<chapter xml:id="tool.autoexpand" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="autoexpand.html" ?>
+    <title>AutoExpand工具使用指南</title>
+    <section>
+        <title>AutoExpand工具简介</title>
+        <para>AutoExpand是一个小工具，可以快速地把应用包展开到目录中。</para>
+        <section>
+            <title>Java、JavaEE打包的格式</title>
+            <para>Java和JavaEE的应用通常被打成一个ZIP格式的包。</para>
+            <table frame="none">
+                <title>标准的Java、JavaEE包的格式</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="5.51*" />
+                    <thead>
+                        <row>
+                            <entry>包类型</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>jar</entry>
+                            <entry>Java ARchive。共享类库，EJB，独立应用。</entry>
+                        </row>
+                        <row>
+                            <entry>war</entry>
+                            <entry>Web application ARchive。WEB应用。</entry>
+                        </row>
+                        <row>
+                            <entry>ear</entry>
+                            <entry>Enterprise ARchive。企业级应用。</entry>
+                        </row>
+                        <row>
+                            <entry>rar</entry>
+                            <entry>Resource Adapter Archive。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>其中jar和war包是当今最常用的格式。其次还有ear。<itemizedlist>
+                    <listitem>
+                        <para>Ear包中可以包含多个jar包（包括ejb-jar包）、rar包、war包。</para>
+                    </listitem>
+                    <listitem>
+                        <para>War包中可以包含多个jar包。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <example>
+                <title>包的内部格式</title>
+                <para>下面是一个典型的ear包的内部格式：</para>
+                <screen>myapp.ear
+ │  foo-ejb.jar            // 内嵌ejb-jar包。
+ │  bar.jar                // 内嵌普通jar包。
+ │  myweb.war              // 内嵌war包。
+ │
+ └─META-INF
+       application.xml     // EAR描述文件。</screen>
+                <para>下面是一个典型的war包的内部格式：</para>
+                <screen>myweb.war
+ │  index.jsp
+ │
+ ├─images
+ ├─META-INF
+ └─WEB-INF
+    │  web.xml             // WAR描述文件。
+    │
+    ├─classes
+    │     foo.class        // Java类文件。
+    │
+    └─lib
+          bar.jar          // 内嵌jar包。
+          baz.jar</screen>
+            </example>
+        </section>
+        <section>
+            <title>应用布署的方式</title>
+            <para>多数应用服务器都支持两种类型的布署方式：以包的形式布署，或者以展开目录的形式布署。</para>
+            <table frame="none">
+                <title>布署应用的方法</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                    <thead>
+                        <row>
+                            <entry>方法</entry>
+                            <entry>用途</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>以包的形式布署</entry>
+                            <entry>
+                                <para>你可以把WEB应用的war包直接发布在应用服务器上，应用服务器不需要把包打开就能运行它。</para>
+                                <para>发布一个应用包（只有一个文件），对于deployer来说是比较方便的。通常他只需要把这个包往指定的应用服务器目录一丢，就可以把应用跑起来。</para>
+                                <para>但是以包形式发布的应用不太好调试，因为你为了修改包中的任何一个文件，都必须重新打包。这是很费时的工作。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>以展开目录的形式布署</entry>
+                            <entry>以展开目录的形式布署的应用，更适合于开发阶段。这样，开发者可以方便地替换应用中的任何一个文件，而不需要重新打包。这节省了很多时间。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+        <section>
+            <title>AutoExpand的用武之地</title>
+            <para>AutoExpand的功能就是把包文件展开到文件夹中。</para>
+            <para>事实上，对于多数情况来说，用AutoExpand来展开一个包，和直接使用<command>jar</command>命令来展开包是没有差别的。例如，展开一个war包，可以用下面两种方法：</para>
+            <example>
+                <title>用AutoExpand展开一个war包</title>
+                <screen>$ <command>autoexpand</command> myweb.war 
+Detected system charset encoding: UTF-8
+If your can't read the following text, specify correct one like this: 
+  autoexpand -c mycharset
+
+Expanding: /.../myweb.war
+       To: /.../myweb
+done.
+
+总耗费时间：762毫秒</screen>
+            </example>
+            <example>
+                <title>用<command>jar</command>命令展开一个war包</title>
+                <screen>$ <command>mkdir</command> myweb
+$ <command>cd</command> myweb
+$ <command>jar</command> xvf ../myweb.war
+  创建：META-INF/
+  解压 META-INF/MANIFEST.MF
+  ...</screen>
+            </example>
+            <para>但是使用AutoExpand有如下好处：<itemizedlist>
+                    <listitem>
+                        <para>可展开嵌套的包，例如：一个ear中包含war包，用AutoExpand可以一举把它们同时展开。</para>
+                    </listitem>
+                    <listitem>
+                        <para>支持更多选项，例如：更新、覆盖、删除多余文件等。</para>
+                    </listitem>
+                    <listitem>
+                        <para>比<command>jar</command>命令速度更快。</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+    </section>
+    <section>
+        <title>AutoExpand的使用</title>
+        <section>
+            <title>取得AutoExpand</title>
+            <para>请参考<xref linkend="tool.autoconfig.getbinary" />。</para>
+        </section>
+        <section>
+            <title>执行AutoExpand</title>
+            <para>直接输入<command>autoexpand</command>可得到如下帮助信息。</para>
+            <example>
+                <title>AutoExpand的帮助信息</title>
+                <screen>$ <command>autoexpand</command>
+Detected system charset encoding: UTF-8
+If your can't read the following text, specify correct one like this: 
+  autoexpand -c mycharset
+
+使用方法：antxexpand [可选参数] 文件名 [目标目录]
+                
+可选参数：
+ -c,--charset                 输入/输出编码字符集
+ -e,--expand-ejb-jar          是否展开ejb-jar（yes|no），默认为no
+ -h,--help                    显示帮助信息
+ -k,--keep-redundant-files    如果目标目录中有多余的文件，是否保持而不删除，默认为no
+ -o,--overwrite               如果目标目录中的文件比zip文件中的项要新，是否覆盖之，默认为no
+ -r,--expand-rar              是否展开rar（yes|no），默认为yes
+ -v,--verbose                 显示更多信息
+ -w,--expand-war              是否展开war（yes|no），默认为yes
+
+总耗费时间：203毫秒</screen>
+            </example>
+            <para>最简单的AutoExpand命令如下：</para>
+            <example>
+                <title>最简单的AutoExpand命令</title>
+                <screen>autoexpand myweb.war</screen>
+            </example>
+            <para>这条命令将<filename>myweb.war</filename>展开到<filename>myweb</filename>目录中。</para>
+            <para>你也可以指定一个输出目录：</para>
+            <example>
+                <title>执行AutoExpand命令：指定输出目录</title>
+                <screen>autoexpand myweb.war myweb-expanded.war</screen>
+            </example>
+            <para>这条命令将<filename>myweb.war</filename>展开到<filename>myweb-expanded.war</filename>目录中。<emphasis>在目录名中指定后缀（如<code>.war</code>）是一个好主意</emphasis>。这样，同一个名称（<code>*.war</code>）既可作为目录名，也可作为包名。你可以在目录和包文件之间自由地切换，而不需要改动服务器的脚本或配置。</para>
+            <para>你可以用一条命令展开嵌套的包。例如：</para>
+            <example>
+                <title>执行AutoExpand命令：展开嵌套的包</title>
+                <screen>autoexpand myapp.ear myapp-expanded.ear</screen>
+            </example>
+            <para>这条命令可以一举把ear以及ear中的所有war都展开。</para>
+            <example>
+                <title>展开ear以及ear中的所有war</title>
+                <screen>myapp-expanded.ear
+│  foo-ejb.jar
+│  bar.jar
+│
+├─myweb.war        // 展开嵌套的war
+│  │  index.jsp
+│  │
+│  ├─images
+│  ├─META-INF
+│  └─WEB-INF
+│     │  web.xml
+│     │
+│     ├─classes
+│     │     foo.class
+│     │
+│     └─lib
+│           bar.jar
+│           baz.jar
+│
+└─META-INF
+      application.xml</screen>
+            </example>
+        </section>
+        <section>
+            <title>AutoExpand和AutoConfig的合作</title>
+            <para>你可以让AutoConfig maven插件在配置完应用以后，将应用展开到指定的目录。</para>
+            <example>
+                <title>AutoConfig完成后，再用AutoExpand展开</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    ...
+    &lt;properties>
+        ...
+        &lt;!-- 定义autoconfig的版本，建议将此行写在parent pom.xml中。 -->
+        &lt;autoconfig-plugin-version>&antx-version;&lt;/autoconfig-plugin-version>
+    &lt;/properties>
+    ...
+    &lt;build>
+        &lt;plugins>
+            &lt;plugin>
+                &lt;groupId>com.alibaba.citrus.tool&lt;/groupId>
+                &lt;artifactId>maven-autoconfig-plugin&lt;/artifactId>
+                &lt;version>${autoconfig-plugin-version}&lt;/version>
+                &lt;configuration>
+                    ...
+                    &lt;!-- 配置后，是否展开目标文件，默认为false，不展开。 -->
+                    &lt;exploding>true&lt;/exploding>
+                    &lt;!-- 展开到指定目录，默认为${project.build.directory}/${project.build.finalName}。 -->
+                    &lt;explodedDirectory>
+                        ${project.build.directory}/${project.build.finalName}
+                    &lt;/explodedDirectory>
+                &lt;/configuration>
+                &lt;executions>
+                    &lt;execution>
+                        &lt;phase>package&lt;/phase>
+                        &lt;goals>
+                            &lt;goal>autoconfig&lt;/goal>
+                        &lt;/goals>
+                    &lt;/execution>
+                &lt;/executions>
+            &lt;/plugin>
+        &lt;/plugins>
+    &lt;/build>
+&lt;/project></programlisting>
+            </example>
+            <para>关于AutoConfig详情，请看<xref linkend="tool.autoconfig" />。</para>
+        </section>
+    </section>
+    <section>
+        <title>AutoExpand的参数</title>
+        <para>AutoExpand可用的参数包括：</para>
+        <table frame="none">
+            <title>AutoExpand命令的参数</title>
+            <tgroup cols="2">
+                <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                <colspec colname="c2" colnum="2" colwidth="2.45*" />
+                <thead>
+                    <row>
+                        <entry>参数名</entry>
+                        <entry>说明</entry>
+                    </row>
+                </thead>
+                <tbody>
+                    <row>
+                        <entry><code>-w</code> 或 <code>--expand-war</code></entry>
+                        <entry>
+                            <para>是否展开war（yes或no），默认为yes。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry><code>-r</code> 或 <code>--expand-rar</code></entry>
+                        <entry>
+                            <para>是否展开rar（yes或no），默认为yes。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry><code>-e</code> 或 <code>--expand-ejb-jar</code></entry>
+                        <entry>
+                            <para>是否展开ejb-jar（yes或no），默认为no。</para>
+                            <para>展开ejb-jar需要读取<filename>/META-INF/application.xml</filename>文件，因此会降低展开的速度。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry><code>-o</code> 或 <code>--overwrite</code></entry>
+                        <entry>
+                            <para>如果目标目录中的文件比包文件中的项要新，是否覆盖之，默认为no。</para>
+                            <para>指定该参数可强制覆盖文件。</para>
+                            <para>如果你不信任文件中的时间戳，就可以指定这个参数。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry><code>-k</code> 或 <code>--keep-redundant-files</code></entry>
+                        <entry>
+                            <para>如果目标目录存在多余的文件（也就是包里不存在的文件），AutoExpand会将它们删除，以确保展开后的目录内容与包的内容完全一致，不多不少。</para>
+                            <para>指定这个参数可以避免AutoExpand删除多余的文件。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry><code>-v</code> 或 <code>--verbose</code></entry>
+                        <entry>
+                            <para>显示更多信息。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry><code>-c</code> 或 <code>--charset</code></entry>
+                        <entry>
+                            <para>如果AutoExpand显示的信息是乱码，请通过这个参数指定正确的字符集编码。</para>
+                        </entry>
+                    </row>
+                </tbody>
+            </tgroup>
+        </table>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>AutoExpand虽然小，但很好用，可以作为<command>jar</command>命令部分功能的替代品。此外，AutoConfig也利用AutoExpand来展开经过配置的包文件。</para>
+    </section>
+</chapter>

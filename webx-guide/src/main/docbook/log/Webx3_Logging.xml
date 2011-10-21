@@ -1,0 +1,1018 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+<!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+%placeholders;
+]>
+<chapter xml:id="webx.logging" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="logging.html" ?>
+    <title>Webx日志系统的配置</title>
+    <para>日志系统是一个应用中必备的部分，提供了查看错误信息、了解系统状态的最直接手段。</para>
+    <para>本章介绍了基于Webx框架的应用如何配置、使用日志系统的方法。 </para>
+    <section>
+        <title>名词解释</title>
+        <section>
+            <title>日志系统（Logging System）</title>
+            <table frame="none">
+                <title>日志系统</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.5*" />
+                    <thead>
+                        <row>
+                            <entry>名称</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>Log4j</entry>
+                            <entry>
+                                <para><link xl:href="http://logging.apache.org/log4j/" /></para>
+                                <para>较早出现的比较成功的日志系统是Log4j。</para>
+                                <para>Log4j开创的日志系统模型（Logger/Appender/Level）行之有效，并一直延用至今。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>JUL（<code>java.util.logging.*</code>）</entry>
+                            <entry>
+                                <para><link
+                                        xl:href="http://download.oracle.com/javase/6/docs/technotes/guides/logging/overview.html"
+                                     /></para>
+                                <para>JDK1.4是第一个自带日志系统的JDK，简称（JUL）。</para>
+                                <para>JUL并没有明显的优势来战胜Log4j，反而造成了标准的混乱 —— 采用不同日志系统的应用程序无法和谐共存。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>Logback</entry>
+                            <entry>
+                                <para><link xl:href="http://logback.qos.ch/" /></para>
+                                <para>是较新的日志系统。</para>
+                                <para>它是Log4j的作者吸取多年的经验教训以后重新做出的一套系统。它的使用更方便，功能更强，而且性能也更高。</para>
+                                <para>Logback不能单独使用，必须配合日志框架SLF4J来使用。</para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+        <section>
+            <title>日志框架（Logging Framework）</title>
+            <para>JUL诞生以后，为了克服多种日志系统并存所带来的混乱，就出现了“日志框架”。日志框架本身不提供记录日志的功能，它只提供了日志调用的接口。日志框架依赖于实际的日志系统如Log4j或JUL来产生真实的日志。</para>
+            <para>使用日志框架的好处是：应用的部署者可以决定使用哪一种日志系统（Log4j还是JUL），或者在多种日志系统之间切换，而不需要更改应用的代码。</para>
+            <table frame="none">
+                <title>日志框架</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.51*" />
+                    <thead>
+                        <row>
+                            <entry>名称</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>JCL（Jakarta Commons Logging）</entry>
+                            <entry>
+                                <para><link xl:href="http://commons.apache.org/logging/" /></para>
+                                <para>这是目前最流行的一个日志框架，由Apache Jakarta社区提供。</para>
+                                <para>Spring框架、许多老应用都依赖于JCL。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>SLF4J</entry>
+                            <entry>
+                                <para><link xl:href="http://www.slf4j.org/" /></para>
+                                <para>这是一个最新的日志框架，由Log4j的作者推出。</para>
+                                <para>SLF4J提供了新的API，特别用来配合Logback的新功能。但SLF4J同样兼容Log4j。</para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>由于Log4j原作者的感召力，SLF4J和Logback很快就流行起来。Webx的新版本也决定使用SLF4J作为其日志框架；并推荐Logback作为日志系统，但同时支持Log4J。</para>
+        </section>
+    </section>
+    <section>
+        <title>在Maven中组装日志系统</title>
+        <para>要在应用中使用日志系统，必须把正确的jar包组装起来。本章假设你的应用是用maven构建的。</para>
+        <figure>
+            <title>日志系统的组成</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata fileref="images/log/log-components.png" />
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>如图所示，<itemizedlist>
+                <listitem>
+                    <para>由于JCL-over-SLF4J和原来的JCL具有完全相同的API，因此两者是不能共存的。</para>
+                </listitem>
+                <listitem>
+                    <para>Logback和slf4j-log4j12也不能并存，否则SLF4J会迷惑并产生不确定的结果。</para>
+                </listitem>
+            </itemizedlist>
+        </para>
+        <para>组装完整的日志系统将涉及如下部件：</para>
+        <table frame="none">
+            <title>日志系统的组成</title>
+            <tgroup cols="3">
+                <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                <colspec colname="c3" colnum="3" colwidth="2.94*" />
+                <thead>
+                    <row>
+                        <entry>类别</entry>
+                        <entry>组件名称</entry>
+                        <entry>说明</entry>
+                    </row>
+                </thead>
+                <tbody>
+                    <row>
+                        <entry morerows="1">日志框架</entry>
+                        <entry>SLF4J</entry>
+                        <entry>
+                            <para>Webx框架以及所有新应用，直接依赖于SLF4J。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry>JCL</entry>
+                        <entry>
+                            <para>Spring框架、许多以前的老应用，都使用JCL来输出日志。</para>
+                            <para>好在SLF4J提供了一个“桥接”包：JCL-over-SLF4J，它重写了JCL的API，并将所有日志输出转向SLF4J。这样就避免了两套日志框架并存的问题。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry morerows="1">日志系统</entry>
+                        <entry>Logback</entry>
+                        <entry>
+                            <para>Webx推荐使用logback来取代log4j。</para>
+                            <para>Logback可直接被SLF4J识别并使用。</para>
+                        </entry>
+                    </row>
+                    <row>
+                        <entry>Log4j</entry>
+                        <entry>
+                            <para>由于客观原因，有些系统暂时不能升级到Logback。</para>
+                            <para>好在SLF4J仍然支持Log4j。Log4j需要一个适配器slf4j-log4j12才能被SLF4J识别并使用。</para>
+                        </entry>
+                    </row>
+                </tbody>
+            </tgroup>
+        </table>
+        <section>
+            <title>在Maven中配置logback作为日志系统</title>
+            <figure>
+                <title>以logback作为日志系统</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/log/logback.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <example xml:id="webx.logging.logback.example.pom">
+                <title>配置<filename>pom.xml</filename>以使用logback</title>
+                <programlisting language="xml">&lt;dependencies>
+    &lt;dependency>
+        &lt;groupId>org.slf4j&lt;/groupId>
+        &lt;artifactId>slf4j-api&lt;/artifactId>
+    &lt;/dependency>
+    &lt;dependency>
+        &lt;groupId>org.slf4j&lt;/groupId>
+        &lt;artifactId>jcl-over-slf4j&lt;/artifactId>
+    &lt;/dependency>
+    &lt;dependency>
+        &lt;groupId>ch.qos.logback&lt;/groupId>
+        &lt;artifactId>logback-classic&lt;/artifactId>
+    &lt;/dependency>
+&lt;/dependencies>
+
+&lt;dependencyManagement> <co xml:id="co.log.logback.dep.man" />
+    &lt;dependencies>
+        &lt;dependency>
+            &lt;groupId>org.slf4j&lt;/groupId>
+            &lt;artifactId>slf4j-api&lt;/artifactId>
+            &lt;version>&slf4j-version;&lt;/version>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>org.slf4j&lt;/groupId>
+            &lt;artifactId>jcl-over-slf4j&lt;/artifactId>
+            &lt;version>&slf4j-version;&lt;/version>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>ch.qos.logback&lt;/groupId>
+            &lt;artifactId>logback-classic&lt;/artifactId>
+            &lt;version>&logback-version;&lt;/version>
+            &lt;scope>runtime&lt;/scope> <co xml:id="co.log.logback.scope" />
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>commons-logging&lt;/groupId>
+            &lt;artifactId>commons-logging&lt;/artifactId>
+            &lt;version>&jcl-version;&lt;/version>
+            &lt;scope>provided&lt;/scope> <co xml:id="co.log.jcl.scope" />
+        &lt;/dependency>
+    &lt;/dependencies>
+&lt;/dependencyManagement></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.log.logback.dep.man">
+                        <para>把所依赖jar包的版本定义在<code>&lt;dependencyManagement></code>中，而不是<code>&lt;dependencies></code>中。因为前者可影响间接依赖，后者只能影响直接依赖。</para>
+                        <para>如果你的项目指定了parent
+                                    pom，那么<emphasis>建议把<code>&lt;dependencyManagement></code>放在parent
+                                pom中</emphasis>，以便多个子项目共享配置。</para>
+                    </callout>
+                    <callout arearefs="co.log.logback.scope">
+                        <para>将logback日志系统的依赖设定为<code>&lt;scope>runtime&lt;/scope></code>，因为应用程序永远不需要直接调用日志系统，而是通过SLF4J或JCL这样的日志框架来调用它们。</para>
+                    </callout>
+                    <callout arearefs="co.log.jcl.scope">
+                        <para>由于和jcl-over-slf4j存在冲突，因此JCL（commons-logging）是必须被排除的。由于maven目前缺少这样一个功能：它不能全局地排除一个jar包依赖，所以建议将commons-logging设置成<code>&lt;scope>provided&lt;/scope></code>，这样在最终的依赖关系中，将不会包含commons-logging包。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>将commons-logging设置成<code>&lt;scope>provided&lt;/scope></code>可以用来排除commons-logging，然而这样做有一个缺点
+                —— 你无法从单元测试中将commons-logging排除。假如这个影响了你的单元测试的话，请使用另一种方案：</para>
+            <example>
+                <title>另一种排除commons-logging的方法</title>
+                <programlisting language="xml">        &lt;dependency>
+            &lt;groupId>commons-logging&lt;/groupId>
+            &lt;artifactId>commons-logging&lt;/artifactId>
+            &lt;version>99.0-does-not-exist&lt;/version> <co xml:id="co.log.jcl.exclude" />
+        &lt;/dependency></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.log.jcl.exclude">
+                        <para>“<code>&lt;version>99.0-does-not-exist&lt;/version></code>”是一个特殊的版本，这个版本的jar包里空无一物。这样就可以“欺骗”maven使用这个空的jar包来取代commons-logging，达到排除它的目的。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>最后，你需要在项目文件夹下面，执行一下命令：“<code>mvn
+                dependency:tree</code>”，确保没有jar包直接或间接依赖了slf4j-log4j12。如果有的话，你可以用下面的配置来排除掉：</para>
+            <example>
+                <title>排除间接依赖的slf4j-log4j12</title>
+                <programlisting language="xml">&lt;dependencyManagement>
+    &lt;dependencies>
+        &lt;dependency>
+            &lt;groupId>yourGroupId&lt;/groupId>
+            &lt;artifactId>yourArtifactId&lt;/artifactId>
+            &lt;version>yourVersion&lt;/version>
+            &lt;exclusions>
+                &lt;exclusion>
+                    &lt;groupId>org.slf4j&lt;/groupId>
+                    &lt;artifactId>slf4j-log4j12&lt;/artifactId>
+                &lt;/exclusion>
+            &lt;/exclusions>
+        &lt;/dependency>
+    &lt;/dependencies>
+&lt;/dependencyManagement></programlisting>
+            </example>
+            <para>事实上，如果有其它的jar包依赖slf4j-log4j12，这本身就是有错误的。因为应用不应该直接依赖于这些包中的API ——
+                    它们只应该依赖于日志框架API。任何应用都应该把下列和日志系统相关的依赖（如：slf4j-log4j12、logback-classic）设置成<code>&lt;scope>runtime&lt;/scope></code>的。</para>
+        </section>
+        <section>
+            <title>在Maven中配置log4j作为日志系统</title>
+            <figure>
+                <title>以log4j作为日志系统</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/log/log4j.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <example xml:id="webx.logging.log4j.example.pom">
+                <title>配置<filename>pom.xml</filename>以使用log4j</title>
+                <programlisting language="xml">&lt;dependencies>
+    &lt;dependency>
+        &lt;groupId>org.slf4j&lt;/groupId>
+        &lt;artifactId>slf4j-api&lt;/artifactId>
+    &lt;/dependency>
+    &lt;dependency>
+        &lt;groupId>org.slf4j&lt;/groupId>
+        &lt;artifactId>jcl-over-slf4j&lt;/artifactId>
+    &lt;/dependency>
+    &lt;dependency>
+        &lt;groupId>org.slf4j&lt;/groupId>
+        &lt;artifactId>slf4j-log4j12&lt;/artifactId>
+    &lt;/dependency>
+&lt;/dependencies>
+
+&lt;dependencyManagement>
+    &lt;dependencies>
+        &lt;dependency>
+            &lt;groupId>org.slf4j&lt;/groupId>
+            &lt;artifactId>slf4j-api&lt;/artifactId>
+            &lt;version>&slf4j-version;&lt;/version>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>org.slf4j&lt;/groupId>
+            &lt;artifactId>jcl-over-slf4j&lt;/artifactId>
+            &lt;version>&slf4j-version;&lt;/version>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>commons-logging&lt;/groupId>
+            &lt;artifactId>commons-logging&lt;/artifactId>
+            &lt;version>&jcl-version;&lt;/version>
+            &lt;scope>provided&lt;/scope>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>org.slf4j&lt;/groupId>
+            &lt;artifactId>slf4j-log4j12&lt;/artifactId>
+            &lt;version>&slf4j-version;&lt;/version>
+            &lt;scope>runtime&lt;/scope>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>log4j&lt;/groupId>
+            &lt;artifactId>log4j&lt;/artifactId>
+            &lt;version>&log4j-version;&lt;/version>
+            &lt;scope>runtime&lt;/scope>
+        &lt;/dependency>
+    &lt;/dependencies>
+&lt;/dependencyManagement></programlisting>
+            </example>
+            <para>配置log4j的方法和关注要点和logback相似，请参见<xref linkend="webx.logging.logback.example.pom"
+                     />。除此以外，你需要在项目文件夹下面，执行一下命令：“<code>mvn
+                dependency:tree</code>”，确保没有jar包间接依赖了logback-classic。如果有的话，你可以用下面的配置来排除掉：</para>
+            <example>
+                <title>排除间接依赖的logback-classic</title>
+                <programlisting language="xml">&lt;dependencyManagement>
+    &lt;dependencies>
+        &lt;dependency>
+            &lt;groupId>yourGroupId&lt;/groupId>
+            &lt;artifactId>yourArtifactId&lt;/artifactId>
+            &lt;version>yourVersion&lt;/version>
+            &lt;exclusions>
+                &lt;exclusion>
+                    &lt;groupId>ch.qos.logback&lt;/groupId>
+                    &lt;artifactId>logback-classic&lt;/artifactId>
+                &lt;/exclusion>
+            &lt;/exclusions>
+        &lt;/dependency>
+    &lt;/dependencies>
+&lt;/dependencyManagement></programlisting>
+            </example>
+            <para>事实上，如果有其它的jar包依赖logback-classic，这本身就是有错误的。因为应用不应该直接依赖于这些包中的API ——
+                    它们只应该依赖于日志框架API。任何应用都应该把下列和日志系统相关的依赖（如：slf4j-log4j12、logback-classic）设置成<code>&lt;scope>runtime&lt;/scope></code>的。</para>
+        </section>
+    </section>
+    <section>
+        <title>在WEB应用中配置日志系统</title>
+        <section>
+            <title>设置WEB应用</title>
+            <example xml:id="webx.logging.webxml">
+                <title>设置<filename>/WEB-INF/web.xml</filename></title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://java.sun.com/xml/ns/j2ee  http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd
+    ">
+
+    &lt;context-param>
+        &lt;param-name>loggingRoot&lt;/param-name> <co xml:id="co.log.webxml.param.loggingRoot" />
+        &lt;param-value>/tmp/logs&lt;/param-value>
+    &lt;/context-param>
+    &lt;context-param>
+        &lt;param-name>loggingLevel&lt;/param-name> <co xml:id="co.log.webxml.param.loggingLevel" />
+        &lt;param-value>INFO&lt;/param-value>
+    &lt;/context-param>
+    &lt;context-param>
+        &lt;param-name>loggingCharset&lt;/param-name> <co xml:id="co.log.webxml.param.loggingCharset" />
+        &lt;param-value>UTF-8&lt;/param-value>
+    &lt;/context-param>
+    &lt;context-param>
+        &lt;param-name>log...&lt;/param-name> <co xml:id="co.log.webxml.param.any" />
+        &lt;param-value>...&lt;/param-value>
+    &lt;/context-param>
+
+    &lt;listener>
+        &lt;listener-class>com.alibaba.citrus.logconfig.LogConfiguratorListener&lt;/listener-class> <co xml:id="co.log.webxml.listener.conf" />
+    &lt;/listener>
+
+    &lt;filter>
+        &lt;filter-name>mdc&lt;/filter-name>
+        &lt;filter-class>com.alibaba.citrus.webx.servlet.SetLoggingContextFilter&lt;/filter-class> <co xml:id="co.log.webxml.filter.mdc" />
+    &lt;/filter>
+
+    &lt;filter-mapping>
+        &lt;filter-name>mdc&lt;/filter-name>
+        &lt;url-pattern>/*&lt;/url-pattern>
+    &lt;/filter-mapping>
+
+&lt;/web-app></programlisting>
+                <calloutlist>
+                    <callout
+                        arearefs="co.log.webxml.param.loggingRoot co.log.webxml.param.loggingLevel co.log.webxml.param.loggingCharset co.log.webxml.param.any">
+                        <para>指定日志系统的参数。</para>
+                    </callout>
+                    <callout arearefs="co.log.webxml.listener.conf">
+                        <para>在WEB应用启动的时候，这个listener会被激活，并初始化日志系统。</para>
+                    </callout>
+                    <callout arearefs="co.log.webxml.filter.mdc">
+                        <para>将当前请求的信息放到日志系统的MDC中（Mapped Diagnostic Context）。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <section>
+                <title>日志系统的参数</title>
+                <para>可以在<filename>/WEB-INF/web.xml</filename>配置文件中集中定义日志系统的参数。</para>
+                <table frame="none">
+                    <title>可配置的日志参数</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.23*" />
+                        <thead>
+                            <row>
+                                <entry>参数名称</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>loggingRoot</code></entry>
+                                <entry>指定保存日志文件的根目录。如不指定，默认为：“<code>${user.home}/logs</code>”。</entry>
+                            </row>
+                            <row>
+                                <entry><code>loggingLevel</code></entry>
+                                <entry>指定日志级别，低于指定级别的日志将不被输出。如不指定，默认为“<code>INFO</code>”。</entry>
+                            </row>
+                            <row>
+                                <entry><code>loggingCharset</code></entry>
+                                <entry>指定用来生成日志文件的字符集编码。如不指定，默认为当前操作系统的默认字符集编码。</entry>
+                            </row>
+                            <row>
+                                <entry><code>log*</code></entry>
+                                <entry>名称以“<code>log</code>”开头的任意<code>&lt;context-param></code>参数，都将被用作日志系统的参数。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <para>日志系统的参数可被替换到log4j或logback的配置中去，例如，在logback的配置文件中，你可以指定<code>${loggingRoot}</code>来取得存放日志文件的根目录。</para>
+                <para>将日志参数配置在<filename>/WEB-INF/web.xml</filename>中，有如下优点：<itemizedlist>
+                        <listitem>
+                            <para>使一套配置参数可同时应用于任意日志系统，包括logback和log4j。</para>
+                        </listitem>
+                        <listitem>
+                            <para>便于管理。通常，我们可以利用maven的filtering机制，或者autoconfig插件来生成<filename>/WEB-INF/web.xml</filename>文件，以便定制上述参数。</para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>自动识别并初始化日志系统</title>
+                <para><code>LogConfiguratorListener</code>负责在系统启动的时候初始化日志系统。<code>LogConfiguratorListener</code>会根据下面所列的条件，来自动识别出当前的日志系统，并正确地配置它：<itemizedlist>
+                        <listitem>
+                            <para>假如你在maven的<filename>pom.xml</filename>中指定log4j为日志系统，那么该listener就会试图用<filename>/WEB-INF/log4j.xml</filename>来初始化日志系统。</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如你在maven的<filename>pom.xml</filename>中指定logback为日志系统，那么该listener就会试图用<filename>/WEB-INF/logback.xml</filename>来初始化日志系统。</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如你在maven的<filename>pom.xml</filename>中未指定任何日志系统（不存在logback-classic或slf4j-log4j12），那么listener会报错并失败，整个WEB应用会退出，服务器报告应用启动失败。</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如<filename>/WEB-INF/logback.xml</filename>（或<filename>/WEB-INF/log4j.xml</filename>）不存在，那么listener会用默认的配置文件来初始化日志。默认的配置会：<itemizedlist>
+                                    <listitem>
+                                        <para>把<code>WARN</code>级别以上的日志打印在<code>STDERR</code>中，</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>把<code>WARN</code>级别以下的日志打印在<code>STDOUT</code>中。</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>初始化MDC</title>
+                <para><code>SetLoggingContextFilter</code>将当前请求的信息放到日志系统的MDC中（Mapped Diagnostic
+                    Context）。这样，日志系统就可以打印出诸如下面所示的日志信息：</para>
+                <example>
+                    <title>利用MDC输出的日志</title>
+                    <screen>30377 [2010-06-02 15:24:29] - GET<co xml:id="co.log.mdc.method" /> /wrongpage.htm<co xml:id="co.log.mdc.uri" /> [ip=127.0.0.1<co xml:id="co.log.mdc.ip" />, ref=http://localhost:8081/index<co xml:id="co.log.mdc.ref" />, ua=Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; zh-CN; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3<co xml:id="co.log.mdc.agent" />, sid=scnd32ei11a7<co xml:id="co.log.mdc.sid" />] ……</screen>
+                    <calloutlist>
+                        <para>这段日志信息中包含了如下信息：</para>
+                        <callout arearefs="co.log.mdc.method">
+                            <para>用户请求的类型：<code>GET</code>。</para>
+                        </callout>
+                        <callout arearefs="co.log.mdc.uri">
+                            <para>请求的URI：<code>/wrongpage.htm</code>。</para>
+                        </callout>
+                        <callout arearefs="co.log.mdc.ip">
+                            <para>用户IP：<code>127.0.0.1</code>。</para>
+                        </callout>
+                        <callout arearefs="co.log.mdc.ref">
+                            <para>上一个页面的链接referrer：<code>http://localhost:8081/index</code></para>
+                        </callout>
+                        <callout arearefs="co.log.mdc.agent">
+                            <para>用户的浏览器：Mac版的mozilla浏览器。</para>
+                        </callout>
+                        <callout arearefs="co.log.mdc.sid">
+                            <para>Session ID：<code>scnd32ei11a7</code>。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>用户客户端的详细信息，对于发现和追踪错误非常有帮助。</para>
+                <para><emphasis><code>SetLoggingContextFilter</code>是一个可选的filter</emphasis> ——
+                        即使没有它，Webx的<code>&lt;setLoggingContext /></code>
+                    valve也会做同样的事情。但是把这些信息放在filter中，有利于及早记录用户的信息。 </para>
+            </section>
+        </section>
+        <section>
+            <title>定制<filename>/WEB-INF/logback.xml</filename>（或<filename>/WEB-INF/log4j.xml</filename>）</title>
+            <section>
+                <title>可用的参数</title>
+                <para>在日志配置文件中，你可以使用以下参数：</para>
+                <table frame="none">
+                    <title>日志配置文件中可用的参数</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.5*" />
+                        <thead>
+                            <row>
+                                <entry namest="c1" nameend="c2"
+                                        >在<filename>/WEB-INF/web.xml</filename>中定义的所有日志参数</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>${loggingRoot}</code></entry>
+                                <entry>代表保存日志文件的根目录。</entry>
+                            </row>
+                            <row>
+                                <entry><code>${loggingCharset}</code></entry>
+                                <entry>代表用来生成日志文件的字符集编码。</entry>
+                            </row>
+                            <row>
+                                <entry><code>${loggingLevel}</code></entry>
+                                <entry>代表日志级别，低于指定级别的日志将不被输出。</entry>
+                            </row>
+                            <row>
+                                <entry><code>${log*}</code></entry>
+                                <entry>自定义参数，其中“<code>*</code>”代表任意名称。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.5*" />
+                        <thead>
+                            <row>
+                                <entry namest="c1" nameend="c2">由系统自动取得的参数</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>${loggingHost}</code></entry>
+                                <entry>代表当前的服务器名称</entry>
+                            </row>
+                            <row>
+                                <entry><code>${loggingAddress}</code></entry>
+                                <entry>代表当前的服务器IP地址</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>可用的MDC参数</title>
+                <para>在appender pattern中，你可以使用以下MDC参数：</para>
+                <table frame="none">
+                    <title>日志配置文件中可用的MDC参数</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.63*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>%X{productionMode}</code></entry>
+                                <entry>系统运行的模式。如果系统以开发模式运行，将会显示<code>Development Mode</code>；否则将会显示<code>Production Mode</code>。在生产环境中启动开发模式会引起严重的性能和安全问题。将系统运行的模式打印在日志中，可以作为一种提醒。</entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{method}</code></entry>
+                                <entry>请求类型，如：<code>GET</code>或<code>POST</code></entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{requestURL}</code></entry>
+                                <entry>完整的URL，如：<code>http://localhost/test</code></entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{requestURLWithQueryString}</code></entry>
+                                <entry>完整的URL，以及query
+                                        string，如：<code>http://localhost/test?id=1</code></entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{requestURI}</code></entry>
+                                <entry>不包括host信息的URI，如：<code>/test</code></entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{requestURIWithQueryString}</code></entry>
+                                <entry>不包括host信息的URI，以及query
+                                    string，如：<code>/test?id=1</code></entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{queryString}</code></entry>
+                                <entry>URL参数，如：<code>id=1</code></entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{remoteAddr}</code></entry>
+                                <entry>客户端地址</entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{remoteHost}</code></entry>
+                                <entry>客户端域名</entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{userAgent}</code></entry>
+                                <entry>客户端浏览器信息</entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{referrer}</code></entry>
+                                <entry>上一个页面的URL</entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{cookies}</code></entry>
+                                <entry>所有cookies的名称，如：<code>[cookie1, cookie2]</code></entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{cookie.*}</code></entry>
+                                <entry>特定cookie的值，如：<code>%X{cookie.JSESSIONID}</code>，将显示当前session的ID</entry>
+                            </row>
+                            <row>
+                                <entry><code>%X{*}</code></entry>
+                                <entry>其它由应用程序或框架置入MDC的参数</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>Logback配置示例</title>
+                <example>
+                    <title>Logback配置示例（<filename>/WEB-INF/logback.xml</filename>）</title>
+                    <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;configuration debug="false">
+    &lt;appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        &lt;target>System.out&lt;/target>
+        &lt;encoding>${loggingCharset}&lt;/encoding>
+        &lt;layout class="ch.qos.logback.classic.PatternLayout">
+            &lt;pattern>&lt;![CDATA[
+%n%-4r [%d{yyyy-MM-dd HH:mm:ss}] %X{productionMode} - %X{method} %X{requestURIWithQueryString} [ip=%X{remoteAddr}, ref=%X{referrer}, ua=%X{userAgent}, sid=%X{cookie.JSESSIONID}]%n  %-5level %logger{35} - %m%n
+            ]]&gt;&lt;/pattern>
+        &lt;/layout>
+        &lt;filter class="com.alibaba.citrus.logconfig.logback.LevelRangeFilter">
+            &lt;levelMax>INFO&lt;/levelMax>
+        &lt;/filter>
+    &lt;/appender>
+
+    &lt;appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        &lt;target>System.err&lt;/target>
+        &lt;encoding>${loggingCharset}&lt;/encoding>
+        &lt;layout class="ch.qos.logback.classic.PatternLayout">
+            &lt;pattern>&lt;![CDATA[
+%n%-4r [%d{yyyy-MM-dd HH:mm:ss}] %X{productionMode} - %X{method} %X{requestURIWithQueryString} [ip=%X{remoteAddr}, ref=%X{referrer}, ua=%X{userAgent}, sid=%X{cookie.JSESSIONID}]%n  %-5level %logger{35} - %m%n
+            ]]&gt;&lt;/pattern>
+        &lt;/layout>
+        &lt;filter class="com.alibaba.citrus.logconfig.logback.LevelRangeFilter">
+            &lt;levelMin>WARN&lt;/levelMin>
+        &lt;/filter>
+    &lt;/appender>
+
+    &lt;appender name="PROJECT" class="ch.qos.logback.core.FileAppender">
+        &lt;file>${loggingRoot}/${localHost}/petstore.log&lt;/file>
+        &lt;encoding>${loggingCharset}&lt;/encoding>
+        &lt;append>false&lt;/append>
+        &lt;layout class="ch.qos.logback.classic.PatternLayout">
+            &lt;pattern>&lt;![CDATA[
+%n%-4r [%d{yyyy-MM-dd HH:mm:ss}] %X{productionMode} - %X{method} %X{requestURIWithQueryString} [ip=%X{remoteAddr}, ref=%X{referrer}, ua=%X{userAgent}, sid=%X{cookie.JSESSIONID}]%n  %-5level %logger{35} - %m%n
+            ]]&gt;&lt;/pattern>
+        &lt;/layout>
+    &lt;/appender>
+
+    &lt;root>
+        &lt;level value="${loggingLevel}" />
+        &lt;appender-ref ref="STDERR" />
+        &lt;appender-ref ref="STDOUT" />
+        &lt;appender-ref ref="PROJECT" />
+    &lt;/root>
+&lt;/configuration></programlisting>
+                </example>
+                <para>更详细配置方法请参考logback官方文档：<link
+                        xl:href="http://logback.qos.ch/manual/configuration.html" />。</para>
+                <para>请特别留意示例中参数的写法，如“<code>${loggingRoot}</code>”；以及appender
+                        pattern中MDC参数的的写法，如：“<code>%X{method}</code>”、“<code>%X{requestURIWithQueryString}</code>”等。
+                </para>
+            </section>
+            <section>
+                <title>Log4j配置示例</title>
+                <example>
+                    <title>Log4j配置示例（<filename>/WEB-INF/log4j.xml</filename>）</title>
+                    <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+&lt;log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+    &lt;appender name="STDOUT" class="org.apache.log4j.ConsoleAppender">
+        &lt;param name="target" value="System.out" />
+        &lt;param name="encoding" value="${loggingCharset}" />
+        &lt;layout class="org.apache.log4j.PatternLayout">
+            &lt;param name="ConversionPattern"
+                value="%n%-4r [%d{yyyy-MM-dd HH:mm:ss}] %X{productionMode} - %X{method} %X{requestURIWithQueryString} [ip=%X{remoteAddr}, ref=%X{referrer}, ua=%X{userAgent}, sid=%X{cookie.JSESSIONID}]%n  %-5level %logger{35} - %m%n"
+             />
+        &lt;/layout>
+        &lt;filter class="org.apache.log4j.varia.LevelRangeFilter">
+            &lt;param name="levelMax" value="INFO" />
+        &lt;/filter>
+    &lt;/appender>
+
+    &lt;appender name="STDERR" class="org.apache.log4j.ConsoleAppender">
+        &lt;param name="target" value="System.err" />
+        &lt;param name="encoding" value="${loggingCharset}" />
+        &lt;layout class="org.apache.log4j.PatternLayout">
+            &lt;param name="ConversionPattern"
+                value="%n%-4r [%d{yyyy-MM-dd HH:mm:ss}] %X{productionMode} - %X{method} %X{requestURIWithQueryString} [ip=%X{remoteAddr}, ref=%X{referrer}, ua=%X{userAgent}, sid=%X{cookie.JSESSIONID}]%n  %-5level %logger{35} - %m%n"
+             />
+        &lt;/layout>
+        &lt;filter class="org.apache.log4j.varia.LevelRangeFilter">
+            &lt;param name="levelMin" value="WARN" />
+        &lt;/filter>
+    &lt;/appender>
+
+    &lt;appender name="PROJECT" class="org.apache.log4j.FileAppender">
+        &lt;param name="file" value="${loggingRoot}/${localHost}/myapp.log" />
+        &lt;param name="encoding" value="${loggingCharset}" />
+        &lt;param name="append" value="true" />
+        &lt;layout class="org.apache.log4j.PatternLayout">
+            &lt;param name="ConversionPattern"
+                value="%n%-4r [%d{yyyy-MM-dd HH:mm:ss}] %X{productionMode} - %X{method} %X{requestURIWithQueryString} [ip=%X{remoteAddr}, ref=%X{referrer}, ua=%X{userAgent}, sid=%X{cookie.JSESSIONID}]%n  %-5level %logger{35} - %m%n"
+             />
+        &lt;/layout>
+    &lt;/appender>
+
+    &lt;root>
+        &lt;level value="${loggingLevel}" />
+        &lt;appender-ref ref="STDOUT" />
+        &lt;appender-ref ref="STDERR" />
+        &lt;appender-ref ref="PROJECT" />
+    &lt;/root>
+&lt;/log4j:configuration></programlisting>
+                </example>
+                <para>更详细配置方法请参考log4j官方文档：<link
+                        xl:href="http://logging.apache.org/log4j/1.2/manual.html" />。</para>
+                <para>请特别留意示例中参数的写法，如“<code>${loggingRoot}</code>”；以及appender
+                        pattern中MDC参数的的写法，如：“<code>%X{method}</code>”、“<code>%X{requestURIWithQueryString}</code>”等。</para>
+            </section>
+        </section>
+        <section>
+            <title>同时初始化多个日志系统</title>
+            <para>在某些遗留系统中，有些代码直接用到了Log4j API（例如Log4j
+                Appender）。假如，我们仍然希望SLF4J以logback作为日志系统，但是保持这些老代码继续不变地使用log4j来记录日志。这样我们就需要同时初始化logback和log4j。</para>
+            <example>
+                <title>同时初始化Logback和Log4j</title>
+                <para>首先，你需要确保在<filename>pom.xml</filename>中，同时包含log4j和logback-classic这两个依赖，但是请<emphasis>一定不要包含slf4j-log4j12</emphasis>这个包，因为它会和logback-classic起冲突。</para>
+                <para>下面的配置在<xref linkend="webx.logging.logback.example.pom"
+                     />基础上，添加了log4j的依赖：</para>
+                <programlisting language="xml">&lt;dependencies>
+    &lt;dependency>
+        &lt;groupId>org.slf4j&lt;/groupId>
+        &lt;artifactId>slf4j-api&lt;/artifactId>
+    &lt;/dependency>
+    &lt;dependency>
+        &lt;groupId>org.slf4j&lt;/groupId>
+        &lt;artifactId>jcl-over-slf4j&lt;/artifactId>
+    &lt;/dependency>
+    &lt;dependency>
+        &lt;groupId>ch.qos.logback&lt;/groupId>
+        &lt;artifactId>logback-classic&lt;/artifactId>
+    &lt;/dependency><emphasis>
+    &lt;dependency>
+        &lt;groupId>log4j&lt;/groupId>
+        &lt;artifactId>log4j&lt;/artifactId>
+    &lt;/dependency></emphasis>
+&lt;/dependencies>
+
+&lt;dependencyManagement>
+    &lt;dependencies>
+        &lt;dependency>
+            &lt;groupId>org.slf4j&lt;/groupId>
+            &lt;artifactId>slf4j-api&lt;/artifactId>
+            &lt;version>&slf4j-version;&lt;/version>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>org.slf4j&lt;/groupId>
+            &lt;artifactId>jcl-over-slf4j&lt;/artifactId>
+            &lt;version>&slf4j-version;&lt;/version>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>commons-logging&lt;/groupId>
+            &lt;artifactId>commons-logging&lt;/artifactId>
+            &lt;version>&jcl-version;&lt;/version>
+            &lt;scope>provided&lt;/scope>
+        &lt;/dependency>
+        &lt;dependency>
+            &lt;groupId>ch.qos.logback&lt;/groupId>
+            &lt;artifactId>logback-classic&lt;/artifactId>
+            &lt;version>&logback-version;&lt;/version>
+            &lt;scope>runtime&lt;/scope>
+        &lt;/dependency><emphasis>
+        &lt;dependency>
+            &lt;groupId>log4j&lt;/groupId>
+            &lt;artifactId>log4j&lt;/artifactId>
+            &lt;version>&log4j-version;&lt;/version>
+            &lt;scope>runtime&lt;/scope>
+        &lt;/dependency></emphasis>
+    &lt;/dependencies>
+&lt;/dependencyManagement></programlisting>
+                <para>然后，你需要在<filename>/WEB-INF/web.xml</filename>中增加<code>logSystem</code>参数。</para>
+                <para>下面的配置在<xref linkend="webx.logging.webxml" />基础上，添加了所需的参数：</para>
+                <programlisting language="xml">&lt;web-app>
+<emphasis>
+    &lt;context-param>
+        &lt;param-name>logSystem&lt;/param-name>
+        &lt;param-value>log4j, logback&lt;/param-value>
+    &lt;/context-param></emphasis>
+    ...
+
+&lt;/web-app></programlisting>
+                <para>以上这段<filename>/WEB-INF/web.xml</filename>的配置，告诉<code>LogConfiguratorListener</code>同时初始化两个日志系统：log4j和logback。它们的配置文件分别是：<filename>/WEB-INF/log4j.xml</filename>和<filename>/WEB-INF/logback.xml</filename>。假如文件不存在也没关系，<code>LogConfiguratorListener</code>会用系统默认的配置文件来初始化它们。</para>
+            </example>
+        </section>
+    </section>
+    <section>
+        <title>常见错误及解决</title>
+        <section>
+            <title>查错技巧</title>
+            <section xml:id="webx.logging.init.info">
+                <title>检查提示信息</title>
+                <para>分析错误前，<emphasis>先检查一下日志系统输出的提示信息，往往可以节省很多时间</emphasis>。当<code>LogConfiguratorListener</code>启动时，将会在<code>STDERR</code>中打印信息，像下面这个样子：</para>
+                <example>
+                    <title>日志初始化时的提示信息（<code>STDERR</code>）</title>
+                    <screen>2010-06-02 16:57:28.021:INFO:/:Initializing log4j system <co xml:id="co.log.init.info.logsys" />
+INFO: configuring "log4j" using file:/Users/…/WEB-INF/log4j.xml <co xml:id="co.log.init.info.logconf" />
+ - with property localAddress = 10.16.58.5 <co xml:id="co.log.init.info.param1" />
+ - with property localHost = baobao-macbook-pro.local <co xml:id="co.log.init.info.param2" />
+ - with property loggingCharset = UTF-8 <co xml:id="co.log.init.info.param3" />
+ - with property loggingLevel = warn <co xml:id="co.log.init.info.param4" />
+ - with property loggingRoot = /tmp/logs <co xml:id="co.log.init.info.param5" /></screen>
+                    <calloutlist>
+                        <para>通过这些信息，你可以检查如下内容：</para>
+                        <callout arearefs="co.log.init.info.logsys">
+                            <para>是否选择了正确的日志系统，如：log4j或logback，抑或两样都有。</para>
+                        </callout>
+                        <callout arearefs="co.log.init.info.logconf">
+                            <para>是否选择了正确的日志配置文件，如：<filename>/WEB-INF/log4j.xml</filename>。</para>
+                        </callout>
+                        <callout
+                            arearefs="co.log.init.info.param1 co.log.init.info.param2 co.log.init.info.param3 co.log.init.info.param4 co.log.init.info.param5">
+                            <para>日志文件的参数，如根目录、字符集编码、日志级别等信息。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+            <section xml:id="webx.logging.jwhich">
+                <title>查看class真实归属的jar包位置</title>
+                <para>有时，因为各种原因导致应用找到了错误的jar包，从而产生神秘的错误。例如，你以为你使用了SLF4J的最新版，然而在服务器上存在一个SLF4J的老版本，并且其class
+                    loader优先级比新版本更高。在这种情况下，应用会引用高优先级class loader中的老版本的class。这可能导致错误。</para>
+                <para>发现这类错误的有效的方法，是在应用程序的任意点设置断点（利用eclipse远程调试功能），当系统停留在断点处时，执行如下的java代码，查看其值：</para>
+                <example>
+                    <title>查看class真实归属的jar包位置</title>
+                    <programlisting language="java">getClass().getClassLoader().getResource(getClass().getName().replace('.', '/') + ".class")</programlisting>
+                </example>
+                <para>另外，Webx开发模式所提供的详细出错页面中，也会列出stacktrace中每一个class的真实jar包位置。</para>
+            </section>
+        </section>
+        <section>
+            <title>异常信息：No log system exists</title>
+            <para>报这个错的原因可能是：<itemizedlist>
+                    <listitem>
+                        <para>不存在slf4j-log4j12、logback-classic等任何一个日志系统的实现。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Slf4j的版本和日志系统的版本不匹配，例如，slf4j为1.4.3版，而slf4j-log4j12为&slf4j-version;版。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>解决方法：<itemizedlist>
+                    <listitem>
+                        <para>用<code>mvn dependency:tree</code>命令查看所有的依赖包，排除以上错误。</para>
+                    </listitem>
+                    <listitem>
+                        <para>查看服务器环境（如jboss），查看是不是存在不正确版本的jar包，被优先于应用jar包而加载了。参见<xref
+                                linkend="webx.logging.jwhich" />。</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>异常信息：<code>NoSuchMethodError</code>:
+                    <code>org.slf4j.MDC.getCopyOfContextMap()</code></title>
+            <para>报这个错的原因是：<itemizedlist>
+                    <listitem>
+                        <para>SLF4J的版本过老。MDC.getCopyOfContextMap()方法是从SLF4J
+                            1.5.1时加入的，假如你的SLF4J是之前的版本，就会报错。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>解决方法：<itemizedlist>
+                    <listitem>
+                        <para>用<code>mvn dependency:tree</code>查看所有的依赖包，排除以上错误。</para>
+                    </listitem>
+                    <listitem>
+                        <para>查看服务器环境（如jboss），查看是不是存在不正确版本的jar包，被优先于应用jar包而加载了。 </para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title><code>STDERR</code>输出：Class path contains multiple SLF4J bindings</title>
+            <para>SLF4J在<code>STDERR</code>报如下错误：</para>
+            <example>
+                <title>Class path contains multiple SLF4J bindings</title>
+                <screen>SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/…/WEB-INF/lib/logback-classic-0.9.18.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/…/WEB-INF/lib/slf4j-log4j12-1.5.11.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.</screen>
+            </example>
+            <para>报这个错的原因是：<itemizedlist>
+                    <listitem>
+                        <para>classpath中存在多个日志系统，使SLF4J无所适从。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>解决方法：<itemizedlist>
+                    <listitem>
+                        <para>SLF4J已经列出了classpath中所有的日志系统的位置。根据这些信息，你可以调整应用的依赖，或者整理服务器的环境，使之只剩下一个日志系统。</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>看不到日志输出</title>
+            <para>原因可能是日志的配置文件可能有错。</para>
+            <para>解决方法：<itemizedlist>
+                    <listitem>
+                        <para>首先，查看<code>LogConfiguratorListener</code>输出到<code>STDERR</code>中的信息（参见<xref
+                                linkend="webx.logging.init.info" />），确定系统：<itemizedlist>
+                                <listitem>
+                                    <para>选择了正确的日志系统；</para>
+                                </listitem>
+                                <listitem>
+                                    <para>选择了正确的配置文件；</para>
+                                </listitem>
+                                <listitem>
+                                    <para>设置了正确的参数（<code>loggingRoot</code>、<code>loggingLevel</code>等）。</para>
+                                </listitem>
+                            </itemizedlist></para>
+                        <note>
+                            <para>在JBOSS环境中，<code>STDOUT</code>和<code>STDERR</code>会被重定向到Log4j中，然后被输出到一个文件中，通常是<filename>log/server.log</filename>。你必须从这个日志文件中查看<code>LogConfiguratorListener</code>的输出。</para>
+                        </note>
+                    </listitem>
+                    <listitem>
+                        <para>假如以上信息均正确，查看日志配置文件<filename>/WEB-INF/log4j.xml</filename>或<filename>/WEB-INF/logback.xml</filename>，是否引用了正确的参数，例如：<code>${loggingRoot}</code>、<code>${loggingLevel}</code>等。</para>
+                    </listitem>
+                    <listitem>
+                        <para>检查文件系统权限，确保应用有权限创建和修改日志文件。</para>
+                    </listitem>
+                    <listitem>
+                        <para>假设你使用log4j作为日志系统，以jboss作为应用服务器。在JBOSS环境中，当log4j被初始化后，<code>STDOUT</code>和<code>STDERR</code>可能会被重新配置到不同的appender中。原先用来记录STDOUT和STDERR的日志文件<filename>log/server.log</filename>将不会再被使用。建议你设置<filename>/WEB-INF/log4j.xml</filename>，增加如下内容：</para>
+                        <example>
+                            <title>在log4j中配置jboss服务器日志</title>
+                            <programlisting language="xml">&lt;appender name="JBOSS_APPENDER" class="org.apache.log4j.FileAppender">
+    &lt;param name="file" value="${loggingRootJboss}/server.log" />
+    &lt;param name="encoding" value="${loggingCharset}" />
+    &lt;param name="append" value="true" />
+    &lt;layout class="org.apache.log4j.PatternLayout">
+        &lt;param name="ConversionPattern"
+            value="%n%-4r [%d{yyyy-MM-dd HH:mm:ss}] %X{productionMode} - %X{method} %X{requestURIWithQueryString} [ip=%X{remoteAddr}, ref=%X{referrer}, ua=%X{userAgent}, sid=%X{cookie.JSESSIONID}]%n  %-5level %logger{35} - %m%n"
+         />
+    &lt;/layout>
+&lt;/appender>
+
+&lt;logger name="STDOUT">
+    &lt;appender-ref ref="JBOSS_APPENDER" />
+&lt;/logger>
+&lt;logger name="STDERR">
+    &lt;appender-ref ref="JBOSS_APPENDER" />
+&lt;/logger></programlisting>
+                            <para>这里用到了一个新的变量：<code>${loggingRootJboss}</code>，你需要把它定义在<filename>/WEB-INF/web.xml</filename>中。</para>
+                            <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;web-app>
+    ...
+    &lt;context-param>
+        &lt;param-name>loggingRootJboss&lt;/param-name>
+        &lt;param-value>${jboss}/log&lt;/param-value>
+    &lt;/context-param>
+    ...
+&lt;/web-app></programlisting>
+                        </example>
+                        <para>如果你使用logback作为日志系统，则不需要作如上配置。</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para><code>LogConfiguratorListener</code>目前只提供了logback和log4j的支持，尽管支持一种新的日志系统是非常容易的，但现在看来，这两种日志系统已经足够我们使用了。</para>
+        <para><code>LogConfiguratorListener</code>以SLF4J为基础。SLF4J还提供了更多的功能：<itemizedlist>
+                <listitem>
+                    <para>除了log4j和logback以外，SLF4J还支持几种其它的日志系统；</para>
+                </listitem>
+                <listitem>
+                    <para>除了jcl-over-slf4j以外，SLF4J还提供了几种对其它legacy日志系统的桥接功能。</para>
+                </listitem>
+            </itemizedlist>详情请见SLF4J的文档：<link xl:href="http://www.slf4j.org/docs.html" />。</para>
+    </section>
+</chapter>

@@ -1,0 +1,708 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.overview.framework" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="webxframework.html" ?>
+    <title>Webx Framework</title>
+    <para>Webx是一套基于Java Servlet API的通用Web框架。整个Webx框架分成三个层次，本章将简单介绍其第二个层次：Webx
+        Framework。事实上，这是第一个真正涉足WEB技术的层次。前一个层次SpringExt只是提供了一个通用的扩展机制。</para>
+    <para>Webx Framework负责完成一系列基础性的任务，如下表所示：</para>
+    <table frame="all" colsep="1" rowsep="0">
+        <title>Webx Framework的任务</title>
+        <tgroup cols="2">
+            <colspec colname="c1" colnum="1" colwidth="1.0*" />
+            <colspec colname="c2" colnum="2" colwidth="1.0*" />
+            <thead>
+                <row rowsep="1">
+                    <entry>系统初始化</entry>
+                    <entry>响应请求</entry>
+                </row>
+            </thead>
+            <tbody>
+                <row>
+                    <entry>初始化Spring容器</entry>
+                    <entry>增强request/response/session的功能</entry>
+                </row>
+                <row>
+                    <entry>初始化日志系统</entry>
+                    <entry>提供pipeline流程处理机制</entry>
+                </row>
+                <row>
+                    <entry />
+                    <entry>异常处理</entry>
+                </row>
+                <row>
+                    <entry />
+                    <entry>开发模式</entry>
+                </row>
+            </tbody>
+        </tgroup>
+    </table>
+    <para>本章不会涉及太深的细节，如果你想了解更多，请参考其它文档。</para>
+    <section>
+        <title>Webx的初始化</title>
+        <section>
+            <title>初始化级联的Spring容器</title>
+            <para>Webx Framework将负责创建一组级联的Spring容器结构。Webx所创建的Spring容器<emphasis>完全兼容于Spring
+                    MVC所创建的容器</emphasis>，可被所有使用Spring框架作为基础的WEB框架所使用。</para>
+            <example>
+                <title>初始化Spring容器 - <filename>/WEB-INF/web.xml</filename></title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://java.sun.com/xml/ns/j2ee  http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd
+    ">
+    ...
+    &lt;listener>
+        &lt;listener-class><emphasis>com.alibaba.citrus.webx.context.WebxContextLoaderListener</emphasis>&lt;/listener-class> <co xml:id="co.init.context" />
+    &lt;/listener>
+    ...
+&lt;/web-app></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.init.context">
+                        <para>Webx利用<code>WebxContextLoaderListener</code>来初始化Spring，用来取代Spring的<code>ContextLoaderListener</code>。事实上，前者是从后者派生的。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>Webx
+                Framework将会自动搜索<filename>/WEB-INF</filename>目录下的XML配置文件，并创建下面这种级联的spring容器。</para>
+            <figure>
+                <title>级联的Spring容器</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o3/context-tree.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示。Webx Framework将一个WEB应用分解成多个小应用模块：<code>app1</code>、<code>app2</code>，当然名字可以任意取。<itemizedlist>
+                    <listitem>
+                        <para>每个小应用模块独享一个Spring Sub Context子容器。两个子容器之间的beans无法互相注入。</para>
+                    </listitem>
+                    <listitem>
+                        <para>所有小应用模块共享一个Spring Root
+                            Context根容器。根容器中的bean可被注入到子容器的bean中；反之不可以。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>将一个大的应用分解成若干个小应用模块，并使它们的配置文件相对独立，这是一种很不错的开发实践。然而，如果你的应用确实很简单，你不希望把你的应用分成多个小应用模块，那么，你还是需要配置至少一个小应用模块（子容器）。</para>
+        </section>
+        <section>
+            <title>初始化日志系统</title>
+            <para>每个现代的WEB应用，都需要日志系统。流行的日志系统包括Log4j、Logback。</para>
+            <para>Webx Framework使用SLF4J作为它的日志框架。因此Webx
+                Framework理论上支持所有日志系统。然而目前为止，它只包含了log4j和logback这两种日志系统的初始化模块（如有需要，可以扩充）。初始化日志系统很简单。</para>
+            <example>
+                <title>初始化日志系统 - <filename>/WEB-INF/web.xml</filename></title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://java.sun.com/xml/ns/j2ee  http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd
+    ">
+    ...
+    &lt;listener>
+        &lt;listener-class><emphasis>com.alibaba.citrus.logconfig.LogConfiguratorListener</emphasis>&lt;/listener-class> <co xml:id="co.init.log" />
+    &lt;/listener>
+    ...
+&lt;/web-app></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.init.log">
+                        <para>Webx利用<code>LogConfiguratorListener</code>来初始化日志系统。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para><code>LogConfiguratorListener</code>会根据你当前应用所依赖的日志系统（通常配置在maven project中），来自动选择合适的日志配置文件。<itemizedlist>
+                    <listitem>
+                        <para>假设你的应用依赖了logback的jar包，那么listener就会查找<filename>/WEB-INF/logback.xml</filename>，并用它来初始化logback；</para>
+                    </listitem>
+                    <listitem>
+                        <para>如果你的应用依赖了log4j的jar包，那么listener也会很聪明地查找<filename>/WEB-INF/log4j.xml</filename>配置文件。</para>
+                    </listitem>
+                    <listitem>
+                        <para>假如以上配置文件不存在，listener会使用默认的配置 —— 把日志打印在控制台上。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Listener支持对配置文件中的placeholders进行替换。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Listener支持同时初始化多种日志系统。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <note>
+                <para>有关日志系统的使用方法，另有文档详细讲述。</para>
+            </note>
+        </section>
+    </section>
+    <section>
+        <title>Webx响应请求</title>
+        <figure>
+            <title>Webx Framework如何响应请求</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata fileref="images/o3/request-processing.png" />
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>当Webx Framework接收到一个来自WEB的请求以后，实际上它主要做了两件事： <procedure>
+                <step>
+                    <para>首先，它会增强request、response、session的功能，并把它们打包成更易使用的<code>RequestContext</code>对象。</para>
+                </step>
+                <step>
+                    <para>其次，它会调用相应子应用的pipeline，用它来做进一步的处理。</para>
+                </step>
+                <step>
+                    <para>假如在上面的过程中出现异常，则会触发Webx Framework处理异常的过程。</para>
+                </step>
+            </procedure>
+        </para>
+        <para>此外，Webx Framework还提供了一组辅助开发的功能，例如查看环境变量，查看schema等。这些功能只在开发模式生效，生产模式下自动关闭。</para>
+        <section>
+            <title>增强request、response、session的功能</title>
+            <para>Webx Framework提供了一个request contexts服务。Request
+                    contexts服务利用<code>HttpServletRequestWrapper</code>和<code>HttpServletResponseWrapper</code>对request和response对象进行包装，以实现新的功能。</para>
+            <para>一个基本的request contexts的配置看起来是下面的样子： </para>
+            <example>
+                <title>配置request contexts服务</title>
+                <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;basic />
+    &lt;buffered />
+    &lt;lazy-commit />
+    &lt;parser />
+    &lt;set-locale defaultLocale="zh_CN" defaultCharset="UTF-8" />
+    ...
+&lt;/services:request-contexts>
+
+&lt;services:upload sizeMax="5M" /></programlisting>
+            </example>
+            <para>Request contexts所有的功能都是可配置、可扩展的 —— 它是基于SpringExt的扩展机制。</para>
+            <para>Request contexts所增加的功能对于所有的基于标准Servlet API的应用都是透明的 ——
+                这些应用根本不需要知道这些扩展的存在。例如，假如你在request contexts服务中配置了增强的session框架，那么所有通过标准的Servlet
+                API取得session的应用，都将获得新功能：</para>
+            <example>
+                <title>取得增强的session对象</title>
+                <programlisting language="java">HttpSession session = request.getSession();</programlisting>
+            </example>
+            <para>再比如，只要你配置了upload服务，那么下面的调用将同样适用于<code>multipart/form-data</code>类型的请求（Servlet
+                API本身是不支持upload表单的）：</para>
+            <example>
+                <title>取得upload表单的参数</title>
+                <programlisting language="java">String value = request.getParameter("myparam");</programlisting>
+            </example>
+            <note>
+                <para>有关Request Contexts的原理和使用方法的详情，请参阅<xref
+                        xl:href="#webx.filter.requestcontexts.pipeline" />。</para>
+            </note>
+            <section>
+                <title>Request contexts中可用的功能</title>
+                <table frame="none">
+                    <title>可用的<code>RequestContext</code>扩展</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="4.0*" />
+                        <thead>
+                            <row>
+                                <entry>名称</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>&lt;basic></code></entry>
+                                <entry>对输入、输出的数据进行安全检查，排除可能的攻击。例如：XSS过滤、CRLF换行回车过滤等。</entry>
+                            </row>
+                            <row>
+                                <entry><code>&lt;buffered></code></entry>
+                                <entry>对写入response中的数据进行缓存，以便于实现嵌套的页面。</entry>
+                            </row>
+                            <row>
+                                <entry><code>&lt;lazy-commit></code></entry>
+                                <entry>延迟提交response，用来支持基于cookie的session。</entry>
+                            </row>
+                            <row>
+                                <entry><code>&lt;parser></code></entry>
+                                <entry>解析用户提交的参数，无论是普通的请求，还是multipart/form-data这样的用于上传文件的请求。</entry>
+                            </row>
+                            <row>
+                                <entry><code>&lt;set-locale></code></entry>
+                                <entry>设置当前请求的区域（locale）、编码字符集（charset）。</entry>
+                            </row>
+                            <row>
+                                <entry><code>&lt;rewrite></code></entry>
+                                <entry>改写URL及参数，类似于Apache HTTPD Server中的rewrite模块。</entry>
+                            </row>
+                            <row>
+                                <entry><code>&lt;session></code></entry>
+                                <entry>增强的Session框架，可将session中的对象保存到cookie、数据库或其它存储中。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <note>
+                    <para>有关以上所有Request Contexts的详情，请参阅<xref xl:href="#webx.requestcontexts"
+                             />和<xref xl:href="#webx.requestcontext.session" />。</para>
+                </note>
+            </section>
+            <section>
+                <title>注入特殊对象</title>
+                <para>在Webx中，你可以这样做，例如：</para>
+                <example>
+                    <title>注入request、response、session</title>
+                    <programlisting language="java">public class LoginAction {
+    @Autowired
+    private HttpServletRequest request;
+
+    @Autowired
+    private HttpServletResponse response;
+
+    @Autowired
+    private HttpSession session;
+    ...
+}</programlisting>
+                </example>
+                <para>在这个例子中，<code>LoginAction</code>类可以是一个singleton。一般来说，你<emphasis>不能把request
+                            scope的对象，注入到<code>singleton</code>
+                            scope的对象中</emphasis>。但你<emphasis>可以把<code>HttpServletRequest</code>、<code>HttpServletResponse</code>和<code>HttpSession</code>对象注入到singleton对象中</emphasis>。为什么呢？原来，Request
+                    contexts服务对这几个常用对象进行了特殊处理，将它们转化成了singleton对象。</para>
+                <para>如果没有这个功能，那么我们就不得不将上例中的<code>LoginAction</code>配置成<code>request</code>
+                        scope。这增加了系统的复杂性，也成倍地降低了性能。而将<code>LoginAction</code>设置成singleton，只需要在系统启动时初始化一次，以后就可以快速引用它。
+                </para>
+            </section>
+        </section>
+        <section>
+            <title>Pipeline流程机制</title>
+            <para>Webx Framework赋予开发者极大的自由，来定制处理请求的流程。这种机制就是pipeline。</para>
+            <para>Pipeline的意思是管道，管道中有许多阀门（Valve），阀门可以控制水流的走向。Webx
+                Framework中的pipeline可以控制处理请求的流程的走向。如图所示。 </para>
+            <figure>
+                <title>Pipeline工作原理示意</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o3/pipeline.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>Webx Framework并没有规定管道的内容 —— 定制管道是应用开发者的自由。然而Webx
+                Framework提供了一系列通用valves，你可以使用它们：</para>
+            <table frame="none">
+                <title>通用valves</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.94*" />
+                    <colspec colname="c3" colnum="3" colwidth="3.21*" />
+                    <thead valign="middle">
+                        <row>
+                            <entry>分类</entry>
+                            <entry>Valves</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry morerows="1">循环</entry>
+                            <entry><code>&lt;while></code></entry>
+                            <entry>有条件循环</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;loop></code></entry>
+                            <entry>无条件循环</entry>
+                        </row>
+                        <row>
+                            <entry morerows="1">选择分支</entry>
+                            <entry><code>&lt;if></code></entry>
+                            <entry>单分支</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;choose>&lt;when>&lt;otherwise></code></entry>
+                            <entry>多分支</entry>
+                        </row>
+                        <row>
+                            <entry morerows="2">中断</entry>
+                            <entry><code>&lt;break></code></entry>
+                            <entry>无条件中断</entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <para><code>&lt;break-if></code></para>
+                                <para><code>&lt;break-unless></code></para>
+                            </entry>
+                            <entry>有条件中断</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;exit></code></entry>
+                            <entry>无条件退出整个pipeline（结束所有的嵌套层次）</entry>
+                        </row>
+                        <row>
+                            <entry>异常捕获</entry>
+                            <entry><code>&lt;try-catch-finally></code></entry>
+                            <entry>类似Java中的try-catch-finally结构</entry>
+                        </row>
+                        <row>
+                            <entry>嵌套</entry>
+                            <entry><code>&lt;sub-pipeline></code></entry>
+                            <entry>创建嵌套的子pipeline。 </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <note>
+                <para>有关Pipeline的原理和使用方法的详情，请参阅<xref xl:href="#webx.filter.requestcontexts.pipeline"
+                     />。</para>
+            </note>
+        </section>
+        <section>
+            <title>异常处理机制</title>
+            <para>当应用发生异常时，Webx Framework可以处理这些异常。</para>
+            <table frame="none">
+                <title>Webx如何处理异常</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.97*" />
+                    <colspec colname="c3" colnum="3" colwidth="2.69*" />
+                    <thead valign="middle">
+                        <row>
+                            <entry namest="c1" nameend="c2">条件</entry>
+                            <entry>处理</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry namest="c1" nameend="c2">开发模式</entry>
+                            <entry>展示详细出错信息。</entry>
+                        </row>
+                        <row>
+                            <entry morerows="1">生产模式</entry>
+                            <entry>假如存在exception pipeline</entry>
+                            <entry>用exception pipeline来处理异常；</entry>
+                        </row>
+                        <row>
+                            <entry>不存在exception pipeline</entry>
+                            <entry>显示web.xml中定义的默认错误页面。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+        <section xml:id="webx.overview.framework.devmode">
+            <title>开发模式工具</title>
+            <para>Webx Framework提供了一个开关，可以让应用运行于“<emphasis>生产模式（Production
+                    Mode）</emphasis>”或是“<emphasis>开发模式（Development Mode）</emphasis>” 。</para>
+            <example>
+                <title>配置运行模式</title>
+                <programlisting language="xml">&lt;services:webx-configuration>
+    &lt;services:productionMode><emphasis>${productionMode:true}</emphasis>&lt;/services:productionMode> <co xml:id="co.webx.running.mode" />
+&lt;/services:webx-configuration></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.webx.running.mode">
+                        <para>使用这行配置，并且在启动应用服务器时指定参数“<code>-DproductionMode=false</code>”，就会让Webx以开发模式启动。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>在开发模式下，会有一系列不同于生产模式的行为。</para>
+            <itemizedlist>
+                <listitem>
+                    <para>不同的主页 —— 在开发模式的主页中，可以查看和查询系统内部的信息。</para>
+                    <figure>
+                        <title>开发模式的主页</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/o3/dev-homepage.png" />
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+                <listitem>
+                    <para>不同的详细出错页面。</para>
+                    <figure>
+                        <title>开发模式的详细出错页面</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/o3/dev-errorpage.png" />
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+                <listitem>
+                    <para>开发模式下，可展示所有可用的schemas。</para>
+                    <figure>
+                        <title>开发模式下展示所有可用的schemas</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/o3/dev-schemapage.png" />
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+                <listitem>
+                    <para>开发模式下，可以查阅容器内部的信息。</para>
+                    <figure>
+                        <title>开发模式下查阅容器内部的信息</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/o3/dev-explorerpage.png" />
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                    <para>可供查阅的信息包括：</para>
+                    <table frame="none">
+                        <title>开发模式中可供查阅的容器信息</title>
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                            <colspec colname="c2" colnum="2" colwidth="3.17*" />
+                            <thead>
+                                <row>
+                                    <entry>名称</entry>
+                                    <entry>说明</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Beans</entry>
+                                    <entry>
+                                        <para>查看各Spring容器中的全部bean的定义。</para>
+                                        <para>这个工具有助于开发者理解用schema所定义的services和spring
+                                            beans之间的联系。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>Configurations</entry>
+                                    <entry>
+                                        <para>查看用来创建各Spring容器的配置文件。</para>
+                                        <para>这个工具会以树状和语法高亮显示配置文件以及所有被import的配置文件的内容。</para>
+                                        <para>不同于Beans工具，Configurations工具只忠实地展现配置文件的内容。而Beans工具展现的是真实的Beans结构。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>Resolvable Dependencies</entry>
+                                    <entry>
+                                        <para>查看所有由框架置入到容器中的对象，例如：<classname>HttpServletRequest</classname>对象。这些对象不需要在配置文件中定义，就可被注入到应用中。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>Resources</entry>
+                                    <entry>
+                                        <para>跟踪Resources的装载过程，显示Resources的树状结构。</para>
+                                        <para>这个工具有助于开发者理解<classname>ResourceLoadingService</classname>的工作原理。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>URIs</entry>
+                                    <entry>
+                                        <para>查看所有的URI brokers。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>Pull Tools</entry>
+                                    <entry>
+                                        <para>查看所有模板中可用的pull tools。</para>
+                                    </entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </listitem>
+            </itemizedlist>
+            <para>事实上，Webx Framework提供了一套专用的内部框架，使你可以往开发模式中添加更多的开发工具。例如，创建下面的功能并非难事：<itemizedlist>
+                    <listitem>
+                        <para>查看session对象。</para>
+                    </listitem>
+                    <listitem>
+                        <para>提供各种编码、解码的工具，以方便开发、调试应用。例如：将<code>UTF-8</code>编码的字符串转换成<code>GBK</code>编码；或者将字符串进行URL
+                            escape编码、解码等。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>Webx Framework提供了一个接口：<code>ProductionModeAware</code>。Spring
+                context中的beans，如果实现了这个接口，就可以感知当前系统的运行模式，从而根据不同的模式选择不同的行为 ——
+                例如：在生产模式中打开cache，在开发模式中关闭cache。</para>
+            <example>
+                <title>利用<code>ProductionModeAware</code>接口感知运行模式，并自动开关cache</title>
+                <programlisting language="java">public class ModuleLoaderServiceImpl implements ProductionModeAware {  <co xml:id="co.prod.mode.aware.impl" />
+    public void setProductionMode(boolean productionMode) { <co xml:id="co.prod.mode.aware.impl2" />
+        this.productionMode = productionMode;
+    }
+
+    @Override
+    protected void init() {
+        ……
+        if (cacheEnabled == null) {
+            cacheEnabled = productionMode; <co xml:id="co.prod.mode.aware.cache" />
+        }
+        ……
+    }
+}</programlisting>
+                <calloutlist>
+                    <callout arearefs="co.prod.mode.aware.impl co.prod.mode.aware.impl2">
+                        <para>实现<code>ProductionModeAware</code>接口。</para>
+                    </callout>
+                    <callout arearefs="co.prod.mode.aware.cache">
+                        <para>根据当前运行模式自动开关cache。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+        </section>
+        <section>
+            <title>响应和处理请求的更多细节</title>
+            <para>当一个HTTP请求到达时，首先由WebxFrameworkFilter接手这个请求：</para>
+            <example>
+                <title>配置<code>WebxFrameworkFilter</code> -
+                    <filename>/WEB-INF/web.xml</filename></title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://java.sun.com/xml/ns/j2ee  http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd
+    ">
+    ...
+    &lt;filter>
+        &lt;filter-name>webx&lt;/filter-name>
+        &lt;filter-class><emphasis>com.alibaba.citrus.webx.servlet.WebxFrameworkFilter</emphasis>&lt;/filter-class> <co xml:id="co.webx.filter" />
+        &lt;init-param>
+            &lt;param-name>excludes&lt;/param-name>
+            &lt;param-value>&lt;!-- 需要被“排除”的URL路径，以逗号分隔，如/static, *.jpg -->&lt;/param-value>  <co xml:id="co.webx.filter.exclude" />
+        &lt;/init-param>
+        &lt;init-param>
+            &lt;param-name>passthru&lt;/param-name>
+            &lt;param-value>&lt;!-- 需要被“略过”的URL路径，以逗号分隔，如/myservlet, *.jsp -->&lt;/param-value>  <co xml:id="co.webx.filter.passthru" />
+        &lt;/init-param>
+    &lt;/filter>
+
+    &lt;filter-mapping>
+        &lt;filter-name>webx&lt;/filter-name>
+        &lt;url-pattern><emphasis>/*</emphasis>&lt;/url-pattern>  <co xml:id="co.webx.filter.mapping" />
+    &lt;/filter-mapping>
+    ...
+&lt;/web-app></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.webx.filter">
+                        <para>定义<code>WebxFrameworkFilter</code>。</para>
+                    </callout>
+                    <callout arearefs="co.webx.filter.exclude">
+                        <para>可选的参数：“排除”指定名称的path，以逗号分隔，例如：<code>/static</code>,
+                            <code>*.jpg</code>。</para>
+                    </callout>
+                    <callout arearefs="co.webx.filter.passthru">
+                        <para>可选的参数：“略过”指定名称的path，以逗号分隔，例如：<code>/myservlet</code>,
+                                <code>*.jsp</code>。</para>
+                    </callout>
+                    <callout arearefs="co.webx.filter.mapping">
+                        <para>匹配所有的path。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>为什么使用filter而不是servlet呢？传统的WEB框架的控制器一般都是用servlet实现的。原因是：<itemizedlist>
+                    <listitem>
+                        <para>Filter可以“返还控制” —— 上面的配置文件直接把“/*”映射到webx
+                            filter中，这意味着webx接管了这个应用的所有请求。静态页面和资源怎么办？没关系，如果webx发现这个请求不应该由webx来处理，就会把控制“返还”给原来的控制器
+                            ——
+                            可能是另一个filter、servlet或者返回给servlet引擎，以默认的方式来处理。而Servlet是不具备“返还控制”的机制的。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Servlet/Filter mapping的局限性 ——
+                            标准的servlet引擎将URL映射到filter或servlet时，只支持前缀映射和后缀映射两种方式，非常局限。而实际情况往往复杂得多。Webx建议将所有请求都映射给webx来处理，让webx对请求做更灵活的映射。
+                        </para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>如果你的web.xml中还有一些其它的servlet
+                mappings，为了避免和Webx的URL起冲突，你可以把这些mapping加在excludes或passthru参数里。这样，WebxFrameworkFilter就会排除或略过指定的URL。例如：</para>
+            <programlisting language="xml">        &lt;init-param>
+            &lt;param-name>excludes&lt;/param-name>
+            &lt;param-value><emphasis>/static, *.jpg</emphasis>&lt;/param-value>
+        &lt;/init-param>
+        &lt;init-param>
+            &lt;param-name>passthru&lt;/param-name>
+            &lt;param-value><emphasis>/myservlet, *.jsp</emphasis>&lt;/param-value>
+        &lt;/init-param></programlisting>
+            <para>“<code>passthru</code>略过”和“<code>excludes</code>排除”的区别在于，如果一个servlet或filter接手被webx
+                    <code>passthru</code>的请求时，它们还是可以访问到webx的部分服务，包括：</para>
+            <itemizedlist>
+                <listitem>
+                    <para><code>RequestContext</code>服务，例如：解析参数、解析upload请求、重写请求、设置字符集编码和区域、基于cookie的session等。</para>
+                </listitem>
+                <listitem>
+                    <para>开发模式及工具。</para>
+                </listitem>
+                <listitem>
+                    <para>异常处理。</para>
+                </listitem>
+                <listitem>
+                    <para>共享webx的spring容器。</para>
+                </listitem>
+            </itemizedlist>
+            <para>也就是说，对于一个被<code>passthru</code>的请求，webx的行为更像是一个普通的filter。而“排除”则不同，如果一个请求被“排除”，webx将会立即放弃控制，将请求交还给服务器。接手控制的servlet或filter将无法访问webx一切的服务。</para>
+            <para>下图是WebxFrameworkFilter处理一个WEB请求的过程。</para>
+            <figure>
+                <title><code>WebxFrameworkFilter</code>处理请求的详细过程</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o3/request-processing-detailed.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示，<code>WebxFrameworkFilter</code>接到请求以后，就会调用<code>WebxRootController</code>。从这里开始，进入Spring的世界
+                ——
+                    此后所有的对象：<code>WebxRootController</code>、<code>WebxController</code>、<code>RequestContext</code>、<code>Pipeline</code>等，全部是通过SpringExt配置在Spring
+                Context中的。</para>
+            <para><code>WebxRootController</code>对象存在于root
+                    context中，它被所有子应用所共享。它会创建<code>RequestContext</code>实例 ——
+                    从而增强request、response、session的功能。接下来，<code>WebxController</code>对象会被调用。</para>
+            <para><code>WebxController</code>对象是由每个子应用独享的，子应用<code>app1</code>和<code>app2</code>可以有不同的<code>WebxController</code>实现。默认的实现，会调用pipeline。</para>
+            <para>Pipeline也是由各子应用自己来配置的。假如pipeline碰到无法处理的请求，如静态页面、图片等，pipeline应当执行<code>&lt;exit/></code>
+                    valve强制退出。然后<code>WebxRootController</code>就会“放弃控制” ——
+                    这意味着request将被返还给<filename>/WEB-INF/web.xml</filename>中定义的servlet、filter或者返还给servlet
+                engine本身来处理。 </para>
+        </section>
+    </section>
+    <section>
+        <title>定制Webx Framework</title>
+        <section>
+            <title>定制<code>WebxRootController</code></title>
+            <para><code>WebxRootController</code>是被所有子应用所共享的逻辑。
+                    假如你想创建一种新的WEB框架，可以自己定义一个新的<code>WebxRootController</code>的实现。这个方案非常适合作为一个新Web框架的起点。</para>
+            <example>
+                <title>自定义<code>WebxRootController</code></title>
+                <programlisting language="xml">&lt;webx-configuration xmlns="http://www.alibaba.com/schema/services">
+    &lt;components>
+        &lt;rootController class="com.myframework.MyRootController" /> <co xml:id="co.webx.root.controller" />
+    &lt;/components>
+&lt;/webx-configuration></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.webx.root.controller">
+                        <para>创建自己的<code>WebxRootController</code>。最简便的方法是：扩展<code>AbstractWebxRootController</code>，免去了创建Servlet/Filter、初始化Spring容器、处理request、response等繁杂事务，并且完全支持SpringExt的所有功能，此外还包含了错误处理、开发模式等Webx
+                            Framework中的一切便利。。 </para>
+                    </callout>
+                </calloutlist>
+            </example>
+        </section>
+        <section>
+            <title>定制<code>WebxController</code></title>
+            <para><code>WebxController</code>是用来控制子应用的。每个子应用可以拥有不同的<code>WebxController</code>实现。</para>
+            <para>Webx
+                    Framework默认的<code>WebxController</code>是调用pipeline。假如你不想用pipeline，而希望实现自己的针对子应用的逻辑，那么最简单的方法就是实现自己的<code>WebxController</code>或者扩展<code>AbstractWebxController</code>。 </para>
+            <example>
+                <title>自定义WebxController</title>
+                <programlisting language="xml">&lt;webx-configuration xmlns="http://www.alibaba.com/schema/services">
+    &lt;components defaultControllerClass="com.myframework.MyController"> <co xml:id="co.webx.controller.default" />
+        &lt;component name="app1">
+            &lt;controller class="com.myframework.MyController" /> <co xml:id="co.webx.controller.app" />
+        &lt;/component>
+    &lt;/components>
+&lt;/webx-configuration></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.webx.controller.default">
+                        <para>指定默认的<code>WebxController</code>实现类。</para>
+                    </callout>
+                    <callout arearefs="co.webx.controller.app">
+                        <para>对特定子应用明确指定<code>WebxController</code>实现类。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>Webx Framework提供了一个可剪裁、可扩展的处理WEB请求基本框架。它所提供的基本功能事实上是每个WEB框架都需要用到的。Webx
+            Framework为进一步实现WEB框架提供了坚实的基础。</para>
+    </section>
+</chapter>

@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.alibaba.citrus.doc</groupId>
+    <artifactId>citrus-doc-parent</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Citrus Documentation Parent Project</name>
+    <properties>
+        <docbook-plugin-version>1.0</docbook-plugin-version>
+        <fonts>${project.parent.build.directory}/fonts</fonts>
+        <docbook-xsl>${project.parent.build.directory}/docbook</docbook-xsl>
+        <docs-dir>${project.parent.basedir}/webx-site/src/main/site/docs</docs-dir>
+    </properties>
+    <modules>
+        <module>webx-guide</module>
+        <module>webx-site</module>
+    </modules>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.alibaba.citrus.tool</groupId>
+                <artifactId>maven-docbook-plugin</artifactId>
+                <executions>
+                    <!-- ==================================================== -->
+                    <!-- 生成分页的HTML -->
+                    <!-- ==================================================== -->
+                    <execution>
+                        <id>docbook-html-chunk</id>
+                        <goals>
+                            <goal>generate-xhtml</goal>
+                        </goals>
+                        <configuration>
+                            <xhtmlCustomization>${project.parent.basedir}/src/main/docbook-xsl/xhtml/docbook-chunk.xsl
+                            </xhtmlCustomization>
+                            <chunkFirstSections>1</chunkFirstSections>
+                            <chunkSectionDepth>0</chunkSectionDepth>
+                            <customizationParameters>
+                                <parameter>
+                                    <name>root.filename</name>
+                                    <value>index</value>
+                                </parameter>
+                                <parameter>
+                                    <name>base.dir</name>
+                                    <value>${docs-dir}/</value>
+                                </parameter>
+                            </customizationParameters>
+                        </configuration>
+                    </execution>
+                    <!-- ==================================================== -->
+                    <!-- 生成单个HTML文件 -->
+                    <!-- ==================================================== -->
+                    <execution>
+                        <id>docbook-html-single</id>
+                        <goals>
+                            <goal>generate-xhtml</goal>
+                        </goals>
+                        <configuration>
+                            <xhtmlCustomization>${project.parent.basedir}/src/main/docbook-xsl/xhtml/docbook.xsl
+                            </xhtmlCustomization>
+                            <targetFileExtension>html</targetFileExtension>
+                        </configuration>
+                    </execution>
+                    <!-- ==================================================== -->
+                    <!-- 生成单个PDF文件 -->
+                    <!-- ==================================================== -->
+                    <execution>
+                        <id>docbook-pdf</id>
+                        <goals>
+                            <goal>generate-pdf</goal>
+                        </goals>
+                        <configuration>
+                            <foCustomization>${project.parent.basedir}/src/main/docbook-xsl/fo/docbook.xsl
+                            </foCustomization>
+                            <admonGraphicsPath>${docbook-xsl}/images/</admonGraphicsPath>
+                            <calloutGraphicsPath>${docbook-xsl}/images/callouts/
+                            </calloutGraphicsPath>
+                            <fonts>
+                                <!-- 中文Serif -->
+                                <font>
+                                    <name>SimSun</name>
+                                    <style>normal</style>
+                                    <weight>normal</weight>
+                                    <embedFile>${fonts}/stsong.ttf</embedFile>
+                                    <metricsFile>${fonts}/stsong.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>SimSun</name>
+                                    <style>italic</style>
+                                    <weight>normal</weight>
+                                    <embedFile>${fonts}/stsong-italic.ttf</embedFile>
+                                    <metricsFile>${fonts}/stsong-italic.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>SimSun</name>
+                                    <style>normal</style>
+                                    <weight>bold</weight>
+                                    <embedFile>${fonts}/stzhongs.ttf</embedFile>
+                                    <metricsFile>${fonts}/stzhongs.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>SimSun</name>
+                                    <style>italic</style>
+                                    <weight>bold</weight>
+                                    <embedFile>${fonts}/stzhongs-italic.ttf</embedFile>
+                                    <metricsFile>${fonts}/stzhongs-italic.xml</metricsFile>
+                                </font>
+                                <!-- 中文San Serif -->
+                                <font>
+                                    <name>SimHei</name>
+                                    <style>normal</style>
+                                    <weight>normal</weight>
+                                    <embedFile>${fonts}/stxihei.ttf</embedFile>
+                                    <metricsFile>${fonts}/stxihei.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>SimHei</name>
+                                    <style>italic</style>
+                                    <weight>normal</weight>
+                                    <embedFile>${fonts}/stxihei-italic.ttf</embedFile>
+                                    <metricsFile>${fonts}/stxihei-italic.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>SimHei</name>
+                                    <style>normal</style>
+                                    <weight>bold</weight>
+                                    <embedFile>${fonts}/stheiti.ttf</embedFile>
+                                    <metricsFile>${fonts}/stheiti.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>SimHei</name>
+                                    <style>italic</style>
+                                    <weight>bold</weight>
+                                    <embedFile>${fonts}/stheiti-italic.ttf</embedFile>
+                                    <metricsFile>${fonts}/stheiti-italic.xml</metricsFile>
+                                </font>
+                                <!-- 英文等宽 -->
+                                <font>
+                                    <name>Consolas</name>
+                                    <style>normal</style>
+                                    <weight>normal</weight>
+                                    <embedFile>${fonts}/consolas.ttf</embedFile>
+                                    <metricsFile>${fonts}/consolas.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>Consolas</name>
+                                    <style>normal</style>
+                                    <weight>bold</weight>
+                                    <embedFile>${fonts}/consolas-bold.ttf</embedFile>
+                                    <metricsFile>${fonts}/consolas-bold.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>Consolas</name>
+                                    <style>italic</style>
+                                    <weight>normal</weight>
+                                    <embedFile>${fonts}/consolas-italic.ttf</embedFile>
+                                    <metricsFile>${fonts}/consolas-italic.xml</metricsFile>
+                                </font>
+                                <font>
+                                    <name>Consolas</name>
+                                    <style>italic</style>
+                                    <weight>bold</weight>
+                                    <embedFile>${fonts}/consolas-bold-italic.ttf</embedFile>
+                                    <metricsFile>${fonts}/consolas-bold-italic.xml</metricsFile>
+                                </font>
+                            </fonts>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- ==================================================== -->
+                    <!-- 公共配置 -->
+                    <!-- ==================================================== -->
+                    <postProcess>
+                        <delete>
+                            <fileset dir="${docs-dir}" includes="*.xhtml" />
+                        </delete>
+                        <move todir="${project.build.directory}" overwrite="true">
+                            <fileset dir="${docs-dir}" includes="*.fo" />
+                        </move>
+                    </postProcess>
+
+                    <htmlStylesheet>docbook.css</htmlStylesheet>
+
+                    <sourceDirectory>${project.basedir}/src/main/docbook</sourceDirectory>
+                    <targetDirectory>${docs-dir}/</targetDirectory>
+                    <xincludeSupported>true</xincludeSupported>
+
+                    <htmlStylesheet>docbook.css</htmlStylesheet>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <phase>process-resources</phase>
+                        <configuration>
+                            <tasks>
+                                <untar src="${project.basedir}/src/main/resources/fonts.tbz"
+                                    dest="${project.build.directory}/fonts" compression="bzip2" />
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeGroupIds>com.alibaba.citrus.tool</includeGroupIds>
+                            <includeArtifactIds>maven-docbook-plugin</includeArtifactIds>
+                            <includes>docbook/**/*</includes>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.alibaba.citrus.tool</groupId>
+                    <artifactId>maven-docbook-plugin</artifactId>
+                    <version>${docbook-plugin-version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+    <dependencies>
+        <dependency>
+            <groupId>com.alibaba.citrus.tool</groupId>
+            <artifactId>maven-docbook-plugin</artifactId>
+        </dependency>
+    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.alibaba.citrus.tool</groupId>
+                <artifactId>maven-docbook-plugin</artifactId>
+                <version>${docbook-plugin-version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

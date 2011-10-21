@@ -1,0 +1,2558 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.form" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="form.html" ?>
+    <title>表单验证服务指南</title>
+    <section>
+        <title>表单概述</title>
+        <section>
+            <title>什么是表单验证</title>
+            <para>在WEB应用中，表单验证是非常重要的一环。表单验证，顾名思义，就是确保用户所填写的数据符合应用的要求。例如下面这个“注册新帐户”的表单：</para>
+            <figure>
+                <title>一个典型的表单页面</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/form/form-sample.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>在这个表单中，各字段需要符合以下规则：</para>
+            <table frame="none">
+                <title>注册新帐户的规则</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.61*" />
+                    <thead>
+                        <row>
+                            <entry>字段名</entry>
+                            <entry>规则</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry morerows="1">用户名</entry>
+                            <entry>必须由字母、数字、下划线构成。 · 用户名的</entry>
+                        </row>
+                        <row>
+                            <entry>长度必须在某个范围内，例如，4-10个字符。</entry>
+                        </row>
+                        <row>
+                            <entry morerows="1">密码</entry>
+                            <entry>长度必须在某个范围内，例如，4-10个字符。</entry>
+                        </row>
+                        <row>
+                            <entry>密码和用户名不能相同，以保证基本的安全性。</entry>
+                        </row>
+                        <row>
+                            <entry>确认密码（再输一遍密码）</entry>
+                            <entry>必须和密码相同，确保用户没有打字错误。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>从技术上讲，表单验证完全可以用手工书写代码的方式来实现。但是这样做既无趣，又容易出错，而且难以维护 ——
+                特别是当你需要修改验证规则时。因此，几乎所有的WEB框架都提供了表单验证的功能，使你能方便、快速地书写或修改表单验证的规则。</para>
+        </section>
+        <section>
+            <title>表单验证的形式</title>
+            <para>验证WEB页面中的表单有如下几种形式：</para>
+            <section>
+                <title>服务端批量验证</title>
+                <figure>
+                    <title>服务端批量验证</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/form/server-side-validation.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+                <para>服务端批量验证是最传统验证形式，它将所有表单字段一次性提交给服务器来验证。服务器对所有表单进行批量的验证后，根据验证的结果跳转到不同的结果页面。</para>
+            </section>
+            <section>
+                <title>客户端验证</title>
+                <figure>
+                    <title>客户端验证</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/form/client-side-validation.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+                <para>客户端验证是利用Java Script对用户输入的数据进行逐个验证。 </para>
+            </section>
+            <section>
+                <title>服务端异步验证</title>
+                <figure>
+                    <title>服务端异步验证</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/form/async-validation.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+                <para>服务器异步验证是利用Java
+                    Script发出异步AJAX请求，来要求服务器验证单个或多个字段。如果网络延迟不明显，那么服务器异步验证给用户的体验类似于客户端验证。</para>
+            </section>
+            <section>
+                <title>混合式验证</title>
+                <para>以上几种验证手段各有优缺点：</para>
+                <table frame="none" rowheader="firstcol">
+                    <title>各种表单验证的优缺点比较</title>
+                    <tgroup cols="6">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <colspec colname="c3" colnum="3" colwidth="1.0*" />
+                        <colspec colname="c4" colnum="4" colwidth="1.0*" />
+                        <colspec colname="c5" colnum="5" colwidth="1.0*" />
+                        <colspec colname="c6" colnum="6" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>验证形式</entry>
+                                <entry>功能性</entry>
+                                <entry>网络负荷</entry>
+                                <entry>用户体验</entry>
+                                <entry>简单性</entry>
+                                <entry>可靠性</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>服务端批量验证</entry>
+                                <entry>
+                                    <para><emphasis>强</emphasis>。</para>
+                                    <para>由于验证逻辑存在于服务器上，可访问服务器的一切资源，功能最强。</para>
+                                </entry>
+                                <entry>
+                                    <para>高。</para>
+                                    <para>当用户填错任意一个字段时，所有的字段都必须在浏览器和服务器之间来回传输一次。所以它会给网络传输带来较高的负荷。</para>
+                                </entry>
+                                <entry>
+                                    <para>差。</para>
+                                    <para>由于网络负荷较高，造成的响应迟缓。此外，验证失败时必须整个页面被刷新。这些会给用户带来不好的体验。</para>
+                                </entry>
+                                <entry>
+                                    <para><emphasis>简单</emphasis>。</para>
+                                    <para>它的实现比较简单。</para>
+                                </entry>
+                                <entry>
+                                    <para><emphasis>可靠</emphasis>。</para>
+                                    <para>相对于其它几种方式，服务端批量验证也是最可靠的方式。因为Java Script可能会失效（因为浏览器不支持、Java
+                                        Script被关闭、网站受攻击等原因），但服务器批量验证总不会失效。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>客户端验证</entry>
+                                <entry>
+                                    <para>弱。</para>
+                                    <para>由于验证逻辑存在于用户浏览器上，不能访问服务器资源，因此有一些功能无法实现，例如：检查验证码、确认注册用户ID未被占用等。</para>
+                                </entry>
+                                <entry>
+                                    <para><emphasis>无</emphasis>。</para>
+                                    <para>在验证时，不需要网络通信，不存在网络负荷。</para>
+                                </entry>
+                                <entry>
+                                    <para><emphasis>好</emphasis>。</para>
+                                    <para>响应速度极快，用户体验最好。</para>
+                                </entry>
+                                <entry morerows="1">
+                                    <para>复杂。</para>
+                                    <para>因为需要JS编程。</para>
+                                </entry>
+                                <entry morerows="1">
+                                    <para>不可靠。</para>
+                                    <para>由于下列原因，Java Script可能会失效，使得客户端验证被跳过：<itemizedlist>
+                                            <listitem>
+                                                <para>浏览器不支持</para>
+                                            </listitem>
+                                            <listitem>
+                                                <para>Java Script被关闭</para>
+                                            </listitem>
+                                            <listitem>
+                                                <para>网站受攻击</para>
+                                            </listitem>
+                                        </itemizedlist></para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>服务端异步验证</entry>
+                                <entry>
+                                    <para><emphasis>强</emphasis>。</para>
+                                    <para>由于验证逻辑存在于服务器上，可访问服务器的一切资源，功能也很强。</para>
+                                </entry>
+                                <entry>
+                                    <para>低。</para>
+                                    <para>每次验证，只需要发送当前被验证字段的数据即可，网络负荷较小。</para>
+                                </entry>
+                                <entry>
+                                    <para>较好。</para>
+                                    <para>由于网络负荷小，用户响应远快于服务端批量验证，用户体验好。</para>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <para>没有一种验证方法是完美的。但把它们结合起来就可以克服各自的缺点，达到较完美的境地：<itemizedlist>
+                        <listitem>
+                            <para>对所有字段做服务器端批量验证，即便Java Script失效，服务器验证可作为最后的防线。</para>
+                        </listitem>
+                        <listitem>
+                            <para>只要有可能，就对字段做客户端验证，确保最迅速的响应和较好的用户体验。</para>
+                        </listitem>
+                        <listitem>
+                            <para>对于必须访问服务器资源的验证逻辑，例如检查验证码、确认注册帐户ID未被占用等，采用服务器异步验证，提高用户体验。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>以上混合形式的验证无疑是好的，但是它的实现也比较复杂。</para>
+                <para><emphasis>目前Webx所提供的表单验证服务并没有实现客户端验证和服务端异步验证</emphasis>。这些功能将在后续版本中实现。在现阶段中，应用开发者必须手工编码Java
+                    Script来实现客户端验证和服务端异步验证。</para>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>设计</title>
+        <section>
+            <title>验证逻辑与表现逻辑分离</title>
+            <para>很容易想到的一种表单验证的实现，就是将表单验证的逻辑内嵌在页面模板中。例如，某些WEB框架实现了一些用来验证表单的JSP tags。类似下面的样子：</para>
+            <example>
+                <title>将验证逻辑内嵌在页面模板中</title>
+                <programlisting language="xml">&lt;input type="text" name="loginId" value="${loginId}" />
+&lt;form:required value="${loginId}">
+  &lt;strong>Login ID is required.&lt;/strong>
+&lt;/form:required>
+&lt;form:regexp value="${loginId}" pattern="^\w+$">
+  &lt;strong>Login ID is invalid.&lt;/strong>
+&lt;/form:regexp></programlisting>
+            </example>
+            <para>将验证逻辑内嵌在页面模板中最大的问题是，验证逻辑和页面的表现逻辑完全混合在一起。当你需要修改验证规则时，你必须找出所有的页面，从复杂的HTML代码中，一个不漏地找到并修改它们。这是一件费时费力的工作，而且很容易出错。另一方面，嵌在页面模板中的验证规则是不能被多个页面共享和复用的。</para>
+            <para>Webx表单验证服务主张验证逻辑和页面表现逻辑完全分离。所有的验证规则都写在一个单独的配置文件中 ——
+                页面模板是不需要关心这些验证规则的。当你需要修改验证规则时，只需要修改独立的配置文件就可以了，并不用修改页面模板。</para>
+        </section>
+        <section>
+            <title>验证逻辑和应用代码分离</title>
+            <para>另一种容易想到的方法，是把表单验证的逻辑写在Java代码中。例如，在Java代码中直接调用验证逻辑。更高级一点，也许可以通过annotation机制在Java代码中定义验证逻辑，像下面的样子：</para>
+            <example>
+                <title>将验证逻辑内嵌在Java代码中</title>
+                <programlisting language="java">public class LoginAction {
+    @Required
+    @Regexp("^\\w+$")
+    private String loginId;
+    …
+}</programlisting>
+            </example>
+            <para>这样做的问题是，当你需要修改验证规则时，你必须一个不漏地找到所有定义annotations的那些代码，并修改它们。另一方面，annotation机制不容易扩展，很难方便地增加新的验证方案。</para>
+            <para>Webx表单验证服务主张<emphasis>验证逻辑和应用代码完全分离</emphasis>。所有的验证规则都写在一个单独的配置文件中 ——
+                应用程序的代码是不需要关心这些验证规则的。当你需要修改验证规则时，只需要修改独立的配置文件就可以了，并不需要修改程序代码。</para>
+        </section>
+        <section>
+            <title>表单验证的流程</title>
+            <table frame="none">
+                <title>一个基本的表单验证流程</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.0*" align="right" />
+                    <colspec colname="c3" colnum="3" colwidth="2.0*" />
+                    <colspec colname="c4" colnum="4" colwidth="4.0*" align="center" />
+                    <thead>
+                        <row>
+                            <entry>步骤</entry>
+                            <entry>客户端浏览器</entry>
+                            <entry>WEB服务器</entry>
+                            <entry>页面效果</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry morerows="1">1.</entry>
+                            <entry>请求表单页面 →</entry>
+                            <entry />
+                            <entry morerows="1" valign="middle">
+                                <informalfigure>
+                                    <mediaobject>
+                                        <imageobject>
+                                            <imagedata fileref="images/form/form-sample-empty.png"
+                                                width="2.5in" />
+                                        </imageobject>
+                                    </mediaobject>
+                                </informalfigure>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry />
+                            <entry>← 返回空白表单</entry>
+                        </row>
+                        <row>
+                            <entry morerows="1">2.</entry>
+                            <entry>用户填写表单，并提交 →</entry>
+                            <entry />
+                            <entry morerows="1" valign="middle">
+                                <informalfigure>
+                                    <mediaobject>
+                                        <imageobject>
+                                            <imagedata
+                                                fileref="images/form/form-sample-validation-failed.png"
+                                                width="2.5in" />
+                                        </imageobject>
+                                    </mediaobject>
+                                </informalfigure>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry />
+                            <entry>← 验证表单数据，如果验证有错，则返回包含错误信息的表单页面，并提示出错信息。</entry>
+                        </row>
+                        <row>
+                            <entry morerows="1">3.</entry>
+                            <entry>用户修改表单，并再次提交（重复该步骤直至验证成功） →</entry>
+                            <entry />
+                            <entry morerows="1" valign="middle">
+                                <informalfigure>
+                                    <mediaobject>
+                                        <imageobject>
+                                            <imagedata
+                                                fileref="images/form/form-sample-validation-succ.png"
+                                                width="2.5in" />
+                                        </imageobject>
+                                    </mediaobject>
+                                </informalfigure>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry />
+                            <entry>← 验证表单数据，如果验证通过，则转至下一个页面。通常是显示成功信息。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+    </section>
+    <section>
+        <title>使用表单验证服务</title>
+        <para>Webx表单验证服务可用来支持以下几种类型的表单需求：</para>
+        <table frame="none">
+            <title>几种表单需求</title>
+            <tgroup cols="2">
+                <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                <colspec colname="c2" colnum="2" colwidth="2.64*" />
+                <thead>
+                    <row>
+                        <entry>需求名称</entry>
+                        <entry>说明</entry>
+                    </row>
+                </thead>
+                <tbody>
+                    <row>
+                        <entry>创建新数据</entry>
+                        <entry>也就是让用户在一个空白的表单上填写数据，并验证之。例如，注册一个新帐户。</entry>
+                    </row>
+                    <row>
+                        <entry>修改老数据</entry>
+                        <entry>也就是让用户在已填有数据的表单上进行修改，并验证之。例如，修改帐户信息。</entry>
+                    </row>
+                    <row>
+                        <entry>批量创建、修改数据</entry>
+                        <entry>也就是在一个表单中，一次性创建、修改多个数据对象。例如，管理员批量审核帐户。</entry>
+                    </row>
+                </tbody>
+            </tgroup>
+        </table>
+        <section>
+            <title>创建新数据</title>
+            <para>下面的例子实现了“注册一个新帐户”的功能。</para>
+            <para>为了实现表单验证的功能，需要由三个部分配合起来工作：</para>
+            <table frame="none">
+                <title>验证表单所需的部件</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.7*" />
+                    <thead>
+                        <row>
+                            <entry>部件名称</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>验证规则</entry>
+                            <entry>也就是form service的配置文件。</entry>
+                        </row>
+                        <row>
+                            <entry>页面模板</entry>
+                            <entry>通过<code>$form</code>工具，生成表单页面。</entry>
+                        </row>
+                        <row>
+                            <entry>Java代码</entry>
+                            <entry>接收表单数据，并作后续处理。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>下面逐个介绍。</para>
+            <section>
+                <title>定义验证规则</title>
+                <para>表单验证服务是一个基于Spring和Spring Ext的服务，可利用Schema来配置。示例如下：</para>
+                <example>
+                    <title>表单验证规则示例</title>
+                    <programlisting language="xml">&lt;beans:beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://www.alibaba.com/schema/services"
+    xmlns:fm-conditions="http://www.alibaba.com/schema/services/form/conditions"
+    xmlns:fm-validators="http://www.alibaba.com/schema/services/form/validators"
+    xmlns:beans="http://www.springframework.org/schema/beans"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="
+        http://www.alibaba.com/schema/services
+            http://localhost:8080/schema/services.xsd
+        http://www.alibaba.com/schema/services/form/conditions
+            http://localhost:8080/schema/services-form-conditions.xsd
+        http://www.alibaba.com/schema/services/form/validators
+            http://localhost:8080/schema/services-form-validators.xsd
+        http://www.springframework.org/schema/beans
+            http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd
+    ">
+
+    &lt;services:form xmlns="http://www.alibaba.com/schema/services/form/validators"> <co xml:id="co.form.rules.form" />
+        &lt;services:group name="register"> <co xml:id="co.form.rules.group" />
+
+            &lt;services:field name="userId" displayName="登录名"> <co xml:id="co.form.rules.field" />
+                &lt;required-validator> <co xml:id="co.form.rules.validator" />
+                    &lt;message>必须填写 ${displayName}&lt;/message> <co xml:id="co.form.rules.validator.msg" />
+                &lt;/required-validator>
+                &lt;regexp-validator pattern="^[A-Za-z_][A-Za-z_0-9]*$">
+                    &lt;message>${displayName} 必须由字母、数字、下划线构成&lt;/message>
+                &lt;/regexp-validator>
+                &lt;string-length-validator minLength="4" maxLength="10">
+                    &lt;message>${displayName} 最少必须由${minLength}个字组成，最多不能超过${maxLength}个字&lt;/message>
+                &lt;/string-length-validator>
+            &lt;/services:field>
+
+            &lt;services:field name="password" displayName="密码">
+                &lt;required-validator>
+                    &lt;message>必须填写 ${displayName}&lt;/message>
+                &lt;/required-validator>
+                &lt;string-length-validator minLength="4" maxLength="10">
+                    &lt;message>${displayName} 最少必须由${minLength}个字组成，最多不能超过${maxLength}个字&lt;/message>
+                &lt;/string-length-validator>
+                &lt;string-compare-validator notEqualTo="userId">
+                    &lt;message>${displayName} 不能与 ${userId.displayName} 相同&lt;/message>
+                &lt;/string-compare-validator>
+            &lt;/services:field>
+
+            &lt;services:field name="passwordConfirm" displayName="密码验证">
+                &lt;required-validator>
+                    &lt;message>必须填写 ${displayName}&lt;/message>
+                &lt;/required-validator>
+                &lt;string-compare-validator equalTo="password">
+                    &lt;message>${displayName} 必须和 ${password.displayName} 相同&lt;/message>
+                &lt;/string-compare-validator>
+            &lt;/services:field>
+
+        &lt;/services:group>
+
+    &lt;/services:form>
+
+&lt;/beans:beans></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.rules.form">
+                            <para><code>&lt;form></code>代表表单验证服务的配置。从这里开始定义表单验证的规则。</para>
+                        </callout>
+                        <callout arearefs="co.form.rules.group">
+                            <para>可以定义多个groups，每个group有一个唯一的名称，例如：“<code>register</code>”。每个group代表了一组需要验证的字段（field）。</para>
+                        </callout>
+                        <callout arearefs="co.form.rules.field">
+                            <para>每个field有一个在组中唯一的名称，例如：“<code>userId</code>”、“<code>password</code>”等。</para>
+                        </callout>
+                        <callout arearefs="co.form.rules.validator">
+                            <para>每个field又包含了多个验证规则（validator）。</para>
+                        </callout>
+                        <callout arearefs="co.form.rules.validator.msg">
+                            <para>每个验证规则都包含了一段文字描述（message），如果用户填写的数据没有通过当前的规则的验证，那么用户将会看到这段文字描述，以解释出错的原因。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <figure>
+                    <title>表单验证配置文件的结构</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/form/form-structure.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+            </section>
+            <section>
+                <title>创建表单页面</title>
+                <para>创建表单页面需要使用一个pull tool工具，配置如下：</para>
+                <example>
+                    <title>表单验证pull tool的配置</title>
+                    <programlisting language="xml">&lt;services:pull xmlns="http://www.alibaba.com/schema/services/pull/factories">
+    &lt;form-tool />
+    ...
+&lt;/services:pull></programlisting>
+                </example>
+                <para>上面的配置定义了一个$form工具。现在你可以在模板中直接使用它。</para>
+                <example>
+                    <title>表单验证的页面模板示例</title>
+                    <programlisting language="xml">#macro (registerMessage $field) <co xml:id="co.form.vm.msg.macro" />
+    #if (!$field.valid) $field.message #end
+#end
+
+&lt;form action="" method="post"> <co xml:id="co.form.vm.form" />
+  &lt;input type="hidden" name="action" value="UserAccountAction"/> <co xml:id="co.form.vm.action" />
+
+  #set ($group = $form.register.defaultInstance) <co xml:id="co.form.vm.default.instance" />
+  
+  &lt;p>用户注册&lt;/p>
+
+  &lt;dl>
+    &lt;dt>用户名&lt;/dt>
+    &lt;dd>
+        &lt;div>
+            &lt;input type="text" name="$group.userId.key" value="$!group.userId.value"/> <co xml:id="co.form.vm.field1" />
+        &lt;/div>
+        &lt;div class="errorMessage">
+            #registerMessage ($group.userId) <co xml:id="co.form.vm.msg1" />
+        &lt;/div>
+    &lt;/dd>
+
+    &lt;dt>密码&lt;/dt>
+    &lt;dd>
+        &lt;div>
+            &lt;input type="password" name="$group.password.key" value="$!group.password.value"/> <co xml:id="co.form.vm.field2" />
+        &lt;/div>
+        &lt;div class="errorMessage">
+            #registerMessage ($group.password) <co xml:id="co.form.vm.msg2" />
+        &lt;/div>
+    &lt;/dd>
+
+    &lt;dt>再输一遍密码&lt;/dt>
+    &lt;dd>
+        &lt;div>
+            &lt;input type="password" name="$group.passwordConfirm.key" value="$!group.passwordConfirm.value"/> <co xml:id="co.form.vm.field3" />
+        &lt;/div>
+        &lt;div class="errorMessage">
+            #registerMessage ($group.passwordConfirm) <co xml:id="co.form.vm.msg3" />
+        &lt;/div>
+    &lt;/dd>
+  &lt;/dl>
+  
+  &lt;p>
+      &lt;input type="submit" name="event_submit_do_register" value="立即注册！"/> <co xml:id="co.form.vm.submit" />
+  &lt;/p>
+
+&lt;/form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.vm.form">
+                            <para>HTML form的action值为空，意思是把表单提交给当前页面。</para>
+                            <para>这样，当用户填写表单有错时，应用会停留在当前表单页面，将表单数据连同错误提示一起显示给用户，要求用户修改。如果表单验证通过，应用必须通过重定向操作来转向下一个页面。</para>
+                        </callout>
+                        <callout arearefs="co.form.vm.default.instance">
+                            <para>创建一个<code>register</code> group的实例。</para>
+                        </callout>
+                        <callout arearefs="co.form.vm.field1 co.form.vm.field2 co.form.vm.field3">
+                            <para>利用新创建的group对象来生成表单字段，包括生成字段的名称<code>$group.field.key</code>，以及字段的值为<code>$!group.field.value</code>。</para>
+                        </callout>
+                        <callout arearefs="co.form.vm.msg.macro">
+                            <para>定义velocity宏：仅当field验证通过时（即<code>$group.field.valid=true</code>），才显示错误信息。</para>
+                            <para>对于空白表单和通过验证的字段而言，<code>$group.field.valid</code>为<code>true</code>。</para>
+                        </callout>
+                        <callout arearefs="co.form.vm.msg1 co.form.vm.msg2 co.form.vm.msg3">
+                            <para>如果验证失败的话，显示验证出错消息。这里通过前面所定义的velocity宏来简化代码。</para>
+                        </callout>
+                        <callout arearefs="co.form.vm.action">
+                            <para>根据这参数，表单将会被交给<code>UserAccountAction</code>来处理。Action的职责是调用表单验证过程。假如验证通过，就保存数据，并重定向到下一个页面。</para>
+                        </callout>
+                        <callout arearefs="co.form.vm.submit">
+                            <para>根据这个参数，表单被提交以后，系统会调用当前action（即<code>UserAccountAction</code>）的<code>doRegister()</code>方法。每个action类中，可以包含多个处理数据的动作，例如<code>doCreate</code>、<code>doUpdate</code>、<code>doDelete</code>等。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>上面的Velocity页面模板演示了怎样利用表单验证服务创建一个帐户注册的HTML表单。关键技术解释如下：</para>
+                <variablelist>
+                    <varlistentry>
+                        <term>创建group实例</term>
+                        <listitem>
+                            <para><code>$form.register.defaultInstance</code>将会对<code>register</code>
+                                group创建一个默认的实例。绝大多数情况下，只需要创建唯一的default
+                                instance就足够了。但后面我们会讲到创建多实例的例子。</para>
+                            <para>所创建的group instance（如<code>register</code>）必须先在规则配置文件中被定义。</para>
+                            <figure>
+                                <title>创建一个group实例</title>
+                                <mediaobject>
+                                    <imageobject>
+                                        <imagedata fileref="images/form/new-group-instance.png" />
+                                    </imageobject>
+                                </mediaobject>
+                            </figure>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>生成表单字段</term>
+                        <listitem>
+                            <para>一个表单字段包含名称和值两个部分。</para>
+                            <para>字段的名称为<code>$group.field.key</code>。表单验证服务会自动生成一个字段名。这个字段名被设计成仅供系统内部解读的，而不是让外界的系统或人来解读的。它看起来是这个样子的：“<code>_fm.r._0.p</code>”。<emphasis>外界的系统不应该依赖于这个名称</emphasis>。</para>
+                            <para>字段的值为<code>$!group.field.value</code>。它的初始值（即用户填写数据之前）是<code>null</code>。但你也可以在配置文件中为它指定一个默认的初始值，例如：</para>
+                            <example>
+                                <title>在表单验证规则中添加默认值</title>
+                                <programlisting language="xml">&lt;services:field name="myfield" defaultValue="mydefault" ...></programlisting>
+                            </example>
+                            <para>因为值可能是<code>null</code>，因此在velocity中，需要以“<code>$!</code>”来标记它 ——
+                                    Velocity认为<code>null</code>是一个错误，除非你以<code>$!</code>来标记它，告诉velocity忽略它。</para>
+                            <para>需要注意的是，<emphasis>默认值只会影响field的初始值</emphasis>。一旦用户填写并提交了表单，那么<code>$group.field.value</code>的值将保持用户所填写的值不变
+                                —— 不论验证失败或成功。 </para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>页面展现</term>
+                        <listitem>
+                            <para>一般来说，你需要定义CSS风格以便让表单的field和错误信息能以适当的格式来显示给用户。展现效果可能是像这个样子：</para>
+                            <figure>
+                                <title>在页面中显示表单验证错误信息</title>
+                                <mediaobject>
+                                    <imageobject>
+                                        <imagedata
+                                            fileref="images/form/form-sample-validation-failed.png"
+                                         />
+                                    </imageobject>
+                                </mediaobject>
+                            </figure>
+                            <para>表单系统不应该干预页面的具体展现方法，以下内容均和表单系统无关。例如：<itemizedlist>
+                                    <listitem>
+                                        <para>Field展现的方式：textbox、checkbox、hidden field？</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>错误信息的颜色、显示位置。</para>
+                                    </listitem>
+                                </itemizedlist></para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+            </section>
+            <section>
+                <title>创建Java代码（action）</title>
+                <para>用户提交表单后，由服务器端的Java代码读取并验证用户的数据。</para>
+                <para>在Webx中，这个功能通常由action来完成。前文已经提到，在HTML表单中，设置<code>action</code>字段，以及<code>event_submit_do_register</code>提交按钮，就可以让Webx框架调用<code>UserAccountAction.doRegister()</code>方法。</para>
+                <para>下面是<code>UserAccountAction</code>类的实现代码：</para>
+                <example>
+                    <title>创建用于处理提交数据的action代码</title>
+                    <programlisting language="java">public class UserAccountAction {
+    @Autowired
+    private FormService formService; <co xml:id="co.form.action.inject.formservice" />
+
+    public void doRegister(Navigator nav) throws Exception {
+        Form form = formService.getForm(); <co xml:id="co.form.action.get.form" />
+
+        if (form.isValid()) { <co xml:id="co.form.action.form.isvalid" />
+            Group group = form.getGroup("register"); <co xml:id="co.form.action.get.group" />
+
+            MyUser user = new MyUser(); <co xml:id="co.form.action.populate.bean1" />
+            group.setProperties(user); <co xml:id="co.form.action.populate.bean2" />
+            save(user);
+
+            // 跳转到注册成功页面
+            nav.redirectTo("registerSuccess"); <co xml:id="co.form.action.redirect" />
+        }
+    }
+}</programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.action.inject.formservice">
+                            <para>注入form服务。</para>
+                        </callout>
+                        <callout arearefs="co.form.action.get.form">
+                            <para>取得form对象，form对象中包含若干groups。</para>
+                        </callout>
+                        <callout arearefs="co.form.action.form.isvalid">
+                            <para>仅当表单验证成功时，才执行下去。</para>
+                        </callout>
+                        <callout arearefs="co.form.action.get.group">
+                            <para>取得group对象。Group对象的名称必须和配置文件以及模板中的group名称相同。</para>
+                        </callout>
+                        <callout
+                            arearefs="co.form.action.populate.bean1 co.form.action.populate.bean2">
+                            <para>将group中的数据灌入bean中。</para>
+                        </callout>
+                        <callout arearefs="co.form.action.redirect">
+                            <para>处理完数据以后，利用Webx navigation接口跳转到“注册成功”页面。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>例子中的<code>MyUser</code>对象是一个简单的Java Bean：</para>
+                <example>
+                    <title>被灌入group数据的Java Bean</title>
+                    <programlisting language="java">public static class MyUser {
+    private String userId;
+    private String password;
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}</programlisting>
+                </example>
+                <para><code>Group.setProperties()</code>方法将fields的值映射到同名的Java Bean
+                    properties中。然而这个对应关系是可以改变的，后文会再次讲到该问题。</para>
+                <para>是不是有点复杂？事实上，<emphasis>上面的代码可以通过Webx的参数注入机制加以简化</emphasis>。下面的代码可以完成完全相同的功能，但是代码却短得多。然而，<emphasis>理解前面的较复杂代码，将有助于你理解下面的简化代码</emphasis>。</para>
+                <example>
+                    <title>创建用于处理提交数据的action代码（Annotations简化版）</title>
+                    <programlisting language="java">public class UserAccountAction {
+    public void doRegister(@FormGroup("register") MyUser user, Navigator nav) throws Exception {
+        save(user);
+        nav.redirectTo("registerSuccess");
+    }
+}</programlisting>
+                </example>
+                <para>在这个简化版代码中，@FormGroup注解完成了前面复杂代码中的大部分功能，包括：<itemizedlist>
+                        <listitem>
+                            <para>验证表单，如果<emphasis>失败则不执行action</emphasis>，否则执行<code>doRegister</code>方法。</para>
+                        </listitem>
+                        <listitem>
+                            <para>取得form和<code>register</code>
+                                    group对象，并将group中的数据注入到<code>MyUser</code>对象中。 </para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+        </section>
+        <section>
+            <title>修改老数据</title>
+            <para>在前面的例子中，我们利用表单创建了一个新数据 ——
+                注册新帐户。它是从一个空白表单开始的，也就是说，在用户填写表单之前，表单是没有内容的，或只包含默认值的。另一种常见情况是修改老数据。例如“修改帐户资料”。和创建新数据的例子不同，在用户填写表单之前，表单里已经包含了从数据库中取得的老数据。</para>
+            <para>在创建新数据的模板和代码中，稍微添加一点东西，就可以实现修改老数据的功能。</para>
+            <section>
+                <title>用screen来读取数据</title>
+                <para>修改老数据的第一步，是要取得老的数据。例如，取得要修改的帐户信息。在Webx中，这个任务是由screen来完成的：</para>
+                <example>
+                    <title>用screen取得表单验证的初始数据</title>
+                    <programlisting language="java">public class UserAccount {
+    @Autowired
+    private UserManager userManager; <co xml:id="co.form.modifydata.screen.bizobj" />
+
+    public void execute(Context context) throws Exception {
+        User user = userManager.getUser(getCurrentUser().getId());
+        context.put("user", user); <co xml:id="co.form.modifydata.screen.putcontext" />
+    }
+}</programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.modifydata.screen.bizobj">
+                            <para><code>UserManager</code>是一个业务接口。通过它，可以从数据库中取得当前登录帐户的信息。</para>
+                        </callout>
+                        <callout arearefs="co.form.modifydata.screen.putcontext">
+                            <para>随后，screen代码把所取得的user对象放到context中，这样，就可以在模板中用<code>$user</code>来引用它。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+            <section>
+                <title>表单页面</title>
+                <example>
+                    <title>用来修改数据的页面模板</title>
+                    <programlisting language="xml">#set ($group = $form.userAccount.defaultInstance)
+
+$group.mapTo($user) <co xml:id="co.form.modifydata.vm.mapto" />
+...
+&lt;input type="hidden" name="$group.userId.key" value="$!group.userId.value"/> <co xml:id="co.form.modifydata.vm.pk" />
+...
+
+&lt;input type="text" name="$group.lastName.key" value="$!group.lastName.value"/>
+...
+#userAccountMessage ($group.lastName)
+...
+&lt;input type="submit" name="event_submit_do_update" value="修改"/> <co xml:id="co.form.modifydata.vm.submit" /></programlisting>
+                    <calloutlist>
+                        <para>在前面“创建新数据”的页面上，加上和修改一点内容：</para>
+                        <callout arearefs="co.form.modifydata.vm.mapto">
+                            <para><code>mapTo</code>的功能是填充表单。</para>
+                            <para>这行代码的意思是：用screen中所取得的user对象的值来填充表单，作为表单的初始值。和<code>Group.setProperties()</code>方法相反，<code>mapTo</code>将Java
+                                Bean properties的值映射到同名的fields中。</para>
+                        </callout>
+                        <callout arearefs="co.form.modifydata.vm.pk">
+                            <para>保存主键。</para>
+                            <para>和创建新数据不同，在修改老数据时，一般需要在表单中包含主键。这个主键（user
+                                id）在数据库中唯一识别这一数据对象（user）。</para>
+                            <para>应该避免用户改变主键。最简便的方法，就是用hidden字段来保存主键。</para>
+                        </callout>
+                        <callout arearefs="co.form.modifydata.vm.submit">
+                            <para>这个submit按钮将引导webx执行<code>UserAccountAction.doUpdate</code>方法。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>需要注意的是，调用<code>mapTo</code>在下列情况下是无效的：<itemizedlist>
+                        <listitem>
+                            <para>当<code>$user</code>对象不存在（值为<code>null</code>）时，<code>mapTo</code>不做任何事。这样，<emphasis>你就可以让“创建新帐户”和“修改帐户信息”共用同一个模板</emphasis>。在新表单中，由于<code>$user</code>不存在，所以<code>mapTo</code>失效；而在更新表单中，就可以从<code>$user</code>中取得初始的数据。</para>
+                        </listitem>
+                        <listitem>
+                            <para>当用户提交表单以后，<code>mapTo</code>不做任何事。因为<code>mapTo</code>只会影响表单的初始数据。一旦用户修改并提交数据以后，<code>mapTo</code>就不会改变用户所修改的数据。</para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>用action来处理数据</title>
+                <para>修改老数据的action代码和创建新数据的action代码几乎相同，而且它们可以共享同一个<code>UserAccountAction</code>类：</para>
+                <example>
+                    <title>用来保存提交数据的action</title>
+                    <programlisting language="java">public class UserAccountAction {
+    public void doRegister(...) throws Exception {
+        ...
+    }
+
+    public void doUpdate(@FormGroup("userAccount") MyUser user, <co xml:id="co.form.modifiydata.action.obj" />
+                         Navigator nav) throws Exception {
+        save(user);
+        nav.redirectTo("updateSuccess");
+    }
+}</programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.modifiydata.action.obj">
+                            <para>通过annotation取得的<code>MyUser</code>对象中，包含了通过hidden字段传过来的user
+                                id，以及其它所有字段的值。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+        </section>
+        <section>
+            <title>批量创建或修改数据</title>
+            <para>有时，我们需要在一个表单页面中批量创建或修改一批数据。例如，后台管理界面中，管理员可以一次审核10个帐户的信息。每个帐户的信息格式都是相同的：姓名、性别、年龄、地址等。表单验证服务完全支持这样的表单。</para>
+            <section>
+                <title>用screen来读取批量数据</title>
+                <para>假如你希望做的是批量修改数据，很显然，你需要在screen代码中取得所有需要修改的数据。</para>
+                <example>
+                    <title>批量读取数据的screen</title>
+                    <programlisting language="java">public class BatchUserAccount {
+    @Autowired
+    private UserManager userManager;
+
+    public void execute(Context context) throws Exception {
+        List&lt;User> users = userManager.getUsers(getIds()); <co xml:id="co.form.batch.screen.putcontext" />
+        context.put("users", users);
+    }
+}</programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.batch.screen.putcontext">
+                            <para>和修改单个数据的screen代码不同的是，你需要一次性读取多个数据对象，并置入到context中。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+            <section>
+                <title>表单页面</title>
+                <example>
+                    <title>批量创建、修改数据的表单页面模板</title>
+                    <programlisting language="xml">&lt;form action="" method="post">
+  &lt;input type="hidden" name="action" value="UserAccountAction"/>
+
+  #foreach($user in $users) <co xml:id="co.form.batch.vm.forloop" />
+    #set ($group = $form.userAccount.getInstance($user.id)) <co xml:id="co.form.batch.vm.getinstance" />
+
+    $group.mapTo($user)
+
+    ...
+    &lt;input type="hidden" name="$group.userId.key" value="$!group.userId.value"/>
+
+    ...
+    &lt;input type="text" name="$group.lastName.key" value="$!group.lastName.value"/>
+    ...
+    #userAccountMessage ($group.lastName)
+    ...
+
+  #end
+  ...
+  &lt;input type="submit" name="event_submit_do_batch_edit" value="批量修改"/> <co xml:id="co.form.batch.vm.submit" />
+&lt;/form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.batch.vm.forloop">
+                            <para>为了批量创建、修改数据，需要在表单页面中利用<code>foreach</code>循环来遍历数据对象。其中，<code>$users</code>是由screen放入context中的对象列表。</para>
+                        </callout>
+                        <callout arearefs="co.form.batch.vm.getinstance">
+                            <para>对每个数据对象创建一个group实例。</para>
+                        </callout>
+                        <callout arearefs="co.form.batch.vm.submit">
+                            <para>指定action事件。这个submit按钮将引导webx执行<code>UserAccountAction.doBatchEdit</code>方法。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>在前面的例子中，我们一直使用<code>$form.xyz.defaultInstance</code>来创建默认的group实例。而这里，我们改变了用法：<code>$form.userAccount.getInstance($user.id)</code>。每次调用该方法，就对一个group生成了一个实例（instance）。</para>
+                <figure>
+                    <title>创建多个group实例</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/form/multiple-group-instances.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+                <para>每个instance必须以不同的id来区分。最简单的方法，就是采用数据对象的唯一id来作为group
+                        instance的id。在这个例子中，我们采用<code>$user</code>的唯一id（<code>$user.id</code>）来区分group
+                    instances。</para>
+                <para>前文讲过，default instance的field
+                            key是这个样子的：“<code>_fm.r.</code><emphasis><code>_0</code></emphasis><code>.p</code>”。类似的，通过<code>getInstance("</code><emphasis><code>myid</code></emphasis><code>")</code>方法所取得的group中的field
+                        key是这样的：“<code>_fm.u.</code><emphasis><code>myid</code></emphasis><code>.n</code>”。很明显，form
+                    service就是依赖于field key中所包含的group instance id来区分同一group的不同instances的。</para>
+                <para>因为field key将作为HTML的一部分，所以group
+                        instance的id必须为满足下面的条件：<emphasis>只包含英文字母、数字、下划线、短横线的字符串</emphasis>。</para>
+                <para>页面的其它部分和创建、修改单个数据的代码完全相同。只不过它们被循环生成了多次。 最后的结果是类似下面的样子：</para>
+                <figure>
+                    <title>批量修改数据的页面示例</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/form/batch-edit-form.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+            </section>
+            <section>
+                <title>用action来处理数据</title>
+                <para>和前面的例子类似，我们先用传统的方法来写action以便阐明原理，再用annotation来简化action代码。</para>
+                <example>
+                    <title>用来批量处理数据的action</title>
+                    <programlisting language="java">public class UserAccountAction {
+    @Autowired
+    private FormService formService;
+
+    public void doBatchEdit(Navigator nav) throws Exception {
+        Form form = formService.getForm();
+
+        if (form.isValid()) {
+            Collection&lt;Group> groups = form.getGroups("userAccount"); <co xml:id="co.form.batch.action.getgroups" />
+
+            for (Group group : groups) {
+                MyUser user = new MyUser();
+
+                group.setProperties(user);
+                save(user);
+            }
+
+            nav.redirectTo("success");
+        }
+    }
+}</programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.batch.action.getgroups">
+                            <para>通过这个方法，可以取得所有名称为“<code>userAccount</code>”的group
+                                    instances，包括：<code>user1</code>、<code>user2</code>、……。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>取得group实例，除了例子中的<code>form.getGroups(groupName)</code>这种形式以外，还有以下几种变化：<itemizedlist>
+                        <listitem>
+                            <para>取得所有的group instances，无论其名称是什么：<code>Collection&lt;Group> groups =
+                                    form.getGroups(); </code></para>
+                        </listitem>
+                        <listitem>
+                            <para>取得指定group名称和instance key的group instances：<code>Group user1Group =
+                                    form.getGroup("userAccount", "user1"); </code></para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>下面是一个简化版的action，实现完全相同的功能。</para>
+                <example>
+                    <title>用来批量处理数据的action（Annotation简化版）</title>
+                    <programlisting language="java">public class UserAccountAction {
+    public void doBatchEdit(@FormGroup("userAccount") MyUser[] users,
+                            Navigator nav) throws Exception {
+        for (MyUser user : users) {
+            save(user);
+        }
+
+        nav.redirectTo("success");
+    }
+}</programlisting>
+                </example>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>表单验证服务详解</title>
+        <section>
+            <title>配置详解</title>
+            <section>
+                <title>基本配置</title>
+                <example>
+                    <title>表单验证服务的基本配置</title>
+                    <programlisting language="xml">&lt;services:form xmlns="http://www.alibaba.com/schema/services/form/validators"> <co xml:id="co.form.basic.service" />
+
+    &lt;services:group name="group1"> <co xml:id="co.form.basic.group" />
+        &lt;services:field name="field1"> <co xml:id="co.form.basic.field" />
+            &lt;validator /> <co xml:id="co.form.basic.validator" />
+            &lt;validator />
+            ...
+        &lt;/services:field>
+
+        &lt;services:field name="field2" />
+        ...
+    &lt;/services:group>
+
+    &lt;services:group name="group2">
+        ...
+    &lt;/services:group>
+
+    ...
+&lt;/services:form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.basic.service">
+                            <para>开始配置表单验证服务。</para>
+                        </callout>
+                        <callout arearefs="co.form.basic.group">
+                            <para>每个表单验证服务可包含多个groups。</para>
+                        </callout>
+                        <callout arearefs="co.form.basic.field">
+                            <para>每个group可包含多个fields。</para>
+                        </callout>
+                        <callout arearefs="co.form.basic.validator">
+                            <para>每个field可包含多个validators。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+            <section>
+                <title>Post Only参数</title>
+                <example>
+                    <title>配置Post Only参数</title>
+                    <programlisting language="xml">&lt;services:form postOnlyByDefault="true"> <co xml:id="co.form.postonly.default" />
+    &lt;services:group name="group1" postOnly="true" /> <co xml:id="co.form.postonly.group" />
+&lt;/services:form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.postonly.default">
+                            <para>如果不指定，<code>postOnlyByDefault</code>的默认值为<code>true</code>。</para>
+                        </callout>
+                        <callout arearefs="co.form.postonly.group">
+                            <para>如果不指定，那么<code>postOnly</code>的值取决于<code>postOnlyByDefault</code>。这意味着如果什么也不设置，所有<code>postOnly</code>的实际值均为<code>true</code>。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>如果一个group被设置成<code>postOnly=true</code>，那么，这个group将不接受通过GET方法提交的数据，只允许通过POST方式提交数据。这样可以略略增加系统的安全性，增加CSRF攻击的难度。</para>
+            </section>
+            <section>
+                <title>Trimming参数</title>
+                <example>
+                    <title>配置Trimming参数</title>
+                    <programlisting language="xml">&lt;services:form>
+    &lt;services:group name="group1" trimmingByDefault="true"> <co xml:id="co.form.trimming.default" />
+        &lt;services:field name="field1" trimming="true" /> <co xml:id="co.form.trimming.field" />
+    &lt;/services:group>
+&lt;/services:form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.trimming.default">
+                            <para>如果不指定，<code>trimmingByDefault</code>的默认值为<code>true</code>。</para>
+                        </callout>
+                        <callout arearefs="co.form.trimming.field">
+                            <para>如果不指定，<code>trimming</code>的值取决于<code>trimmingByDefault</code>。这意味着如果什么也不设置，所有<code>trimming</code>的实际值均为<code>true</code>。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>用户所提交的字符串数据中，两端的空白往往是无意义的。这些空白可能会影响验证规则的准确性。</para>
+                <para>如果设置了<code>trimming=true</code>参数，那么表单系统可以自动剪除字段值两端的空白字符，例如把<code>“ my name
+                        ”</code>（两端有空白）转变成<code>“my name”</code>（两端无空白）。</para>
+            </section>
+            <section>
+                <title>Display Name参数</title>
+                <example>
+                    <title>配置Display Name参数</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段"> <co xml:id="co.form.displayname" />
+    &lt;required-validator>
+        &lt;message>必须填写${displayName}&lt;/message> <co xml:id="co.form.displayname.ref" />
+    &lt;/required-validator>
+&lt;/services:field></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.displayname">
+                            <para>如果未指定<code>displayName</code>，那么其默认为field名称。也就是的“<code>field1</code>”。</para>
+                        </callout>
+                        <callout arearefs="co.form.displayname.ref">
+                            <para>在validator
+                                message中，可以引用<code>${displayName}</code>。这样做的好处是，validator
+                                message可以被复制给其它的field，而不是需要更动其信息内容。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>Display Name是对当前field的一个描述信息。</para>
+            </section>
+            <section>
+                <title>类型转换</title>
+                <example>
+                    <title>类型转换的配置</title>
+                    <programlisting language="xml">&lt;services:form converterQuiet="true"> <co xml:id="co.form.convtype.quiet" />
+    &lt;services:property-editor-registrar
+        class="com.alibaba.citrus.service.configuration.support.CustomDateRegistrar"
+        p:format="yyyy-MM-dd" /> <co xml:id="co.form.convtype.editor" />
+&lt;/services:form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.convtype.quiet">
+                            <para>如果<code>converterQuiet=true</code>，那么类型转换失败时，将取得默认值。否则，抛出异常。<code>converterQuiet</code>的默认值为<code>true</code>。</para>
+                        </callout>
+                        <callout arearefs="co.form.convtype.editor">
+                            <para>类型转换采用Spring Property
+                                    Editor机制。你可以通过注册新的registrar来增加新的类型转换方法。这段配置增加了一种将日期转成字符串的方式（用<code>yyyy-MM-dd</code>格式）。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>下面的操作将用到类型转换：</para>
+                <table frame="none">
+                    <title>何时用到类型转换？</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>操作</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>Group.setProperties(bean)</code></entry>
+                                <entry>将Group中的所有fields值注入bean properties。</entry>
+                            </row>
+                            <row>
+                                <entry><code>Group.mapTo(bean)</code></entry>
+                                <entry>用bean properties中的值初始化group fields。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>国际化</title>
+                <para>表单验证失败时，将在页面上显示错误信息。有两种方法可以定义错误信息：<itemizedlist>
+                        <listitem>
+                            <para>将错误信息直接定义在配置文件中。前文的例子所用的都是这种方案。</para>
+                        </listitem>
+                        <listitem>
+                            <para>将错误信息定义在Spring Message Source中，从而支持国际化。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>为了将使用国际化（多语言）的错误信息，首先需要定义Spring Message Source。</para>
+                <example>
+                    <title>在Spring Message Source中定义错误信息</title>
+                    <programlisting language="xml">&lt;bean id="messageSource"
+       xmlns="http://www.springframework.org/schema/beans"
+       class="org.springframework.context.support.ReloadableResourceBundleMessageSource"
+       p:defaultEncoding="GB18030">
+    &lt;property name="basenames">
+        &lt;list>
+            &lt;value>form_msgs&lt;/value> <co xml:id="co.form.i18n.msgsrc" />
+        &lt;/list>
+    &lt;/property>
+&lt;/bean></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.i18n.msgsrc">
+                            <para>这段配置告诉spring去读取<code>form_msgs</code>开头的resource bundle文件，例如：<itemizedlist>
+                                    <listitem>
+                                        <para>form_msgs.properties</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>form_msgs_zh_CN.properties</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>form.msgs_zh_TW.properties</para>
+                                    </listitem>
+                                </itemizedlist></para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>请注意，Spring是从<code>ResourceLoader</code>中读取resource
+                    bundle文件的。因此，你可能需要配置Resource Loading以帮助spring找到这些消息文件。关于资源装载，请参见<xref
+                        linkend="webx.resource" />。</para>
+                <para>使用message
+                            source以后，你可以省略validator中的<code>message</code>标签，但是<emphasis>每个validator必须指定<code>id</code></emphasis>。表单系统将会从message
+                        source中查找指定的key：“<code>form.&lt;GroupName>.&lt;FieldName>.&lt;ValidatorID></code>”。</para>
+                <example>
+                    <title>配置validator ID</title>
+                    <programlisting language="xml">&lt;services:form>
+    &lt;services:group name="register">
+        &lt;services:field name="userId">
+            &lt;required-validator id="required" /> <co xml:id="co.form.i18n.validator.id" />
+        &lt;/services:field>
+    &lt;/services:group>
+&lt;/services:form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.i18n.validator.id">
+                            <para>指定了validator
+                                    ID为<code>required</code>，根据格式“<code>form.&lt;GroupName>.&lt;FieldName>.&lt;ValidatorID></code>”，当前validator
+                                    message的key为：“<code>form.register.userId.required</code>”。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>假设message source定义文件及内容如下：</para>
+                <table frame="none">
+                    <title>Message Source的内容</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.67*" />
+                        <thead>
+                            <row>
+                                <entry>文件名</entry>
+                                <entry>内容</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><filename>form_msgs_zh_CN.properties</filename></entry>
+                                <entry>
+                                    <programlisting language="ini">form.register.userId.required = 必须填写用户名</programlisting>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><filename>form_msgs.properties</filename></entry>
+                                <entry>
+                                    <programlisting language="ini">form.register.userId.required = User ID is required</programlisting>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <para>对于以上的message
+                        source内容，在中文环境中（<code>locale=zh_CN</code>），将显示错误信息“<code>必须填写用户名</code>”；而在英文环境中（<code>locale=en_US</code>），将显示默认的错误信息“<code>User
+                        ID is required</code>”。</para>
+                <para>系统的当前locale是由<code>SetLocaleRequestContext</code>来决定的。关于<code>SetLocaleRequestContext</code>的设定和使用，请参见<xref
+                        linkend="webx.requestcontexts" />。</para>
+                <para>此外，你还可以可以改变message source中key的前缀。</para>
+                <example>
+                    <title>改变message source key的前缀</title>
+                    <programlisting language="xml">&lt;services:form messageCodePrefix="myform">
+    ...
+&lt;/services:form></programlisting>
+                </example>
+                <para>上面的配置将指导表单系统在message
+                        source中查找指定的key：“<emphasis><code>myform</code></emphasis><code>.GroupName.FieldName.ValidatorID</code>”。</para>
+            </section>
+            <section>
+                <title>切分表单服务</title>
+                <para>在实际的应用中，有时一个表单规则的配置文件会很长。将一个长文件切分成几个较短的文件，更有利于管理。表单验证服务支持导入多个form表单服务，从而实现分割较长配置文件的功能。</para>
+                <example>
+                    <title>切分表单服务</title>
+                    <para>主配置文件：<filename>form.xml</filename>：</para>
+                    <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8" ?>
+&lt;beans:beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://www.alibaba.com/schema/services"
+    xmlns:beans="http://www.springframework.org/schema/beans">
+
+    &lt;beans:import resource="inc/form_part1.xml" /> <co xml:id="co.form.importform.import1" />
+    &lt;beans:import resource="inc/form_part2.xml" /> <co xml:id="co.form.importform.import2" />
+
+    &lt;services:form xmlns="http://www.alibaba.com/schema/services/form/validators" primary="true"> <co xml:id="co.form.importform.form" />
+        &lt;services:import form="part1" /> <co xml:id="co.form.importform.import.part1" />
+        &lt;services:import form="part2" /> <co xml:id="co.form.importform.import.part2" />
+
+        ...
+    &lt;/services:form>
+
+&lt;/beans:beans></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.importform.import1 co.form.importform.import2">
+                            <para>导入包含着子表单服务的spring配置。</para>
+                        </callout>
+                        <callout arearefs="co.form.importform.form">
+                            <para>定义主表单服务时，<emphasis>必须指定<code>primary="true"</code></emphasis>。否则spring将无法区分主从表单服务，从而导致注入<code>FormService</code>时失败。</para>
+                        </callout>
+                        <callout
+                            arearefs="co.form.importform.import.part1 co.form.importform.import.part2">
+                            <para>导入指定ID的子表单服务。</para>
+                        </callout>
+                    </calloutlist>
+                    <para>子表单服务的配置文件：<filename>inc/form_part1.xml</filename>和<filename>inc/form_part2.xml</filename>：</para>
+                    <programlisting language="xml">&lt;!-- inc/form_part1.xml -->
+&lt;beans:beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://www.alibaba.com/schema/services"
+    xmlns:beans="http://www.springframework.org/schema/beans">
+
+    &lt;services:form id="part1"> <co xml:id="co.form.importform.part1" />
+        ...
+    &lt;/services:form>
+
+&lt;/beans:beans>
+
+&lt;!-- inc/form_part2.xml -->
+&lt;beans:beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://www.alibaba.com/schema/services"
+    xmlns:beans="http://www.springframework.org/schema/beans">
+
+    &lt;services:form id="part2"> <co xml:id="co.form.importform.part2" />
+        ...
+    &lt;/services:form>
+
+&lt;/beans:beans></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.importform.part1 co.form.importform.part2">
+                            <para><emphasis>子表单服务必须指定ID。</emphasis></para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>导入子表单服务，意味着将子表单服务中的所有groups导入到主表单的空间。主表单中的groups将会覆盖被导入子表单中的groups。也就是说，假如主表单中存在一个group，它的名字和被导入的子表单中的group同名，那么子表单中的group将被忽略。</para>
+            </section>
+            <section>
+                <title>Group的继承和导入</title>
+                <para>在实际应用中，你会发现有一些groups的定义很相似。继承和导入的目的是让这些相似的groups之间可以共享共同的参数、字段和验证规则，避免重复定义。</para>
+                <para>下面是group继承的用法： </para>
+                <example>
+                    <title>继承一个group</title>
+                    <programlisting language="xml">&lt;services:form>
+    &lt;services:group name="baseGroup">
+        &lt;services:field name="field1" >
+            &lt;validator1 />
+            &lt;validator2 />
+        &lt;/services:field>
+        &lt;services:field name="field2" />
+        &lt;services:field name="field3" />
+    &lt;/services:group>
+
+    &lt;services:group name="subGroup" extends="baseGroup">
+        &lt;services:field name="field1">
+            &lt;validator3 />
+        &lt;/services:field>
+        &lt;services:field name="field4" />
+    &lt;/services:group>
+
+&lt;/services:form></programlisting>
+                </example>
+                <para>这段配置中，<code>subGroup</code>继承了<code>baseGroup</code>。其效果是：<itemizedlist>
+                        <listitem>
+                            <para><code>baseGroup</code>的参数（<code>postOnly</code>、<code>trimmingByDefault</code>）被<code>subGroup</code>继承，除非<code>subGroup</code>明确指定了该参数。</para>
+                        </listitem>
+                        <listitem>
+                            <para><code>baseGroup</code>中fields被<code>subGroup</code>继承。具体来说：<itemizedlist>
+                                    <listitem>
+                                        <para><code>baseGroup</code>中不同名的fields被直接添加到<code>subGroup</code>中。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para><code>baseGroup</code>中同名的fields被<code>subGroup</code>中的继承。具体来说：<itemizedlist>
+                                                <listitem>
+                                                  <para><code>baseGroup</code>
+                                                  field的参数（<code>name</code>、<code>displayName</code>、<code>defaultValue</code>、<code>trimming</code>、<code>propertyName</code>）被<code>subGroup</code>
+                                                  field继承，除非<code>subGroup</code>
+                                                  field明确指定了该参数。</para>
+                                                </listitem>
+                                                <listitem>
+                                                  <para><code>baseGroup</code>
+                                                  field中的validators被全部添加到<code>subGroup</code>
+                                                  field中。 </para>
+                                                </listitem>
+                                            </itemizedlist></para>
+                                    </listitem>
+                                </itemizedlist></para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>因此，上面配置所定义的<code>subGroup</code>和下面配置中的完全等效：</para>
+                <example>
+                    <title>Group继承的效果</title>
+                    <programlisting language="xml">&lt;services:form>
+    &lt;services:group name="subGroup">
+        &lt;services:field name="field1">
+            &lt;validator1 />&lt;!-- 来自baseGroup -->
+            &lt;validator2 />&lt;!-- 来自baseGroup -->
+            &lt;validator3 />
+        &lt;/services:field>
+        &lt;services:field name="field2" />&lt;!-- 来自baseGroup -->
+        &lt;services:field name="field3" />&lt;!-- 来自baseGroup -->
+        &lt;services:field name="field4" />
+    &lt;/services:group>
+&lt;/services:form></programlisting>
+                </example>
+                <para>另一种和继承类似的功能是导入：</para>
+                <example>
+                    <title>导入groups和fields</title>
+                    <programlisting language="xml">&lt;services:form>
+    &lt;services:group name="group1">
+        &lt;services:field name="field1" />
+        &lt;services:field name="field2" />
+        &lt;services:field name="field3" />
+    &lt;/services:group>
+
+    &lt;services:group name="group2">
+        &lt;services:import group="group1" /> <co xml:id="co.form.import.group" />
+        &lt;services:field name="field4" />
+    &lt;/services:group>
+
+    &lt;services:group name="group3">
+        &lt;services:import group="group1" field="field1" /> <co xml:id="co.form.import.field" />
+       &lt;services:field name="field5" />
+    &lt;/services:group>
+
+&lt;/services:form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.import.group">
+                            <para>导入<code>group1</code>中的全部fields。导入以后，<code>group2</code>拥有的fields包括：<code>field1</code>、<code>field2</code>、<code>field3</code>和<code>field4</code>。其中，<code>field1</code>、<code>field2</code>、<code>field3</code>均来自于<code>group1</code>。</para>
+                        </callout>
+                        <callout arearefs="co.form.import.field">
+                            <para>导入<code>group1</code>中的一个field。导入以后，<code>group3</code>拥有的fields包括：<code>field1</code>和<code>field5</code>。其中，<code>field1</code>来自于<code>group1</code>。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>导入有两种形式，导入全部fields和导入一个field。</para>
+                <para>导入和继承都可以使group共享一些内容，但是，<itemizedlist>
+                        <listitem>
+                            <para>继承只能有一个base group，而导入可以有多次import；</para>
+                        </listitem>
+                        <listitem>
+                            <para>继承会合并同名的fields，而导入时则禁止同名fields的。在上例中，假如<code>group2</code>已经有了<code>field1</code>，那么再次导入<code>group1</code>的<code>field1</code>将会报错。</para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>设置默认值</title>
+                <para>
+                    <example>
+                        <title>设置表单字段的默认值</title>
+                        <programlisting language="xml">&lt;services:field name="field1" defaultValue="defaultValue" /></programlisting>
+                    </example>
+                </para>
+                <para>当表单被创建时，所有的字段值默认都是空的 ——
+                        除非你指定了<code>defaultValue</code>。需要注意的是，<emphasis>默认值只影响初始表单。对于用户已经提交数据的表单不起作用</emphasis>。</para>
+                <para>假如一个field需要多个值，例如多选的checkbox，那么它可以设置一个具有多值的默认值。方法是：用逗号分隔多值。像下面的样子：</para>
+                <example>
+                    <title>设置多个值作为表单字段的默认值</title>
+                    <programlisting language="xml">&lt;services:field name="field1" defaultValue="defaultValue1, defaultValue2, defaultValue3" /></programlisting>
+                </example>
+            </section>
+            <section>
+                <title>Fields和properties</title>
+                <para>Fields和properties是两个重要词汇。</para>
+                <variablelist>
+                    <varlistentry>
+                        <term>Fields</term>
+                        <listitem>
+                            <para>Fields是指HTML表单中的form
+                                fields，例如一个文本框textbox、复选框checkbox、hidden字段等。</para>
+                            <para>Fields也是表单验证的基本单元。</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>Properties</term>
+                        <listitem>
+                            <para>Properties是指Java
+                                    bean中的数据成员，例如：<code>setName(String)</code>方法定义了一个property：<code>name</code>。</para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+                <para>而在表单验证服务中，<itemizedlist>
+                        <listitem>
+                            <para><code>Group.setProperties(bean)</code>方法将fields中的值注入到bean的properties中。</para>
+                        </listitem>
+                        <listitem>
+                            <para><code>Group.mapTo(bean)</code>方法将bean
+                                properties的值设置成fields的初始值。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>一般情况下，field的名称就是property的名称。然而有一些情况下，property名称和field名称会有出入。这时可以这样设置：</para>
+                <example>
+                    <title>设置不同的property和field名称</title>
+                    <programlisting>&lt;services:field name="homeAddress" propertyName="home.address" /></programlisting>
+                </example>
+                <para>其中，“<code>homeAddress</code>”为field名称。如果不指定<code>propertyName</code>的话，表单系统认为property名称也是“<code>homeAddress</code>”。然而在这里，指定了property名称为“<code>home.address</code>”
+                    —— spring支持这种多级的property。在上面的配置中，<itemizedlist>
+                        <listitem>
+                            <para>当做<code>Group.setProperties()</code>时，会执行<code>bean.getHome().setAddress(value)</code>；</para>
+                        </listitem>
+                        <listitem>
+                            <para>而做<code>Group.mapTo()</code>时，会执行<code>bean.getHome().getAddress()</code>。
+                            </para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section xml:id="webx.form.validator.messages">
+                <title>Validator messages</title>
+                <para>每一个validator都可以附带一段message文字，这段文字会在validator验证失败时显示给用户看。配置validator
+                    message可以有下面两种写法：</para>
+                <example>
+                    <title>Validator message的两种写法</title>
+                    <programlisting language="xml">&lt;string-length-validator minLength="4" maxLength="10">
+    &lt;message>登录名最少必须由4个字组成，最多不能超过10个字&lt;/message>
+&lt;/string-length-validator></programlisting>
+                    <para>或者，你可以这样写：</para>
+                    <programlisting language="xml">&lt;string-length-validator minLength="4" maxLength="10">
+    &lt;message>${displayName} 最少必须由${minLength}个字组成，最多不能超过${maxLength}个字&lt;/message>
+&lt;/string-length-validator></programlisting>
+                </example>
+                <para>第二种形式使用了替换变量，例如：<code>${displayName}</code>等。这种方法有较多好处：<itemizedlist>
+                        <listitem>
+                            <para>易复制 ——
+                                    假如有多个fields中都包含<code>string-length-validator</code>，由于每个fields的名称（<code>displayName</code>）、validator的参数（<code>minLength</code>、<code>maxLength</code>）都不同，第一种形式是不可复制的，而第二种形式是通用的、可复制的。</para>
+                        </listitem>
+                        <listitem>
+                            <para>易维护 ——
+                                当validator的参数被修改时，例如<code>minLength</code>被修改，对于第一种形式，你必须同时修改message字符串
+                                —— 这很可能被忘记；而第二种形式就不需要修改message字符串。 </para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>事实上，validator message是一个JEXL表达式，其格式详见：<link
+                        xl:href="http://commons.apache.org/jexl/reference/syntax.html" />。
+                    下面列出了在message中可用的变量和工具。</para>
+                <table frame="none">
+                    <title>Validator message中可用的变量和工具</title>
+                    <tgroup cols="3">
+                        <colspec colname="c1" colnum="1" colwidth="1.25*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <colspec colname="c3" colnum="3" colwidth="2.21*" />
+                        <thead>
+                            <row>
+                                <entry>分类</entry>
+                                <entry namest="c2" nameend="c3">可用的变量和工具</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>当前Validator中的所有properties</entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>不同的validator有不同的properties。</para>
+                                    <para>例如，对于<code>&lt;string-length-validator minLength="4"
+                                            maxLength="10"></code>，</para>
+                                    <para>可取得的变量包括<code>${minLength}</code>、<code>${maxLength}</code></para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry morerows="5">当前Field对象中的所有properties</entry>
+                                <entry><code>${displayName}</code></entry>
+                                <entry>Field显示名</entry>
+                            </row>
+                            <row>
+                                <entry><code>${defaultValue}</code></entry>
+                                <entry>默认值（<code>String</code>）</entry>
+                            </row>
+                            <row>
+                                <entry><code>${defaultValues}</code></entry>
+                                <entry>默认值数组（<code>String[]</code>）</entry>
+                            </row>
+                            <row>
+                                <entry><code>${value}</code></entry>
+                                <entry>当前field的值（<code>Object</code>）</entry>
+                            </row>
+                            <row>
+                                <entry><code>${values}</code></entry>
+                                <entry>当前field的一组值（<code>Object[]</code>）</entry>
+                            </row>
+                            <row>
+                                <entry namest="c2" nameend="c3"
+                                        >特定类型的值，例如：<code>${booleanValue}</code>、<code>${intValue}</code>等。
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>当前Group中的其它Field对象</entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>例如：<code>${userId}</code>，<code>${password}</code>等。</para>
+                                    <para>如果想取得其值，必须这样写：<code>${userId.value}</code></para>
+                                    <para>也可取得其它Field
+                                            properties，例如：<code>${userId.displayName}</code></para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>当前的Group对象</entry>
+                                <entry namest="c2" nameend="c3"><code>${group}</code></entry>
+                            </row>
+                            <row>
+                                <entry>当前的Form对象</entry>
+                                <entry namest="c2" nameend="c3"><code>${form}</code></entry>
+                            </row>
+                            <row>
+                                <entry>System properties</entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para>所有从<code>System.getProperties()</code>中取得的值，</para>
+                                    <para>例如：<code>${user.dir}</code>、<code>${java.home}</code>等</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>小工具</entry>
+                                <entry namest="c2" nameend="c3">
+                                    <para><code>${utils}</code>，其中包含了很多静态方法。</para>
+                                    <para>例如：<code>${utils.repeat("a",
+                                            10)}</code>将会生成10个“<code>a</code>”。</para>
+                                    <para>详见<classname>com.alibaba.citrus.util.Utils</classname>类的API文档。</para>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+        </section>
+        <section>
+            <title>Validators</title>
+            <para>每个field都可以包含多个validators。Validators是用来验证当前field的正确性的。表单验证系统提供了很多常用的validators。然而，如果不够用，你还可以随时扩展出新的validators。</para>
+            <section>
+                <title>验证必选项：<code>&lt;required-validator></code></title>
+                <example>
+                    <title>配置<code>&lt;required-validator></code></title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;required-validator>
+        &lt;message>必须填写${displayName}&lt;/message>
+    &lt;/required-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>这是最常用的一个验证器。它的功能是确保用户填写了字段，即确保字段值非空。</para>
+                <para>需要注意的是，必选项验证器会受到<code>trimming</code>参数的影响。假如<code>trimming=true</code>（默认值），而用户输入了一组空白字符，那么仍然被认为“字段值为空”；反之，如果<code>trimming=false</code>，当用户输入空白时，会被认为“字段值非空”。</para>
+                <para>除了必选项验证器以外，其它<emphasis>绝大多数的验证器并不会判断字段值是否为空</emphasis>。例如：</para>
+                <example>
+                    <title>绝大多数的验证器并不会判断字段值是否为空</title>
+                    <programlisting language="xml">&lt;services:field name="userId" displayName="登录名">
+    &lt;regexp-validator pattern="^[A-Za-z_][A-Za-z_0-9]*$">
+        &lt;message>${displayName} 必须由字母、数字、下划线构成&lt;/message>
+    &lt;/regexp-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>在这个例子中，<emphasis>即便用户什么也没填，<code>&lt;regexp-validator></code>也会通过验证</emphasis>。换言之，<code>&lt;regexp-validator></code>只负责当字段值非空时，检查其是否符合特写的格式。</para>
+                <para>因此通常需要将必选项验证器和其它验证器配合起来验证。如下例：</para>
+                <example>
+                    <title>将必选项验证器和其它验证器配合起来验证</title>
+                    <programlisting language="xml">&lt;services:field name="userId" displayName="登录名">
+    &lt;required-validator>
+        &lt;message>必须填写 ${displayName}&lt;/message>
+    &lt;/required-validator>
+    &lt;regexp-validator pattern="^[A-Za-z_][A-Za-z_0-9]*$">
+        &lt;message>${displayName} 必须由字母、数字、下划线构成&lt;/message>
+    &lt;/regexp-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>这样配置以后，就可以确保：<itemizedlist>
+                        <listitem>
+                            <para>字段值非空；</para>
+                        </listitem>
+                        <listitem>
+                            <para>字段值符合特定格式。 </para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>验证字符串长度：<code>&lt;string-length-validator></code></title>
+                <example>
+                    <title>配置<code>&lt;string-length-validator></code></title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;string-length-validator minLength="4" maxLength="10">
+        &lt;message>${displayName} 最少必须由${minLength}个字组成，最多不能超过${maxLength}个字&lt;/message>
+    &lt;/string-length-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器确保用户输入的字段值的字符数在确定的范围内。</para>
+                <para>可用的参数：</para>
+                <table frame="none">
+                    <title><code>&lt;string-length-validator></code>的可用参数： </title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.26*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>minLength</code></entry>
+                                <entry>代表最少字符数，如不设置<code>minLength</code>代表最代表不设下限。</entry>
+                            </row>
+                            <row>
+                                <entry><code>maxLength</code></entry>
+                                <entry>代表最多字符数，如果不设置<code>maxLength</code>则代表不设上限，允许任意多个字符。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>验证字符串字节长度：<code>&lt;string-byte-length-validator></code></title>
+                <example>
+                    <title><code>&lt;string-byte-length-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;string-byte-length-validator minLength="4" maxLength="10" charset="UTF-8">
+        &lt;message>${displayName} 最少必须由${minLength}个字节组成，最多不能超过${maxLength}个字节&lt;/message>
+    &lt;/string-byte-length-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器也是用来验证字符值的长度的。但是和前面所讲的<code>&lt;string-length-validator></code>不同的是，<code>&lt;string-byte-length-validator></code>会将字符串先转换成字节串，然后判断这个字节串的长度。</para>
+                <para>为什么需要判定字节的长度呢？因为在数据库中，常用字节长度而不是字符长度来表示一个字段的长度的。例如：<code>varchar(20)</code>代表该数据库字段可接受的字节长度为20字节，超过部分将被截断。20字节可填入：<itemizedlist>
+                        <listitem>
+                            <para>20个英文字母、数字，</para>
+                        </listitem>
+                        <listitem>
+                            <para>或者6个UTF-8编码的汉字，</para>
+                        </listitem>
+                        <listitem>
+                            <para>或者10个GBK编码的汉字。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>可见20字节所能容纳的字符数是不确定的，取决于字符的类型（中文、英文、数字等），以及字符集编码的类型（<code>ISO-8859-1</code>、<code>UTF-8</code>、<code>GBK</code>等）。</para>
+                <para>可用的参数：</para>
+                <table frame="none">
+                    <title><code>&lt;string-byte-length-validator></code>的可用参数：</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>minLength</code></entry>
+                                <entry>代表最少字节数，如不设置<code>minLength</code>代表最代表不设下限。</entry>
+                            </row>
+                            <row>
+                                <entry><code>maxLength</code></entry>
+                                <entry>代表最多字节数，如果不设置<code>maxLength</code>则代表不设上限，允许任意多个字符。</entry>
+                            </row>
+                            <row>
+                                <entry><code>charset</code></entry>
+                                <entry>用来将字符串转换成字节，如不设置，则取当前线程的上下文编码。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>比较字符串：<code>&lt;string-compare-validator></code></title>
+                <example>
+                    <title><code>&lt;string-compare-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;string-compare-validator notEqualTo="field2">
+        &lt;message>${displayName} 不能与 ${field2.displayName} 相同&lt;/message>
+    &lt;/string-compare-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器将当前字段的值和另一个字段比较。</para>
+                <para>可用的参数：</para>
+                <table frame="none">
+                    <title><code>&lt;string-compare-validator></code>的可用参数：</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>equalTo</code></entry>
+                                <entry>确保当前字段值和指定的另一字段的值相同。</entry>
+                            </row>
+                            <row>
+                                <entry><code>notEqualTo</code></entry>
+                                <entry>确保当前字段值和指定的另一字段的值不相同。</entry>
+                            </row>
+                            <row>
+                                <entry><code>ignoreCase</code></entry>
+                                <entry>如果为<code>true</code>，则比较时忽略大小写。默认为<code>false</code>，即比较大小写。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>用正则表达式验证：<code>&lt;regexp-validator></code></title>
+                <example>
+                    <title><code>&lt;regexp-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;regexp-validator pattern="^[A-Za-z_][A-Za-z_0-9]*$">
+        &lt;message>${displayName} 必须由字母、数字、下划线构成&lt;/message>
+    &lt;/regexp-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器用正则表达式来验证字符串的格式。</para>
+                <para>可用的参数：</para>
+                <table frame="none">
+                    <title><code>&lt;regexp-validator></code>的可用参数：</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>pattern</code></entry>
+                                <entry>
+                                    <para>用来匹配字符串的正则表达式。需要注意的是：<itemizedlist>
+                                            <listitem>
+                                                <para>表达式为部分匹配，例如：表达式“<code>abc</code>”可以匹配用户输入“<code>xabcy</code>”。如果期望匹配完整字符串，必须使用“<code>^</code>”和“<code>$</code>”标识符。例如表达式“<code>^abc$</code>”只能匹配“<code>abc</code>”而不能匹配“<code>xabcy</code>”。</para>
+                                            </listitem>
+                                            <listitem>
+                                                <para>表达式支持否定匹配，例如：表达式“<code>!abc</code>”可以匹配所有不包含“<code>abc</code>”的字符串。</para>
+                                            </listitem>
+                                        </itemizedlist></para>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>验证电子邮件地址：<code>&lt;mail-address-validator></code></title>
+                <example>
+                    <title><code>&lt;mail-address-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;mail-address-validator>
+        &lt;message>${displayName} 必须是合法电子邮件地址&lt;/message>
+    &lt;/mail-address-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器用来确保用户输入了合法的电子邮件地址。</para>
+                <para>事实上，该验证器使用了一个比较宽松的正则表达式来验证电子邮件地址：“<code>^\S+@[^\.]\S*$</code>”。假如你觉得这个正则表达式不足以验证你所需要的邮件地址，你可以利用<code>&lt;regexp-validator></code>和自定义的正则表达式来直接验证。</para>
+            </section>
+            <section>
+                <title>验证数字：<code>&lt;number-validator></code></title>
+                <example>
+                    <title><code>&lt;number-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段1">
+    &lt;number-validator>
+        &lt;message>${displayName} 必须是数字&lt;/message>
+    &lt;/number-validator>
+&lt;/services:field>
+&lt;services:field name="field2" displayName="我的字段2">
+    &lt;number-validator numberType="int" lessThan="100">
+        &lt;message>${displayName} 必须是小于${lessThan}的整数&lt;/message>
+    &lt;/number-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器用来确保用户输入了合法的数字。数字的合法性包括：格式的合法和范围的合法。</para>
+                <para>可用的参数： </para>
+                <table frame="none">
+                    <title><code>&lt;number-validator></code>的可用参数：</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>numberType</code></entry>
+                                <entry>数字的类型。可用的类型为：<code>int</code>、<code>long</code>、<code>float</code>、<code>double</code>、<code>bigDecimal</code>。如不设置，默认值为<code>int</code>。</entry>
+                            </row>
+                            <row>
+                                <entry><code>equalTo</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>等于</emphasis>指定值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>notEqualTo</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>不等于</emphasis>指定值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>lessThan</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>小于</emphasis>指定值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>lessThanOrEqualTo</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>小于或等于</emphasis>指定值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>greaterThan</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>大于</emphasis>指定值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>greaterThanOrEqualTo</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>大于或等于</emphasis>指定值。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>比较数字：<code>&lt;number-compare-validator></code></title>
+                <example>
+                    <title><code>&lt;number-compare-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;number-compare-validator greaterThanOrEqualTo="field2" lessThan="field3">
+        &lt;message>${displayName} 必须是位于 ${field2.displayName} 和 ${field3.displayName}之间的数字&lt;/message>
+    &lt;/number-compare-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器将当前字段的值和另一个字段比较。</para>
+                <para>可用的参数： </para>
+                <table frame="none">
+                    <title><code>&lt;number-compare-validator></code>的可用参数：</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>numberType</code></entry>
+                                <entry>数字的类型。可用的类型为：<code>int</code>、<code>long</code>、<code>float</code>、<code>double</code>、<code>bigDecimal</code>。如不设置，默认值为<code>int</code>。</entry>
+                            </row>
+                            <row>
+                                <entry><code>equalTo</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>等于</emphasis>指定字段的值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>notEqualTo</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>不等于</emphasis>指定字段的值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>lessThan</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>小于</emphasis>指定字段的值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>lessThanOrEqualTo</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>小于或等于</emphasis>指定字段的值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>greaterThan</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>大于</emphasis>指定字段的值。</entry>
+                            </row>
+                            <row>
+                                <entry><code>greaterThanOrEqualTo</code></entry>
+                                <entry>可选数字范围：要求数字<emphasis>大于或等于</emphasis>指定字段的值。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>验证日期：<code>&lt;date-validator></code></title>
+                <example>
+                    <title><code>&lt;date-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;date-validator format="yyyy-MM-dd">
+        &lt;message>${displayName} 必须是日期，格式为 ${format}&lt;/message>
+    &lt;/date-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器用来确保用户输入正确的日期格式，也可以限定日期的范围。</para>
+                <para>可用的参数： </para>
+                <table frame="none">
+                    <title><code>&lt;date-validator></code>的可用参数：</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>format</code></entry>
+                                <entry>日期的格式，如不指定，默认为<code>yyyy-MM-dd</code>。</entry>
+                            </row>
+                            <row>
+                                <entry><code>minDate</code></entry>
+                                <entry>可选的日期范围：最早的日期。该日期格式也是用<code>format</code>参数来表示的。</entry>
+                            </row>
+                            <row>
+                                <entry><code>maxDate</code></entry>
+                                <entry>可选的日期范围：最晚的日期。该日期格式也是用<code>format</code>参数来表示的。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>验证上传文件：<code>&lt;uploaded-file-validator></code></title>
+                <example>
+                    <title><code>&lt;uploaded-file-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:field name="picture" displayName="产品图片">
+    &lt;uploaded-file-validator extension="jpg, gif, png">
+        &lt;message>${displayName}不是合法的图片文件&lt;/message>
+    &lt;/uploaded-file-validator>
+    &lt;uploaded-file-validator maxSize="100K">
+        &lt;message>${displayName}不能超过${maxSize}字节&lt;/message>
+    &lt;/uploaded-file-validator>
+&lt;/services:field></programlisting>
+                </example>
+                <para>该验证器用来验证用户上传文件的大小、类型等信息。</para>
+                <para>可用的参数： </para>
+                <table frame="none">
+                    <title><code>&lt;date-validator></code>的可用参数：</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>minSize</code></entry>
+                                <entry>最小文件尺寸。可使用K/M等单位，例如：<code>10K</code>、<code>1M</code>等。</entry>
+                            </row>
+                            <row>
+                                <entry><code>maxSize</code></entry>
+                                <entry>最大文件尺寸。可使用K/M等单位，例如：<code>10K</code>、<code>1M</code>等。</entry>
+                            </row>
+                            <row>
+                                <entry><code>extension</code></entry>
+                                <entry>
+                                    <para>允许的文件名后缀，多个后缀以逗号分隔。例如：<code>gif</code>、<code>jpg</code>、<code>png</code>。</para>
+                                    <para>注意，文件名是由浏览器传递给服务器的，因此<emphasis>验证器并不能保证保证文件确实是文件名后缀声明的格式</emphasis>。</para>
+                                    <para>例如，<code>xxx.jpg</code>有可能是一个<code>exe</code>可执行文件。
+                                    </para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>contentType</code></entry>
+                                <entry>
+                                    <para>允许的文件类型，多个类型以逗号分隔。</para>
+                                    <para>例如：<code>image/gif</code>, <code>image/jpeg</code>,
+                                            <code>image/pjpeg</code>, <code>image/jpg</code>,
+                                            <code>image/png</code>。</para>
+                                    <para>注意，<code>contentType</code>是由浏览器传递给服务器的，因此<emphasis>验证器并不能保证文件确实是浏览器所声明的格式</emphasis>。</para>
+                                    <para>其次，有些浏览器不会传送<code>contentType</code>。因此<emphasis>推荐使用<code>extension</code>文件名后缀验证</emphasis>，来取代<code>contentType</code>验证。
+                                    </para>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <para>注意：（请补充阅读<xref linkend="webx.requestcontexts" />）<itemizedlist>
+                        <listitem>
+                            <para>上传文件验证只能检查浏览器所声称的文件名后缀和类型，并不能保证文件名后缀和类型属实。如果你希望进一步检查文件的内容，可以结合<code>request-contexts/parser/filter</code>的功能。</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如设置了<code>request-contexts/parser/uploaded-file-whitelist</code>，那么不符合要求的文件会在进入表单验证之前被删除。因此上传文件验证器的<code>extension</code>参数必须存在于<code>uploaded-file-whitelist.extensions</code>列表当中。</para>
+                        </listitem>
+                        <listitem>
+                            <para>Upload服务可限制请求的总尺寸，大于该尺寸的请求会被全部忽略，以保证服务器的安全性 ——
+                                这意味着对于这类超大请求，你根本读不到这个请求中的所有参数，当然也不可能执行到表单验证的阶段。</para>
+                        </listitem>
+                        <listitem>
+                            <para>Upload服务可以限制每个上传文件的尺寸，大于指定尺寸的文件会被删除。但只要请求的总尺寸还是在许可范围内，那么除了被删文件以外，其它的参数和文件还是可以被取得的。因此，上传文件验证器的maxSize必须小于upload服务中设置的单个文件的最大尺寸才有意义。
+                            </para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>验证CSRF token</title>
+                <para>CSRF是跨站请求伪造（Cross-site request
+                    forgery）的意思，它是一种常见的WEB网站攻击方法。攻击者通过各种方法伪造一个请求，模仿用户提交表单的行为，从而达到修改用户的数据，或者执行特定任务的目的。为了假冒用户的身份，CSRF攻击常常和XSS攻击配合起来做，但也可以通过其它手段，例如诱使用户点击一个包含攻击的链接。</para>
+                <para>通过CSRF token，可以确保该请求确实是用户本人填写表单并提交的，而不是第三者伪造的，从而避免CSRF攻击。CSRF
+                    token验证器是用来确保表单中包含了CSRF token。</para>
+                <para>CSRF token的验证是每个表单都需要的安全功能，所以通常可利用group的继承功能来定义CSRF token验证器。</para>
+                <example>
+                    <title><code>&lt;csrf-validator></code>的配置</title>
+                    <programlisting language="xml">&lt;services:group name="csrfTokenCheckGroup">
+    &lt;services:field name="csrfToken">
+        &lt;csrf-validator>
+            &lt;message>您提交的表单已过期&lt;/message>
+        &lt;/csrf-validator>
+    &lt;/services:field>
+&lt;/services:group>
+
+&lt;services:group name="group1" extends="csrfTokenCheckGroup">
+    ...
+&lt;/services:group></programlisting>
+                </example>
+                <para>除了表单验证以外，实现CSRF验证还需要其它几个步骤：</para>
+                <itemizedlist>
+                    <listitem>
+                        <para>定义pull tool。</para>
+                        <example>
+                            <title>定义CSRF pull tool</title>
+                            <programlisting language="xml">&lt;services:pull xmlns="http://www.alibaba.com/schema/services/pull/factories">
+    ...
+    &lt;csrfToken /> <co xml:id="co.form.csrf.tokentool" />
+    ...
+&lt;/services:pull></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.form.csrf.tokentool">
+                                    <para>定义了pull tool以后，可以在模板中以<code>$csrfToken</code>来引用它。</para>
+                                </callout>
+                            </calloutlist>
+                        </example>
+                    </listitem>
+                    <listitem>
+                        <para>在每一个表单中创建一个保存着CSRF token的hidden字段。</para>
+                        <example>
+                            <title>在模板中插入包含CSRF token的hidden字段</title>
+                            <programlisting language="xml">&lt;form action="" method="post">
+  $csrfToken.hiddenField <co xml:id="co.form.csrf.hiddenfield" />
+  &lt;input type="hidden" name="action" value="LoginAction"/>
+  ...
+&lt;/form></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.form.csrf.hiddenfield">
+                                    <para>调用<code>$csrfToken.hiddenField</code>以后将创建一个包含CSRF long
+                                        live
+                                            token的hidden字段，等同于调用<code>$csrfToken.longLiveHiddenField</code>。</para>
+                                    <para>有两种CSRF token，你也可以用下面两种方法来创建它们：<itemizedlist>
+                                            <listitem>
+                                                <para>创建unique
+                                                  token：<code>$csrfToken.uniqueHiddenField</code>。这种类型的token不仅能防止CSRF攻击，还能防止重复提交表单。</para>
+                                            </listitem>
+                                            <listitem>
+                                                <para>创建long live
+                                                  token：<code>$csrfToken.longLiveHiddenField</code>。这种类型的token只能防止CSRF攻击，不能防止重复提交表单。</para>
+                                            </listitem>
+                                        </itemizedlist></para>
+                                </callout>
+                            </calloutlist>
+                        </example>
+                    </listitem>
+                    <listitem>
+                        <para>在pipeline中验证token。</para>
+                        <example>
+                            <title />
+                            <programlisting language="xml">&lt;services:pipeline xmlns="http://www.alibaba.com/schema/services/pipeline/valves">
+    ...
+    &lt;checkCsrfToken /> <co xml:id="co.form.csrf.valve" />
+    ...
+&lt;/services:pipeline></programlisting>
+                            <calloutlist>
+                                <callout arearefs="co.form.csrf.valve">
+                                    <para>此处可以指定一个<code>tokenKey</code>参数。如果不指定，将使用默认的token
+                                            key：<code>_csrf_token</code>。</para>
+                                </callout>
+                            </calloutlist>
+                        </example>
+                    </listitem>
+                    <listitem>
+                        <para>在表单验证中指定<code>postOnly=true</code>（默认值），有助于提高CSRF攻击的难度。</para>
+                        <example>
+                            <title>配置Post Only参数</title>
+                            <programlisting language="xml">&lt;services:form postOnlyByDefault="true">
+&lt;/services:form></programlisting>
+                        </example>
+                    </listitem>
+                </itemizedlist>
+            </section>
+            <section>
+                <title>Custom Error – 由action来验证数据</title>
+                <para>有一些情况下，由validator来验证数据并不方便。例如，当我们注册帐户时，即便用户名的格式完全正确（由字母和数字构成，并在指定的字数范围之内），也有可能注册不成功的。原因是当前用户名已经被其它用户注册使用了。而判断用户名是否可用，最简单的办法是在action中通过访问数据库来确定。</para>
+                <para>Custom Error“验证器”就是用来满足这个需求。</para>
+                <example>
+                    <title>&lt;custom-error>的配置</title>
+                    <programlisting language="xml">&lt;services:group name="register">
+    &lt;services:field name="userId" displayName="登录名">
+        &lt;required-validator>
+            &lt;message>必须填写 ${displayName}&lt;/message>
+        &lt;/required-validator>
+        &lt;regexp-validator pattern="^[A-Za-z_][A-Za-z_0-9]*$">
+            &lt;message>${displayName} 必须由字母、数字、下划线构成&lt;/message>
+        &lt;/regexp-validator>
+        &lt;string-length-validator minLength="4" maxLength="10">
+            &lt;message>${displayName} 最少必须由${minLength}个字组成，最多不能超过${maxLength}个字&lt;/message>
+        &lt;/string-length-validator>
+        &lt;custom-error id="duplicatedUserId"> <co xml:id="co.form.customerr" />
+            &lt;message>登录名“${userId}”已经被人注掉了，请尝试另一个名字&lt;/message>
+        &lt;/custom-error>
+    &lt;/services:field>
+    ...
+&lt;/services:group></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.customerr">
+                            <para>Custom Error“验证器”不做任何验证 —— 它把验证的责任交给action来做。但是除此以外，它和其它验证器完全相同 ——
+                                你可以设置message，甚至可以用message
+                                source来实现国际化的错误提示。你不需要把错误提示写在代码中，或者启用另一种错误提示方案。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>对于custom error，需要在action中有相应的支持，否则不会自动生效：</para>
+                <example>
+                    <title>用来生成custom error的action代码</title>
+                    <programlisting language="java">public void doRegister(@FormField(name = "userId", group = "register") CustomErrors err, <co xml:id="co.form.customerr.inject" />
+                           ...) throws Exception {
+    try {
+        ...
+    } catch (DuplicatedUserException e) {
+        Map&lt;String, Object> params = createHashMap();
+        params.put("userId", user.getUserId());
+
+        err.setMessage("duplicatedUserId", params); <co xml:id="co.form.customerr.setmsg" />
+    }
+}</programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.customerr.inject">
+                            <para>注入<code>CustomErrors</code>接口。和注入Field的方法相同，通过<code>@FormField</code>注解指明<code>CustomErrors</code>所在的
+                                group名称以及field名称。</para>
+                        </callout>
+                        <callout arearefs="co.form.customerr.setmsg">
+                            <para>调用<code>CustomeErrors.setMessage()</code>方法。其中，“<code>duplicatedUserId</code>”就是配置文件中<code>&lt;custom-error></code>的<code>id</code>。</para>
+                            <para>第二个参数<code>params</code>是可选的。它是一个<code>Map</code>，其中的所有值，都可以在<code>&lt;custom-error></code>的<code>message</code>中访问到。例如，这里指定的<code>userId</code>参数值，就可以被<code>message</code>表达式<code>${userId}</code>所访问。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+            <section>
+                <title>条件验证</title>
+                <para>条件验证就是让某些validator仅在条件满足时才验证。条件验证有两种，单分支和多分支验证。</para>
+                <example>
+                    <title>单分支条件验证</title>
+                    <programlisting language="xml">&lt;services:field name="other" displayName="其它建议">
+    &lt;if test="commentCode.value == 'other'">
+        &lt;required-validator>
+            &lt;message>必须填写 ${displayName}&lt;/message>
+        &lt;/required-validator>
+    &lt;/if>
+&lt;/services:field></programlisting>
+                </example>
+                <example>
+                    <title>多分支条件验证</title>
+                    <programlisting language="xml">&lt;services:field name="field1" displayName="我的字段">
+    &lt;choose>
+        &lt;when test="expr1">
+            &lt;validator />
+        &lt;/when>
+        &lt;when test="expr2">
+            &lt;validator />
+            &lt;validator />
+        &lt;/when>
+        &lt;otherwise>
+            &lt;validator />
+        &lt;/otherwise>
+    &lt;/choose>
+&lt;/services:field></programlisting>
+                </example>
+                <para>在上面的配置示例中，<code>&lt;if></code>和<code>&lt;when></code>都支持的<code>test</code>参数，其内容为JEXL表达式。其格式详见：<link
+                        xl:href="http://commons.apache.org/jexl/reference/syntax.html"
+                     />。JEXL表达式中可用的变量同Validator messages中可用的变量，请参见：<xref
+                        linkend="webx.form.validator.messages" />。 除此之外，条件分支还支持任意自定义的条件，方法是： </para>
+                <example>
+                    <title>在条件验证中自定义条件</title>
+                    <programlisting language="xml">&lt;if xmlns:fm-conditions="http://www.alibaba.com/schema/services/form/conditions">
+    &lt;fm-conditions:condition class="xxx" /> <co xml:id="co.form.conditional.if" />
+&lt;/if>
+...
+&lt;when xmlns:fm-conditions="http://www.alibaba.com/schema/services/form/conditions">
+    &lt;fm-conditions:condition class="xxx" /> <co xml:id="co.form.conditional.when" />
+&lt;/when></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.form.conditional.if co.form.conditional.when">
+                            <para>实现类只需要实现<code>Condition</code>接口就可以了。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+            <section>
+                <title>多值验证</title>
+                <para>HTML表单字段均支持多值。比如：</para>
+                <example>
+                    <title>具有多值的HTML表单字段</title>
+                    <programlisting language="xml">&lt;p>你喜欢吃哪些食物？&lt;/p>
+&lt;input type="checkbox" name="poll" value="italian" /> 意大利菜
+&lt;input type="checkbox" name="poll" value="french" /> 法国菜
+&lt;input type="checkbox" name="poll" value="chinese" /> 中国菜</programlisting>
+                    <para>当用户选择了多个复选框并提交以后，在表单系统中体现为数组：</para>
+                    <programlisting language="java">field.getName();   // "poll"
+field.getValues(); // "italian", "french", "chinese"</programlisting>
+                </example>
+                <para>不仅仅是复选框，任何其它类型的输入框（textbox、hidden field、file
+                    upload等）都支持多值。然而前面所说的所有validator只对field中的第一个值进行验证。假如我希望对多个值同时进行验证，该怎么办呢？表单验证服务提供了一组用于多值验证的validators。</para>
+                <section>
+                    <title>验证值的数量</title>
+                    <example>
+                        <title><code>&lt;multi-values-count-validator></code>的配置</title>
+                        <programlisting language="xml">&lt;services:field name="poll" displayName="调查">
+    &lt;multi-values-count-validator minCount="1" maxCount="3"> <co xml:id="co.form.mvalues.count" />
+        &lt;message>至少选择${minCount}项，最多选择${maxCount}项&lt;/message>
+    &lt;/multi-values-count-validator>
+&lt;/services:field></programlisting>
+                        <calloutlist>
+                            <callout arearefs="co.form.mvalues.count">
+                                <para>对用户提交的值的数量进行验证，迫使用户选择1-3项他喜欢的食物。</para>
+                            </callout>
+                        </calloutlist>
+                    </example>
+                </section>
+                <section>
+                    <title>要求所有值均通过验证</title>
+                    <example>
+                        <title><code>&lt;all-of-values></code>的配置</title>
+                        <programlisting language="xml">&lt;all-of-values>
+    &lt;message>${allMessages}&lt;/message>
+    &lt;validator />
+    &lt;validator />
+&lt;/all-of-values></programlisting>
+                    </example>
+                    <para>只有当前字段的所有值都符合要求，<code>&lt;all-of-values></code>验证才会通过。其<code>message</code>支持<code>${allMessages}</code>，它是一个<code>List</code>列表，可以用来显示所有未通过验证的validators的消息。</para>
+                </section>
+                <section>
+                    <title>要求任意一个值通过验证</title>
+                    <example>
+                        <title><code>&lt;any-of-values></code>的配置</title>
+                        <programlisting language="xml">&lt;any-of-values>
+    &lt;message>至少有一个${displayName}要符合要求&lt;/message>
+    &lt;validator />
+    &lt;validator />
+&lt;/any-of-values></programlisting>
+                    </example>
+                    <para>只要当前字段有一个值通过验证，<code>&lt;any-of-values></code>验证就会通过。其<code>message</code>支持<code>${valueIndex}</code>代表被验证通过的值的序号；支持<code>${allMessages}</code>，它是一个<code>List</code>列表，可以用来显示所有未通过验证的validators的消息。</para>
+                </section>
+                <section>
+                    <title>要求任意一个值都不通过验证</title>
+                    <example>
+                        <title><code>&lt;none-of-values></code>的配置</title>
+                        <programlisting language="xml">&lt;none-of-values>
+    &lt;message>所有${displayName}都不能符合要求&lt;/message>
+    &lt;validator />
+    &lt;validator />
+&lt;/none-of-values></programlisting>
+                    </example>
+                    <para>只要当前字段有一个值通过验证，<code>&lt;none-of-values></code>验证就会失败。</para>
+                </section>
+            </section>
+            <section>
+                <title>组合验证</title>
+                <para>组合验证就是将validators组合起来，类似于Java中的and（<code>&amp;&amp;</code>）、or（<code>||</code>）、not（<code>!</code>）等操作符的功能。</para>
+                <section>
+                    <title>要求所有validators通过验证</title>
+                    <example>
+                        <title><code>&lt;all-of></code>的配置</title>
+                        <programlisting language="xml">&lt;all-of>
+    &lt;validator />
+    &lt;validator />
+&lt;/all-of></programlisting>
+                    </example>
+                    <para>只要有一个validator通不过验证，就失败。<code>&lt;all-of></code>不需要设置<code>message</code>，它的<code>message</code>就是第一个没有通过验证的validator的<code>message</code>。</para>
+                </section>
+                <section>
+                    <title>要求任意一个validators通过验证</title>
+                    <example>
+                        <title><code>&lt;any-of></code>的配置</title>
+                        <programlisting language="xml">&lt;any-of>
+    &lt;message>${allMessages}&lt;/message>
+    &lt;validator />
+    &lt;validator />
+&lt;/any-of></programlisting>
+                    </example>
+                    <para>只要有一个validator通过验证，<code>&lt;any-of></code>验证就会通过。其<code>message</code>支持<code>${allMessages}</code>，它是一个<code>List</code>列表，可以用来可以用来显示所有未通过验证的validators的消息。</para>
+                </section>
+                <section>
+                    <title>要求任何一个validators都通不过验证</title>
+                    <example>
+                        <title><code>&lt;none-of></code>的配置</title>
+                        <programlisting language="xml">&lt;none-of>
+    &lt;message>${displayName}不符合要求&lt;/message>
+    &lt;validator />
+    &lt;validator />
+&lt;/none-of></programlisting>
+                    </example>
+                    <para>只要有一个validator通过验证，<code>&lt;none-of></code>验证就会失败。</para>
+                </section>
+            </section>
+        </section>
+        <section>
+            <title>Form Tool</title>
+            <para>Form Tool是一个pull tool工具，配置如下：</para>
+            <example>
+                <title>Form Tool的配置</title>
+                <programlisting>&lt;services:pull xmlns="http://www.alibaba.com/schema/services/pull/factories">
+    &lt;form-tool />
+    ...
+&lt;/services:pull></programlisting>
+            </example>
+            <para>上面的配置定义了一个<code>$form</code>工具。可以在模板中直接使用它。下页简单介绍在模板中，<code>$form</code>工具的用法。</para>
+            <section>
+                <title>Form API</title>
+                <table frame="none">
+                    <title>有关Form的API</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.39*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>API用法</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>#if ($form.valid) ... #end</code></entry>
+                                <entry>判断当前form是否验证为合法，或者未经过验证。</entry>
+                            </row>
+                            <row>
+                                <entry><code>#set ($group =
+                                    $form.group1.defaultInstance)</code></entry>
+                                <entry>取得<code>group1</code>的默认实例，如果不存在，则创建之。</entry>
+                            </row>
+                            <row>
+                                <entry><code>#set ($group =
+                                    $form.group1.getInstance("id"))</code></entry>
+                                <entry>取得<code>group1</code>的指定<code>id</code>的实例，如果不存在，则创建之。</entry>
+                            </row>
+                            <row>
+                                <entry><code>#set ($group = $form.group1.getInstance("id",
+                                        false))</code></entry>
+                                <entry>取得<code>group1</code>的指定<code>id</code>的实例，如果不存在，则返回<code>null</code>。</entry>
+                            </row>
+                            <row>
+                                <entry><code>#foreach ($group in $form.groups) ...
+                                    #end</code></entry>
+                                <entry>遍历当前form中所有group实例。</entry>
+                            </row>
+                            <row>
+                                <entry><code>#foreach ($group in $form.getGroups("group1")) …
+                                        #end</code></entry>
+                                <entry>遍历当前form中所有名为<code>group1</code>的实例。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>Group API</title>
+                <table frame="none">
+                    <title>有关Group的API</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.39*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>API用法</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>#if ($group.valid) … #end</code></entry>
+                                <entry>判断当前group是否验证为合法，或者未经过验证（即初始表单）</entry>
+                            </row>
+                            <row>
+                                <entry><code>#if ($group.validated) ... #end</code></entry>
+                                <entry>判断当前group是否经过验证（初始表单为未经过验证的表单） </entry>
+                            </row>
+                            <row>
+                                <entry><code>$group.field1</code></entry>
+                                <entry>取得field1</entry>
+                            </row>
+                            <row>
+                                <entry><code>#foreach ($field in $group.fields) ...
+                                    #end</code></entry>
+                                <entry>遍历当前group中所有的fields</entry>
+                            </row>
+                            <row>
+                                <entry><code>$group.mapTo($bean)</code></entry>
+                                <entry>将bean中的properties设置成group的初始值。
+                                    该操作只对初始表单有效。如果bean为null则忽略该操作。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>Field API</title>
+                <variablelist>
+                    <varlistentry>
+                        <term>创建一个HTML表单字段</term>
+                        <listitem>
+                            <example>
+                                <title>创建一个HTML表单字段</title>
+                                <programlisting language="xml">$field.displayName
+&lt;input type="text" name="$field.key" value="$!field.value" /></programlisting>
+                            </example>
+                            <para>其中，<code>displayName</code>来自于配置文件。将<code>displayName</code>显示在页面中的好处是，确保页面与出错信息的措辞一致。</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>判断验证合法性，并显示错误消息</term>
+                        <listitem>
+                            <example>
+                                <title>判断验证合法性，并显示错误消息</title>
+                                <programlisting language="xml">#if (!$field.valid)
+  &lt;div class="error">$field.message&lt;/div>
+#end</programlisting>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>取得多值</term>
+                        <listitem>
+                            <example>
+                                <title>取得多值</title>
+                                <programlisting language="xml">#foreach ($value in $field.values) ... #end</programlisting>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>创建checkbox和radiobox的默认值</term>
+                        <listitem>
+                            <example>
+                                <title>创建checkbox和radiobox的默认值</title>
+                                <programlisting language="xml">&lt;input type="hidden" name="$field.absentKey" value="$value" /></programlisting>
+                                <para>或者简化为：</para>
+                                <programlisting language="xml">$field.getAbsentHiddenField($value)</programlisting>
+                            </example>
+                            <para>Checkbox和radiobox有一个特性，当用户没有选中它们时，它们是没有值的（就像不存在一样）。这点对于表单验证会带来不便。</para>
+                            <para>表单服务支持一种特殊的<code>absentKey</code>。通过它，可以为checkbox/radiobox设置默认值。这样，当用户没有选中任何checkbox或radiobox时，这个值就成为field的值。</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>创建附件</term>
+                        <listitem>
+                            <para>Field可以带一个附件。附件是一个对象，被序列化保存在hidden字段中。在下一次请求的时候，附件可以被恢复成对象。通过附件，可以让应用程序在表单中携带一些附加信息。
+                                    下页的代码会生成一个hidden字段，将<code>$obj</code>序列化保存在其中： </para>
+                            <example>
+                                <title>创建附件</title>
+                                <programlisting language="xml">$field.setAttachment($obj)
+$field.attachmentHiddenField</programlisting>
+                                <para>当你要取得它时，只要这样：</para>
+                                <programlisting language="xml">#set ($obj = $field.attachment)</programlisting>
+                                <para>判断是否有附件：</para>
+                                <programlisting language="xml">#if ($field.hasAttachment()) … #end</programlisting>
+                                <para>清除附件：</para>
+                                <programlisting language="xml">$field.cleanAttachment()</programlisting>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+            </section>
+        </section>
+        <section>
+            <title>外部验证</title>
+            <para>表单验证服务是被设计成在一个应用的内部使用的。它所生成的field
+                key（像这个样子：“<code>_fm.r._0.p</code>”）是不稳定的，可能随着配置的变化而变化。所以外界系统不可依赖于这些内部的keys。</para>
+            <para>如果真的需要让外部来提交并验证表单，可以做一个screen来转发这个请求。Screen的代码像这个样子：</para>
+            <example>
+                <title>转发外部表单请求</title>
+                <programlisting language="java">public class RemoteRegister {
+    public void execute(ParameterParser params, Form form, Navigator nav) throws Exception {
+        Group group = form.getGroup("register"); <co xml:id="co.form.external.newgroup" />
+
+        group.init(); <co xml:id="co.form.external.transfer" />
+        group.getField("userId").setValue(params.getString("userId")); <co xml:id="co.form.external.transfer1" />
+        group.getField("password").setValue(params.getString("password")); <co xml:id="co.form.external.transfer2" />
+        group.getField("passwordConfirm").setValue(params.getString("password")); <co xml:id="co.form.external.transfer3" />
+        group.validate(); <co xml:id="co.form.external.validate" />
+
+        nav.forwardTo("register")
+            .withParameter("action", "registerAction")
+            .withParameter("eventSubmitDoRegister", "yes"); <co xml:id="co.form.external.forward" />
+    }
+}</programlisting>
+                <calloutlist>
+                    <callout arearefs="co.form.external.newgroup">
+                        <para>创建register group的实例。</para>
+                    </callout>
+                    <callout
+                        arearefs="co.form.external.transfer co.form.external.transfer1 co.form.external.transfer2 co.form.external.transfer3">
+                        <para>将request parameters中的参数设置到form
+                            group中。需要注意的是，request参数名和field名称不必相同。</para>
+                    </callout>
+                    <callout arearefs="co.form.external.validate">
+                        <para>验证表单。</para>
+                    </callout>
+                    <callout arearefs="co.form.external.forward">
+                        <para>内部重定向到register页面，并指明action参数。</para>
+                    </callout>
+                </calloutlist>
+                <para>只需要访问下面的URL就可以实现从系统外部注册帐户的功能：</para>
+                <screen>http://localhost:8081/myapp/remote_register.do?userId=xxx&amp;password=yyy</screen>
+            </example>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>表单服务是一个比较复杂但也相当强大的服务。虽然目前它还不支持客户端验证和服务端异步验证功能，但下一步会加上这些功能。</para>
+        <para>表单服务最重要的设计思想是：将验证规则与页面以及业务逻辑完全分离，使验证规则的扩展和维护变得非常容易。</para>
+    </section>
+</chapter>

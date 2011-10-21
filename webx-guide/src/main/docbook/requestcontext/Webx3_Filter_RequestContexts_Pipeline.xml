@@ -1,0 +1,1124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.filter.requestcontexts.pipeline" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="filter.html" ?>
+    <title>Filter、Request Contexts和Pipeline</title>
+    <para>Filter是Servlet规范2.3版及更新版所支持的一种机制。和Servlet/JSP不同，Filter自己往往不会直接产生response，相反，它提供了一种“符加”的功能，可以作用在任何一个servlet、JSP以及其它filter之上。然而，在实际的应用中，我们发现filter有很多不足之处。</para>
+    <para>Webx框架提供了两种机制（Request
+        Contexts和Pipeline）来作为filter机制的补充。在大多数情况下，它们都可以实现类似filter的功能，但比filter更容易扩展、更容易配置、也更轻量。Webx并没有打算完全替代filter，相反它还是可以和任何filter搭配使用。</para>
+    <para>本章先简略介绍filter的功能和不足，再向你介绍Request Contexts和Pipeline的工作原理，及使用方法。</para>
+    <section>
+        <title>Filter</title>
+        <section>
+            <title>Filter的用途</title>
+            <para>Filter这种机制常被用来实现下面的功能：<informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="4.26*" />
+                        <tbody>
+                            <row>
+                                <entry>页面授权</entry>
+                                <entry>根据登录用户的权限，阻止或许可用户访问特定的页面。</entry>
+                            </row>
+                            <row>
+                                <entry>日志和审计</entry>
+                                <entry>记录和检查用户访问WEB应用的情况。</entry>
+                            </row>
+                            <row>
+                                <entry>图片转换</entry>
+                                <entry>改变图片的格式、精度、尺寸等。</entry>
+                            </row>
+                            <row>
+                                <entry>页面压缩</entry>
+                                <entry>压缩页面内容，加快下载速度。</entry>
+                            </row>
+                            <row>
+                                <entry>本地化</entry>
+                                <entry>显示本地语言和风格的页面。</entry>
+                            </row>
+                            <row>
+                                <entry>XSLT转换</entry>
+                                <entry>对XML内容进行XSLT转换，使之适用于多种客户端。</entry>
+                            </row>
+                            <row>
+                                <entry>高速缓存</entry>
+                                <entry>高速缓存页面，提高响应速度。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable></para>
+            <para>当然还有更多种的应用，我们不可能一一列举。</para>
+            <para>Filter的通用性很好。任何filter均独立于其它filter和servlet，因此它可以和任意其它filter和servlet组合搭配。下面是一段配置示例
+                ── 通过<code>SetLoggingContextFilter</code>，日志系统可以记录当前请求的信息，例如：URL、referrer URL、query
+                string等。</para>
+            <example>
+                <title>Filter配置示例（<filename>/WEB-INF/web.xml</filename>）</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://java.sun.com/xml/ns/j2ee  http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd
+    ">
+    &lt;filter>
+        &lt;filter-name>mdc&lt;/filter-name>
+        &lt;filter-class>com.alibaba.citrus.webx.servlet.SetLoggingContextFilter&lt;/filter-class>
+    &lt;/filter>
+    &lt;filter-mapping>
+        &lt;filter-name>mdc&lt;/filter-name>
+        &lt;url-pattern>/*&lt;/url-pattern>
+    &lt;/filter-mapping>
+    ...
+&lt;/web-app></programlisting>
+            </example>
+        </section>
+        <section>
+            <title>Filter工作原理</title>
+            <figure>
+                <title>Filter Chain</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/filter/filter-chain.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示。多个filter和至多一个servlet被串联成一个链，被称为Filter
+                    Chain。执行的时候，引擎将控制权交给链条中的头一个filter（如果有的话）。然后，就像<emphasis>击鼓传花</emphasis>一样，控制权被依次传递给filter chain中的下一个filter或servlet。每一个得到控制权的filter可以做下面的事：<itemizedlist>
+                    <listitem>
+                        <para>继续传递控制权或立即终止filter chain。<itemizedlist>
+                                <listitem>
+                                    <para>Filter可将控制权传递给链条中的下一个filter或者最终的servlet。</para>
+                                </listitem>
+                                <listitem>
+                                    <para>Filter也可以不将控制权传递给下一个filter或servlet，这样便中止了整个filter
+                                        chain的执行。</para>
+                                </listitem>
+                            </itemizedlist></para>
+                    </listitem>
+                    <listitem>
+                        <para>预处理。在传递控制权给下一个filter或servlet之前，filter可以预先做一些事情：<itemizedlist>
+                                <listitem>
+                                    <para>设置request、response中的参数，例如：character encoding、content
+                                        type等。</para>
+                                </listitem>
+                                <listitem>
+                                    <para>将<code>HttpServletRequestWrapper</code>传递给链条中的下一位，filter可以通过wrapper改变request中的任意值。</para>
+                                </listitem>
+                                <listitem>
+                                    <para>将<code>HttpServletResponseWrapper</code>传递给链条中的下一位，filter可以通过wrapper来拦截后续filter或servlet对response的修改。</para>
+                                </listitem>
+                            </itemizedlist></para>
+                    </listitem>
+                    <listitem>
+                        <para>提交。在控制权从filter chain中返回以后，filter还可以做一些后续提交的操作。<itemizedlist>
+                                <listitem>
+                                    <para>例如，将response中拦截而来的数据，压缩或转换格式，并发送给客户端或filter
+                                        chain的上一级。</para>
+                                </listitem>
+                                <listitem>
+                                    <para>通过<code>try</code>、<code>catch</code>还可以捕获filter
+                                        chain下一级所有的异常，并做处理。 </para>
+                                </listitem>
+                            </itemizedlist></para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>Filter的限制</title>
+            <para>Filter是很有用的。作为servlet的补充，filter也是很成功的。但是filter并没有被设计用来完成一切事情。事实上，filter的设计限制了filter的用途。每个filter具有下面的限制：<itemizedlist>
+                    <listitem>
+                        <para>Filter可以访问和修改数据。但它只能访问和修改<code>HttpServletRequest</code>、<code>HttpServletResponse</code>、<code>ServletContext</code>等容器级的对象，而不能（或很难）访问应用程序中的状态。所以filter无法实现和应用逻辑密切相关的功能。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Filter可以影响执行流程。但它不能改变filter chain的结构和顺序。Filter
+                                chain的结构和顺序是由<filename>web.xml</filename>中定义的。当filter得到控制权以后，它只能选择继续下去，或者立即结束，而没法进行循环、分支、条件判断等更复杂的控制。因此，filter只能用来实现粗粒度的流程控制功能（例如，当用户未获授权时，停止执行filter
+                            chain），难以应付更细致的应用程序内的控制需求。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Filter与其它filter和servlet之间，除了request和response对象以外，无法共享其它的状态。这既是优点又是缺点。优点是使filter更独立、更通用；缺点是filter与其它filter、servlet之间难以协作，有时甚至会引起无谓的性能损失。</para>
+                    </listitem>
+                </itemizedlist>
+            </para>
+        </section>
+        <section>
+            <title>Webx对filter功能的补充</title>
+            <para>综上所述，一个filter常常做的两件事是：<itemizedlist>
+                    <listitem>
+                        <para>改变request/response对象（通过<code>HttpServletRequestWrapper</code>和<code>HttpServletResponseWrapper</code>）；</para>
+                    </listitem>
+                    <listitem>
+                        <para>改变应用执行的流程。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>其实，大部分filter只做其中一件事。例如：<itemizedlist>
+                    <listitem>
+                        <para>页面压缩filter仅仅改变response，并不改变应用的流程。</para>
+                    </listitem>
+                    <listitem>
+                        <para>页面授权filter根据当前请求用户的身份，判定他是否有权限访问当前页面。这个filter会影响应用流程，却不会去改变request和response。
+                        </para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>当然也有例外。有一些filter不做上面两件事中任何一件。例如，日志filter仅仅读取request对象并记录日志而已，既不改变request/response，也不影响应用的流程。还有一些filter同时做上面两件事。比如高速缓存页面的filter不仅要修改response，而且当cache被命中时，不再执行下一步的流程，而是直接返回cache中的内容，以提高性能。</para>
+            <para>Webx框架提供了两个服务，正好吻合了上述两个最常用的filter的功能。<informaltable>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.17*" />
+                        <tbody>
+                            <row>
+                                <entry>Request Contexts服务</entry>
+                                <entry>该服务负责访问和修改request和response，但不负责改变应用执行的流程。</entry>
+                            </row>
+                            <row>
+                                <entry>Pipeline服务</entry>
+                                <entry>提供应用执行的流程，但不关心request和response。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable></para>
+            <para>虽然这两个服务看起来和filter的功能类似，但是它们远比filter要强大和方便 ── 它们克服了上述filter的几个限制：<itemizedlist>
+                    <listitem>
+                        <para>和Filter不同，Request Contexts和Pipeline服务可以访问应用内部的状态和资源，效率更高，功能更强。</para>
+                    </listitem>
+                    <listitem>
+                        <para>和Filter不同，Pipeline服务可以定义灵活（但仍然简单）地控制应用的流程
+                            。Pipeline不仅可以控制流程的中断或继续，还可以实现子流程、循环、条件转移、异常处理等更精细的流程控制。Pipeline服务甚至可以运用在非WEB的环境中。</para>
+                    </listitem>
+                    <listitem>
+                        <para>和Filter不同，Request Contexts服务中的每一个环节（Request
+                            Context）之间并非完全独立、互不干涉的。每个request context可以访问它所依赖的其它request
+                            context中的状态。</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+    </section>
+    <section>
+        <title>Request Contexts服务</title>
+        <section>
+            <title>Request Contexts工作原理</title>
+            <para>Request Context，顾名思义，就是一个请求的上下文。事实上，你可以把Request
+                    Context看作是<code>HttpServletRequest</code>和<code>HttpServletResponse</code>这两个对象的总和。除此之外，多个Request
+                Context可以被串接起来，被称为Request Context Chain，类似于filter chain。</para>
+            <figure>
+                <title>Request Context Chain</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/filter/request-context-chain.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如上图所示，每一个Request Context都可以包括两个基本的操作：“预处理”和“提交”。<itemizedlist>
+                    <listitem>
+                        <para>在一个请求开始的时候，每个Request Context的“预处理”过程被依次调用。最内层的（即最先的）Request
+                            Context最先被调用，最外层的（即最后的）Request Context最后被调用；</para>
+                    </listitem>
+                    <listitem>
+                        <para>在一个请求结束的时候，每个Request Context的“提交”过程被依次调用。和“预处理”的顺序相反，最外层的（即最后的）Request
+                            Context最先被调用，最内层的（即最先的）Request Context最后被调用。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>Request
+                    Context在预处理的时候，可以利用<code>HttpServletRequestWrapper</code>和<code>HttpServletResponseWrapper</code>来包装和修改request和response
+                ── 这一点和filter相同。每一层Request Context，都会增加一个新的特性。最先的Request Context成为最内层的包装，最后的Request
+                Context成为最外层的包装。如下图所示。</para>
+            <figure>
+                <title>Request Contexts的嵌套</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/filter/request-contexts.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>和filter原理中的图进行对比，你会发现，尽管Request Contexts和Filter的执行方案有明显的不同，但是Request
+                Contexts预处理和提交的顺序是和filter
+                chain完全一致的。预处理时，由内层执行到外层；提交时，反过来由外层执行到内层。不同的是，filter能够决定是否继续传递控制权给filter
+                chain中的下一位，而Request Context则没有这个权利。</para>
+        </section>
+        <section>
+            <title>Request Contexts的用途</title>
+            <para>Webx目前提供了以下几种request context的实现，每个都有独特的功能。</para>
+            <table frame="none">
+                <title>Request Contexts的功能</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.17*" />
+                    <thead>
+                        <row>
+                            <entry>名称</entry>
+                            <entry>功能</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>&lt;basic></code></entry>
+                            <entry>提供基础安全特性，例如：过滤response headers、cookies，限制cookie的大小等。</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;buffered></code></entry>
+                            <entry>缓存response中的内容。</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;lazy-commit></code></entry>
+                            <entry>延迟提交response。</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;parser></code></entry>
+                            <entry>解析参数，支持multipart/form-data（即上传文件请求）。</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;rewrite></code></entry>
+                            <entry>重写请求的URL和参数。</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;session></code></entry>
+                            <entry>一套可扩展的session框架，重新实现了HttpSession接口。</entry>
+                        </row>
+                        <row>
+                            <entry><code>&lt;set-locale></code></entry>
+                            <entry>设置locale区域和charset字符集编码。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <note>
+                <para>本章对以上所有的request contexts的功能和用法不作具体的介绍，详情请参阅<xref
+                        xl:href="#webx.requestcontexts" />和<xref
+                        xl:href="#webx.requestcontext.session" />。</para>
+            </note>
+            <para>需要特别指出的是，你还可以扩展出更多的Request Context，以实现新的功能。</para>
+        </section>
+        <section>
+            <title>Request Contexts的使用</title>
+            <section>
+                <title>配置</title>
+                <para>除了下面例子所示的一段配置之外，你不需要做太多的事，就可以使用Request Contexts。因为Request Contexts对于应用来说是透明的
+                    ──
+                    多数应用只需要依赖于<code>HttpServletRequest</code>和<code>HttpServletResponse</code>就可以了。</para>
+                <example>
+                    <title>Request Context的配置（<filename>/WEB-INF/webx.xml</filename>）</title>
+                    <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8" ?>
+&lt;beans:beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://www.alibaba.com/schema/services"
+    xmlns:request-contexts="http://www.alibaba.com/schema/services/request-contexts"
+    xmlns:beans="http://www.springframework.org/schema/beans"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="
+        http://www.alibaba.com/schema/services
+                http://localhost:8080/schema/services.xsd
+        http://www.alibaba.com/schema/services/request-contexts
+                http://localhost:8080/schema/services-request-contexts.xsd
+        http://www.springframework.org/schema/beans
+                http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd
+    ">
+    ...
+
+    &lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+        &lt;basic />
+        &lt;buffered />
+        &lt;lazy-commit />
+        &lt;parser />
+        &lt;set-locale defaultLocale="zh_CN" defaultCharset="UTF-8" />
+        &lt;!-- Optional -
+        &lt;session />
+        &lt;rewrite />
+        -->
+    &lt;/services:request-contexts>
+
+    &lt;services:upload sizeMax="5M" />
+
+&lt;/beans:beans></programlisting>
+                </example>
+                <para>由于使用了SpringExt的schema机制，所以在支持schema的XML编辑器的帮助下，很容易书写和验证Request
+                    Contexts的配置。</para>
+            </section>
+            <section>
+                <title>排序</title>
+                <para>Request Contexts之间，有时会有依赖关系，所以Request Contexts出现的先后顺序是非常重要的。例如，<itemizedlist>
+                        <listitem>
+                            <para><code>&lt;session></code>提供了基于cookie的session支持。然而cookie属于response
+                                    header。一旦response被提交，header就无法再修改了。因此<code>&lt;session></code>依赖于<code>&lt;lazy-commit></code>，以阻止response过早提交。也就是说，<code>&lt;lazy-commit></code>必须排在<code>&lt;session></code>之前。</para>
+                        </listitem>
+                        <listitem>
+                            <para><code>&lt;rewrite></code>需要访问参数，而参数是能过<code>&lt;parser></code>解析的，所以<code>&lt;parser></code>要排在<code>&lt;rewrite></code>之前。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>类似的约束还有很多。如果把Request
+                    Contexts的顺序排错，可能会导致某项功能错误或失效。然而，对于一般的应用开发者而言，这些约束往往是神秘的、并非显而易见的，需要经过细致地分析才能了解它们。</para>
+                <para>好在Request Contexts内部提供了一个机制，可以根据预定义的约束条件，对所有的Request
+                    Contexts进行自动排序。和Filter不同，应用开发者不需要在意Request Contexts在配置文件中的排列顺序，就可以保证所有的Request
+                    Contexts能够正常工作。下面的两种配置文件是等效的：</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <example>
+                                        <title>Request Contexts等效配置1</title>
+                                        <programlisting language="xml">&lt;services:request-contexts>
+    &lt;basic />
+    &lt;buffered />
+    &lt;lazy-commit />
+    &lt;parser />
+    &lt;set-locale />
+    &lt;session />
+    &lt;rewrite />
+&lt;/services:request-contexts></programlisting>
+                                    </example>
+                                </entry>
+                                <entry>
+                                    <example>
+                                        <title>Request Contexts等效配置2</title>
+                                        <programlisting language="xml">&lt;services:request-contexts>
+    &lt;rewrite />
+    &lt;session />
+    &lt;set-locale />
+    &lt;parser />
+    &lt;lazy-commit />
+    &lt;buffered />
+    &lt;basic />
+&lt;/services:request-contexts></programlisting>
+                                    </example>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </section>
+            <section>
+                <title>访问特定的Request Context</title>
+                <para>一般来说，Request Contexts对于应用程序是透明的 ── 也就是说，应用程序最多只需要访问Servlet
+                        API中的接口：<code>HttpServletRequest</code>和<code>HttpServletResponse</code>即可，就好像Request
+                    Contexts不存在一样。</para>
+                <para>比如，Request Context
+                        <code>&lt;parser></code>能够解析<code>multipart/form-data</code>类型的请求（即上传图片请求）。但你不需要用另一个API来访问请求中的普通数据，你只需要用<code>HttpServletRequest</code>中定义的方法就可以访问，仿佛这是一个普通的请求：</para>
+                <example>
+                    <title>访问任意类型的请求中的参数</title>
+                    <programlisting language="java">String value = request.getParameter("myparam");</programlisting>
+                </example>
+                <para>再比如，Request Context
+                    <code>&lt;session></code>重新实现了<code>HttpSession</code>的接口，但是应用程序并不需要关心这些，他们还是和原来一样访问session：</para>
+                <example>
+                    <title>访问session</title>
+                    <programlisting language="java">HttpSession session = request.getSession();
+
+String value = (String) session.getAttribute("myattr");
+session.setAttribute("myattr", newValue);</programlisting>
+                </example>
+                <para>然而，有一些功能在原有的Servlet
+                    API中是不存在的。对于这一类功能，你必须访问特定的<code>RequestContext</code>接口，才能使用它们。例如，你只能用另一个API才能读取用户上传的文件。下面的代码可以用来取得上传文件的信息：</para>
+                <example>
+                    <title>访问特定的<code>RequestContext</code>接口</title>
+                    <programlisting language="java">ParserRequestContext parserRequestContext =
+                RequestContextUtil.findRequestContext(request, ParserRequestContext.class);
+
+ParameterParser params = parserRequestContext.getParameters();
+
+FileItem myfile = params.getFileItem("myfile");
+
+String filename = myfile.getName();
+InputStream istream = myfile.getInputStream();</programlisting>
+                </example>
+                <para>另外有一些功能，使用Request Context接口比原来的Servlet
+                        API接口更方便。例如，原来的<code>request.getParameter()</code>方法只能取得字符串的参数值，但是利用<code>ParserRequestContext</code>所提供的接口，就可以直接取得其它类型的值：</para>
+                <example>
+                    <title>通过<code>ParserRequestContext</code>接口访问参数比<code>HttpServletRequest</code>更方便</title>
+                    <programlisting language="java">ParameterParser params = parserRequestContext.getParameters();
+
+String stringValue = params.getString("myparam"); // 取得字符串值，默认为null
+int intValue = params.getInt("myparam"); // 取得整数值，默认为0
+boolean booleanValue = params.getBoolean("myparam", true); // 取得boolean值，指定默认值为true</programlisting>
+                </example>
+            </section>
+            <section>
+                <title>注入request作用域的对象</title>
+                <para>Spring最强大的功能是依赖注入。但是依赖注入有一个限制：小作用域的对象不能被注入到大作用域的对象。你不能够把request和session作用域的对象注入到singleton对象中。前者在每次WEB请求时，均会创建新的实例，每个线程独享这个request/session作用域的对象；后者是在Spring初始化或第一次使用时被创建，然后被所有的线程共享。假如你把某个request/session作用域的对象意外注入到singleton对象中，将可能产生致命的应用错误，甚至导致数据库的错乱。</para>
+                <table frame="none">
+                    <title>Webx中的重要对象及其作用域</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.69*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>对象类型</entry>
+                                <entry>作用域</entry>
+                            </row>
+                        </thead>
+                        <tbody valign="middle">
+                            <row>
+                                <entry><code>ServletContext</code></entry>
+                                <entry>Singleton scope</entry>
+                            </row>
+                            <row>
+                                <entry><code>HttpServletRequest</code></entry>
+                                <entry>Request scope</entry>
+                            </row>
+                            <row>
+                                <entry><code>HttpServletResponse</code></entry>
+                                <entry>Request scope</entry>
+                            </row>
+                            <row>
+                                <entry><code>HttpSession</code></entry>
+                                <entry>Session scope</entry>
+                            </row>
+                            <row>
+                                <entry>所有<code>RequestContext</code>对象，如：<code>ParserRequestContext</code>、<code>SessionRequestContext</code>等</entry>
+                                <entry>Request scope</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <para><emphasis>在一般的情况下</emphasis>，对于一个singleton对象而言，例如，Webx中的action module、pipeline
+                    valve对象等，下面的代码是错误的：</para>
+                <example>
+                    <title>在action（singleton对象）中注入request scope的对象</title>
+                    <programlisting language="java">public class MyAction {
+    @Autowired
+    private HttpServletRequest request;
+
+    @Autowired
+    private HttpServletResponse response;
+
+    @Autowired
+    private ParserRequestContext parser;
+}</programlisting>
+                </example>
+                <para>因为你不能把一个短期的对象如request、response和request
+                        context注入到<code>MyAction</code>这个singleton对象。然而，<emphasis>在Webx中，这样做是可以的</emphasis>！奥秘在于Request
+                    Contexts服务对上表所列的这些短期对象作了特殊的处理，使它们可以被注入到singleton对象中。事实上，被注入的只是一个“空壳”，真正的对象是在被访问到的时候才会从线程中取得的。</para>
+                <para>Webx鼓励应用程序使用singleton作用域的对象，不仅更简单，也更高效。经过上述技术处理以后，singleton对象访问request作用域对象的方法被大大简化了。
+                </para>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>Pipeline服务</title>
+        <section>
+            <title>Pipeline工作原理</title>
+            <para>Pipeline的意思是管道，管道中有许多阀门（Valve），阀门可以控制水流的走向。在Webx中，pipeline的作用就是控制应用程序流程的走向。</para>
+            <figure>
+                <title>Pipeline和Valves</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/filter/pipeline-valves.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>Pipeline的设计和filter非常相似，也是击鼓传花式的流程控制。但是有几点不同：<itemizedlist>
+                    <listitem>
+                        <para>Pipeline只能控制流程，不能改变request和response。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Pipeline是轻量级组件，它甚至不依赖于WEB环境。Pipeline既可以在程序中直接装配，也可以由spring和schema来配置。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Pipeline支持更复杂的流程结构，例如：子流程、条件分支、循环等。 </para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>Pipeline的用途</title>
+            <para>Pipeline可以说是Webx框架的核心功能之一。利用pipeline，你可以定制一个请求处理过程的每一步。</para>
+            <example>
+                <title>一个典型的Webx应用的pipeline配置文件（<filename>pipeline.xml</filename>）</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8" ?>
+&lt;beans:beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://www.alibaba.com/schema/services"
+    xmlns:pl-conditions="http://www.alibaba.com/schema/services/pipeline/conditions"
+    xmlns:pl-valves="http://www.alibaba.com/schema/services/pipeline/valves"
+    xmlns:beans="http://www.springframework.org/schema/beans"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="
+        http://www.alibaba.com/schema/services
+                http://localhost:8080/schema/services.xsd
+        http://www.alibaba.com/schema/services/pipeline/conditions
+                http://localhost:8080/schema/services-pipeline-conditions.xsd
+        http://www.alibaba.com/schema/services/pipeline/valves
+                http://localhost:8080/schema/services-pipeline-valves.xsd
+        http://www.springframework.org/schema/beans
+                http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd
+    ">
+
+    &lt;services:pipeline xmlns="http://www.alibaba.com/schema/services/pipeline/valves">
+
+        &lt;!-- 初始化turbine rundata，并在pipelineContext中设置可能会用到的对象(如rundata、utils)，以便valve取得。 -->
+        &lt;prepareForTurbine />
+
+        &lt;!-- 设置日志系统的上下文，支持把当前请求的详情打印在日志中。 -->
+        &lt;setLoggingContext />
+
+        &lt;!-- 分析URL，取得target。 -->
+        &lt;analyzeURL homepage="homepage" />
+
+        &lt;!-- 检查csrf token，防止csrf攻击和重复提交。 -->
+        &lt;checkCsrfToken />
+
+        &lt;loop>
+            &lt;choose>
+                &lt;when>
+                    &lt;!-- 执行带模板的screen，默认有layout。 -->
+                    &lt;pl-conditions:target-extension-condition extension="null, vm, jsp" />
+                    &lt;performAction />
+                    &lt;performTemplateScreen />
+                    &lt;renderTemplate />
+                &lt;/when>
+                &lt;when>
+                    &lt;!-- 执行不带模板的screen，默认无layout。 -->
+                    &lt;pl-conditions:target-extension-condition extension="do" />
+                    &lt;performAction />
+                    &lt;performScreen />
+                &lt;/when>
+                &lt;otherwise>
+                    &lt;!-- 将控制交还给servlet engine。 -->
+                    &lt;exit />
+                &lt;/otherwise>
+            &lt;/choose>
+
+            &lt;!-- 假如rundata.setRedirectTarget()被设置，则循环，否则退出循环。 -->
+            &lt;breakUnlessTargetRedirected />
+        &lt;/loop>
+
+    &lt;/services:pipeline>
+
+&lt;/beans:beans></programlisting>
+            </example>
+        </section>
+        <section>
+            <title>Pipeline的使用</title>
+            <section>
+                <title>创建一个valve</title>
+                <example>
+                    <title>一个简单的valve实现</title>
+                    <programlisting language="java">public class MyValve implements Valve {
+    public void invoke(PipelineContext pipelineContext) throws Exception {
+        System.out.println("valve started.");
+
+        pipelineContext.invokeNext(); // 调用后序valves
+
+        System.out.println("valve ended.");
+    }
+}</programlisting>
+                    <para>配置（<filename>pipeline.xml</filename>）</para>
+                    <programlisting language="xml">&lt;services:pipeline xmlns="http://www.alibaba.com/schema/services/pipeline/valves">
+    ...
+    &lt;valve class="com.alibaba.myapp.pipeline.MyValve" />
+    ...
+&lt;/services:pipeline></programlisting>
+                </example>
+                <para>上面的代码和配置创建了一个基本的valve ── 事实上，它只是打印了一些消息，然后把控制权传递给后序的valves。</para>
+            </section>
+            <section>
+                <title>执行一个pipeline</title>
+                <example>
+                    <title>在代码中执行pipeline</title>
+                    <programlisting language="java">@Autowired
+private Pipeline myPipeline;
+
+public void invokePipeline() {
+    PipelineInvocationHandle invocation = myPipeline.newInvocation();
+
+    invocation.invoke();
+
+    System.out.println(invocation.isFinished());
+    System.out.println(invocation.isBroken());
+}</programlisting>
+                </example>
+                <para>从spring容器中取得一个pipeline对象以后（一般是通过注入取得），我们就可以执行它。上面代码中，<code>PipelineInvocationHandle</code>对象代表此次执行pipeline的状态。Pipeline执行结束以后，访问<code>invocation</code>对象就可以了解到pipeline的执行情况
+                    ── 正常结束还是被中断？</para>
+                <para>Pipeline对象是线程安全的，可被所有线程所共享。但<code>PipelineInvocationHandle</code>对象不是线程安全的，每次执行pipeline时，均需要取得新的<code>invocation</code>对象。
+                </para>
+            </section>
+            <section>
+                <title>调用子流程</title>
+                <para>Pipeline支持子流程。事实上，子流程不过是另一个pipeline对象而已。</para>
+                <figure>
+                    <title>Pipeline和子流程</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/filter/sub-pipelines.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+                <para>子流程是从valve中发起的。下面的Valve代码启动了一个子流程。</para>
+                <example>
+                    <title>在valve中发起一个子流程</title>
+                    <programlisting language="java">public class MyNestableValve implements Valve {
+    private Pipeline subPipeline;
+
+    public void setSubPipeline(Pipeline subPipeline) {
+        this.subPipeline = subPipeline;
+    }
+
+    public void invoke(PipelineContext pipelineContext) throws Exception {
+        // 发起子流程，以当前流程的pipelineContext为参数
+        PipelineInvocationHandle subInvocation = subPipeline.newInvocation(pipelineContext);
+
+        subInvocation.invoke();
+
+        System.out.println(subInvocation.isFinished());
+        System.out.println(subInvocation.isBroken());
+
+        pipelineContext.invokeNext(); // 别忘了调用后序的valves
+    }
+}</programlisting>
+                    <para>配置文件（<filename>pipeline.xml</filename>）</para>
+                    <programlisting language="xml">&lt;services:pipeline xmlns="http://www.alibaba.com/schema/services/pipeline/valves">
+    ...
+    &lt;valve class="com.alibaba.myapp.pipeline.MyNestableValve" p:subPipeline-ref="subPipeline" />
+    ...
+&lt;/services:pipeline></programlisting>
+                </example>
+            </section>
+            <section>
+                <title>中断一个pipeline</title>
+                <para>Pipeline可以被中断。当有多级子pipeline时，你可以中断到任何一级pipeline。</para>
+                <example>
+                    <title>中断一个pipeline</title>
+                    <programlisting language="java">pipelineContext.breakPipeline(0); // level=0，中断当前pipeline
+pipelineContext.breakPipeline(1); // level=1，中断上一级pipeline
+
+pipelineContext.breakPipeline("label"); // 中断到指定label的上级pipeline
+// 以上调用相当于：
+pipelineContext.breakPipeline(pipelineContext.findLabel("label"));
+
+pipelineContext.breakPipeline(Pipeline.TOP_LABEL); // 终止所有pipelines</programlisting>
+                </example>
+                <figure>
+                    <title>中断一个pipeline</title>
+                    <mediaobject>
+                        <imageobject>
+                            <imagedata fileref="images/filter/breaking-pipelines.png" />
+                        </imageobject>
+                    </mediaobject>
+                </figure>
+            </section>
+            <section>
+                <title>条件分支、循环</title>
+                <para>条件分支和循环其实只不过是子流程的运用而已：<informaltable frame="none">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                            <colspec colname="c2" colnum="2" colwidth="2.64*" />
+                            <tbody>
+                                <row>
+                                    <entry>条件分支</entry>
+                                    <entry>根据一定的条件，来决定是否要执行子流程、执行哪一个子流程（多条件分支）。</entry>
+                                </row>
+                                <row>
+                                    <entry>循环</entry>
+                                    <entry>多次执行子流程。</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </informaltable></para>
+                <para>下面的valve将子流程执行了至多10遍。如果子流程内部中断了流程，则循环终止。</para>
+                <example>
+                    <title>将子流程循环执行10次</title>
+                    <programlisting language="java">public class Loop10 implements Valve {
+    private Pipeline loopBody;
+
+    public void setLoopBody(Pipeline loopBody) {
+        this.loopBody = loopBody;
+    }
+
+    public void invoke(PipelineContext pipelineContext) throws Exception {
+        PipelineInvocationHandle handle = loopBody.newInvocation(pipelineContext);
+
+        for (int i = 0; i &lt; 10 &amp;&amp; !handle.isBroken(); i++) {
+            handle.invoke();
+        }
+
+        pipelineContext.invokeNext();
+    }
+}</programlisting>
+                </example>
+            </section>
+            <section>
+                <title>存取pipeline的状态</title>
+                <para>当一个pipeline在运行时，你可以通过<code>PipelineContext</code>取得一些上下文信息：</para>
+                <example>
+                    <title>在valve中存取pipeline的状态</title>
+                    <programlisting language="java">pipelineContext.index(); // 当前valve在pipeline中的序号
+pipelineContext.level(); // 当前pipeline在所有子pipeline中的级别
+pipelineContext.isBroken(); // 当前pipeline是否已经被中断
+pipelineContext.isFinished(); // 当前pipeline的所有valves是否已经执行完
+
+// 存取任意数据
+pipelineContext.getAttribute(key);
+pipelineContext.setAttribute(key, value);</programlisting>
+                </example>
+            </section>
+            <section>
+                <title>现成可用的valves</title>
+                <para>一般情况下，你并不需要写前面例子中的代码，因为Webx已经为你提供了一系列现成的valves来实现同样的功能。</para>
+                <variablelist>
+                    <varlistentry>
+                        <term>无条件循环 - <code>&lt;loop></code></term>
+                        <listitem>
+                            <example>
+                                <title>无条件循环</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;loop loopCounterName="count" maxLoopCount="10"> <co xml:id="co.valve.loop.params" />
+        &lt;valve />
+        &lt;break-if test="..." /> <co xml:id="co.valve.loop.break" />
+    &lt;/loop>
+&lt;/services:pipeline></programlisting>
+                                <calloutlist>
+                                    <callout arearefs="co.valve.loop.params">
+                                        <para>定义循环变量<code>loopCounterName</code>，这个变量值将被保存在<code>PipelineContext</code>中，且可被其它的valve所访问。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.loop.params">
+                                        <para>定义<code>maxLoopCount=10</code>最大循环圈数，以避免循环失控。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.loop.break">
+                                        <para>无条件循环一定要和<code>&lt;break></code>、<code>&lt;break-if></code>或<code>&lt;break-unless></code>等valve相配合。</para>
+                                    </callout>
+                                </calloutlist>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>条件循环 - <code>&lt;while></code></term>
+                        <listitem>
+                            <example>
+                                <title>条件循环</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;while loopCounterName="count" test="count &amp;lt;= 2"> <co xml:id="co.valve.while.params" />
+        &lt;valve />
+    &lt;/while>
+
+    &lt;while maxLoopCount="10"> <co xml:id="co.valve.while.maxLoop" />
+        &lt;conditions:condition class="..." /> <co xml:id="co.valve.while.condition" />
+        &lt;valve />
+    &lt;/while>
+&lt;/services:pipeline></programlisting>
+                                <calloutlist>
+                                    <callout arearefs="co.valve.while.params">
+                                        <para>定义循环变量<code>loopCounterName</code>，这个变量值将被保存在<code>PipelineContext</code>中，且可被其它的valve所访问。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.while.params">
+                                        <para>通过判断循环变量“<code>count &lt;= 2</code>”，循环2次。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.while.maxLoop">
+                                        <para>定义<code>maxLoopCount=10</code>，以避免循环失控。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.while.condition">
+                                        <para>可以自定义任意条件。</para>
+                                    </callout>
+                                </calloutlist>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>单条件分支 - <code>&lt;if></code></term>
+                        <listitem>
+                            <example>
+                                <title>单条件分支</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;if test="1 == 2"> <co xml:id="co.valve.if.test" />
+        &lt;valve />
+    &lt;/if>
+
+    &lt;if>
+        &lt;conditions:condition class="..." /> <co xml:id="co.valve.if.condition" />
+        &lt;valve />
+    &lt;/if>
+&lt;/services:pipeline></programlisting>
+                                <calloutlist>
+                                    <callout arearefs="co.valve.if.test">
+                                        <para>JEXL条件表达式。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.if.condition">
+                                        <para>自定义任意条件。</para>
+                                    </callout>
+                                </calloutlist>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>多条件分支 - <code>&lt;choose>&lt;when>&lt;otherwise></code></term>
+                        <listitem>
+                            <example>
+                                <title>多条件分支</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;choose>
+        &lt;when test="1 == 2"> <co xml:id="co.valve.choose.b1" />
+            &lt;valve />
+        &lt;/when>
+        &lt;when> <co xml:id="co.valve.choose.b2" />
+            &lt;conditions:condition class="..." />
+            &lt;valve />
+        &lt;/when>
+        &lt;otherwise> <co xml:id="co.valve.choose.b3" />
+            &lt;valve />
+        &lt;/otherwise>
+    &lt;/choose>
+&lt;/services:pipeline></programlisting>
+                                <calloutlist>
+                                    <callout arearefs="co.valve.choose.b1">
+                                        <para>条件分支1，用JEXL表达式来判断。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.choose.b2">
+                                        <para>条件分支2，用任意条件判断。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.choose.b3">
+                                        <para>分支3，当所有条件均不符合时，选择该分支。</para>
+                                    </callout>
+                                </calloutlist>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>无条件中断 - &lt;break></term>
+                        <listitem>
+                            <example>
+                                <title>无条件中断</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;loop> <co xml:id="co.valve.break.loop1" />
+        &lt;valve />
+        &lt;break /> <co xml:id="co.valve.break.level0" />
+        &lt;valve />
+    &lt;/loop>
+
+    &lt;loop> <co xml:id="co.valve.break.loop2" />
+        &lt;valve />
+        &lt;loop>
+            &lt;break levels="1" /> <co xml:id="co.valve.break.level1" />
+        &lt;/loop>
+        &lt;valve />
+    &lt;/loop>
+
+    &lt;loop label="MY_LOOP"> <co xml:id="co.valve.break.loop3" />
+        &lt;valve />
+        &lt;loop>
+            &lt;break toLabel="MY_LOOP" /> <co xml:id="co.valve.break.label" />
+        &lt;/loop>
+        &lt;valve />
+    &lt;/loop>
+&lt;/services:pipeline></programlisting>
+                                <calloutlist>
+                                    <callout arearefs="co.valve.break.level0">
+                                        <para>无条件中止当前的pipeline（即loop循环<coref
+                                                linkend="co.valve.break.loop1" />）。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.break.level1">
+                                        <para>无条件中止上一层（<code>levels=1</code>）的pipeline（即loop循环<coref
+                                                linkend="co.valve.break.loop2" />）。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.break.label">
+                                        <para>无条件中止指定label的pipeline（即loop循环<coref
+                                                linkend="co.valve.break.loop3" />）。</para>
+                                    </callout>
+                                </calloutlist>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>有条件中断 -
+                            <code>&lt;break-if></code>、<code>&lt;break-unless></code></term>
+                        <listitem>
+                            <para>有条件中断是<code>&lt;break></code>和<code>&lt;if></code>的组合。</para>
+                            <example>
+                                <title>有条件中断</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;loop loopCounterName="count">
+        &lt;valve />
+        &lt;break-if test="count &amp;gt; 2" /> <co xml:id="co.valve.breakif.test" />
+        &lt;valve />
+    &lt;/loop>
+
+    &lt;loop label="MY_LOOP">
+        &lt;valve />
+        &lt;break-if toLabel="MY_LOOP"> <co xml:id="co.valve.breakif.params" />
+            &lt;conditions:condition class="..." />  <co xml:id="co.valve.breakif.condition" />
+        &lt;/break-if>
+        &lt;valve />
+    &lt;/loop>
+
+    &lt;loop loopCounterName="count">
+        &lt;valve />
+        &lt;break-unless test="count &amp;lt;= 2" />  <co xml:id="co.valve.breakunless.test" />
+        &lt;valve />
+    &lt;/loop>
+&lt;/services:pipeline></programlisting>
+                                <calloutlist>
+                                    <callout arearefs="co.valve.breakif.test">
+                                        <para>当<code>count&gt;2</code>时中断。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.breakif.params">
+                                        <para><code>&lt;break-if></code>和<code>&lt;break-unless></code>均支持和<code>&lt;break></code>类似的其它选项：<code>levels</code>和<code>toLabel</code>。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.breakif.condition">
+                                        <para>和<code>&lt;if></code>类似，也支持任意condition。</para>
+                                    </callout>
+                                    <callout arearefs="co.valve.breakunless.test">
+                                        <para><code>&lt;break-unless></code>和<code>&lt;break-if></code>的条件相反：<emphasis>除非</emphasis><code>count&lt;=2</code>，否则中断。</para>
+                                    </callout>
+                                </calloutlist>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>无条件退出整个pipeline - <code>&lt;exit></code></term>
+                        <listitem>
+                            <para>退出整个pipeline，意思是结束所有的嵌套层次。</para>
+                            <example>
+                                <title>无条件退出整个pipeline</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;loop>
+        &lt;valve />
+        &lt;loop>
+            &lt;exit />
+        &lt;/loop>
+        &lt;valve />
+    &lt;/loop>
+&lt;/services:pipeline></programlisting>
+                            </example>
+                            <para>对于Webx而言，<code>&lt;exit></code>还有一层特殊的含义：放弃<code>WebxFrameworkFilter</code>的控制权，把它交还给servlet
+                                engine。以URL
+                                <code>http://localhost:8081/myapp/myimage.jpg</code>为例，把控制权交还给servlet
+                                engine，意味着让servlet
+                                    engine去显示myapp应用目录下的静态图片：<filename>myimage.jpg</filename>。</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>异常捕获和finally处理 - <code>&lt;try-catch-finally></code></term>
+                        <listitem>
+                            <para>类似Java中的<code>try/catch/finally</code>结构。</para>
+                            <example>
+                                <title>异常捕获和finally处理</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;try-catch-finally>
+        &lt;try>
+            &lt;valve />
+        &lt;/try>
+        &lt;catch exceptionName="myexception"> <co xml:id="co.valve.catch.exceptionName" />
+            &lt;valve />
+        &lt;/catch>
+        &lt;finally>
+            &lt;valve />
+        &lt;/finally>
+    &lt;/try-catch-finally>
+&lt;/services:pipeline></programlisting>
+                                <calloutlist>
+                                    <callout arearefs="co.valve.catch.exceptionName">
+                                        <para><code>&lt;catch></code>标签可以将捕获的异常以指定名称保存在<code>PipelineContext</code>中，以便其它valve取得。</para>
+                                    </callout>
+                                </calloutlist>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>创建子流程 - <code>&lt;sub-pipeline></code></term>
+                        <listitem>
+                            <para>单纯使用这个valve，对执行结果不会有任何影响。但可用来对较长的pipeline进行分段管理。</para>
+                            <example>
+                                <title>创建子流程</title>
+                                <programlisting language="xml">&lt;services:pipeline>
+    &lt;valve />
+    &lt;sub-pipeline label="mylabel">
+        &lt;valve />
+    &lt;/sub-pipeline>
+    &lt;valve />
+&lt;/services:pipeline></programlisting>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+            </section>
+            <section>
+                <title>条件</title>
+                <para>在前文所述的各种条件valve（例如<code>&lt;if></code>、<code>&lt;when></code>、<code>&lt;while></code>、<code>&lt;break-if></code>、<code>&lt;break-unless></code>等）中，都用到一个共同的对象：condition。<code>Condition</code>是一个简单的接口。</para>
+                <example>
+                    <title><code>Condition</code>接口</title>
+                    <programlisting language="java">public interface Condition {
+    /**
+     * 如满足条件，则返回&lt;code>true&lt;/code>。
+     */
+    boolean isSatisfied(PipelineStates pipelineStates);
+}</programlisting>
+                </example>
+                <para>为了方便起见，Webx默认提供了一个<code>JexlCondtion</code>。</para>
+                <example>
+                    <title>使用<code>JexlCondition</code></title>
+                    <programlisting language="xml">&lt;if>
+    &lt;conditions:jexl-condition expr="loopCount == 2" />
+    &lt;break />
+&lt;/if></programlisting>
+                    <para>以上配置可以简化为：</para>
+                    <programlisting language="xml">&lt;if test="loopCount == 2">
+    &lt;break />
+&lt;/if></programlisting>
+                </example>
+                <para>JEXL表达式是Apache的一个小项目，表达式语法详见：<link
+                        xl:href="http://commons.apache.org/jexl/reference/syntax.html"
+                         />。在JEXL表达式中，你可以使用<code>pipelineContext.getAttribute()</code>所能取得的所有状态值。例如，loop循环时，如果你设置了<code>loopCounterName</code>，那么循环计数器就可以被JEXL表达式所访问。</para>
+                <para>除此之外，Webx还提供了三个组合式的条件。</para>
+                <variablelist>
+                    <varlistentry>
+                        <term><code>&lt;all-of></code></term>
+                        <listitem>
+                            <para>要求所有条件均满足，相当于Java中的<code>&amp;&amp;</code>操作符。</para>
+                            <example>
+                                <title><code>组合式的条件：&lt;all-of></code></title>
+                                <programlisting language="xml">&lt;all-of>
+    &lt;condition1 />
+    &lt;condition2 />
+    &lt;condition3 />
+&lt;/all-of></programlisting>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><code>&lt;any-of></code></term>
+                        <listitem>
+                            <para>只要求任一条件满足，相当于Java中的<code>||</code>操作符。</para>
+                            <example>
+                                <title><code>组合式的条件：&lt;any-of></code></title>
+                                <programlisting language="xml">&lt;any-of>
+    &lt;condition1 />
+    &lt;condition2 />
+    &lt;condition3 />
+&lt;/any-of></programlisting>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><code>&lt;none-of></code></term>
+                        <listitem>
+                            <para>要求所有条件均不满足，相当于Java中的<code>!</code>操作符。</para>
+                            <example>
+                                <title><code>组合式的条件：&lt;none-of></code></title>
+                                <programlisting language="xml">&lt;none-of>
+    &lt;condition1 />
+    &lt;condition2 />
+    &lt;condition3 />
+&lt;/none-of></programlisting>
+                            </example>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+                <para>这三个组合式条件可以互相组合，以构成任意复杂的条件判断语句。</para>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>Request Contexts和Pipeline是Webx框架中的两个核心服务。它们分别从两个方面实现了原本需要由Filter来实现的功能 ── Request
+            Contexts提供了包装和修改request/response的机制，而pipeline则提供了流程控制的能力。Request
+            contexts和pipeline组合起来的功能比servlet
+            filter机制更加强大。因为它们是基于Spring的轻量组件，其性能、配置的方便性、扩展性都优于filter。</para>
+        <para>当然，Request Contexts和Pipeline并不想取代filter。在好几种场合，filter仍然是唯一的选择：<itemizedlist>
+                <listitem>
+                    <para>如果你既想要修改request/response，又想要控制流程；</para>
+                </listitem>
+                <listitem>
+                    <para>如果你希望独立于任何框架。 </para>
+                </listitem>
+            </itemizedlist></para>
+        <para>但在你接到一个需求，正打算用filter来实现之前，请考虑一下，是否可以采用Webx所提供的这两种机制来取代。倘若可行，必然会带来更多的好处。</para>
+    </section>
+</chapter>

@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.overview.turbine" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="turbine.html" ?>
+    <title>Webx Turbine</title>
+    <para>Webx是一套基于Java Servlet API的通用Web框架。整个Webx框架分成三个层次，本章将简单介绍其第三个层次：Webx Turbine。Webx
+        Turbine建立在Webx Framework的基础上，实现了页面渲染、布局、数据验证、数据提交等一系列工作。</para>
+    <para>Webx Turbine之所以叫这个名字，是因为Webx最早的版本，是从Apache
+        Turbine项目上发展而来的。到现在，Turbine的代码已经荡然无存，然而Turbine中的一些风格和想法依赖保存在Webx框架中。 </para>
+    <section>
+        <title>设计理念</title>
+        <para>Webx Turbine所遵循下面的设计理念包括：<itemizedlist>
+                <listitem>
+                    <para>页面驱动</para>
+                </listitem>
+                <listitem>
+                    <para>约定胜于配置</para>
+                </listitem>
+            </itemizedlist></para>
+        <section>
+            <title>页面驱动</title>
+            <para>创建一个WEB应用，一般会经历三个阶段：产品设计、用户界面设计、功能实现。分别由产品设计师、用户界面设计师和程序员协作完成。如下图所示。</para>
+            <figure>
+                <title>协作图：创建一个WEB应用</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o4/co-operations.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>通常，界面设计师只完成纯静态页面的设计，需要由程序员来把静态页面转换、分解成模板，才能在最终的WEB应用中被使用。为什么不让界面设计师直接创建模板呢？这样一定可以提高很多效率。然而在一般的WEB框架中，由于模板不能独立于程序元素（如action）而存在，因此在程序员介入以前，界面设计师是没有办法展示模板的效果的。</para>
+            <para>Webx
+                Turbine推崇页面驱动的理念。它的意思是，在程序员介入以前，让界面设计师可以直接创建模板，并展示模板的效果。页面驱动的反面，是程序驱动，或者是Action驱动 ——
+                这是多数WEB框架的模式。</para>
+            <para>页面驱动不止提高了开发的效率，也使界面设计师在早期阶段，就可以利用框架所提供的工具，做一些以前做不到的事，例如：页面跳转、简单的表单验证、字符串操作等。这些工具是通过Webx
+                Turbine中的一个服务来完成的：pull tools。Pull tools服务预先准备了很多模板中可用的工具，让模板可以“按需”取得这些对象 ——
+                这就是pull这个单词的意思。 </para>
+        </section>
+        <section>
+            <title>约定胜于配置</title>
+            <para>Webx Turbine的另一个理念，是约定胜于配置。“约定”即规则。规则是预先定义的，工程师只需要按着规则来做事，就不需要额外的“配置”。对比其它一些框架 ——
+                往往每增加一个页面，都需要在配置文件中增加若干行内容。</para>
+            <para>Webx Turbine的规则主要是指一系列映射规则。 </para>
+            <table frame="none">
+                <title>Webx Turbine映射规则</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.64*" />
+                    <thead>
+                        <row>
+                            <entry>映射规则</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>将URL映射成target</entry>
+                            <entry>target是一个抽象的概念，指明当前请求要完成的任务。Target由pipeline来解释，它可能被解释成模板名，也可能被解释成别的东西。</entry>
+                        </row>
+                        <row>
+                            <entry>将target转换成模板名</entry>
+                            <entry>模板用来展现页面的内容。Velocity、Freemarker、JSP都可以作为模板的格式，但在Webx建议使用velocity模板。</entry>
+                        </row>
+                        <row>
+                            <entry>将target转换成layout布局</entry>
+                            <entry>你可以为一组页面选择相同的布局（菜单、导航栏、版权信息等），为另一组页面选择另一种布局。</entry>
+                        </row>
+                        <row>
+                            <entry>将target转换成module</entry>
+                            <entry>在Webx
+                                Turbine中，module是指screen、action、control等，大致相当于其它框架中的action或者controller。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>工程师只需要根据上述规则，将模板放在指定的目录、按照预定的方式命名module（也就是screen、action、control等），就不再需要额外的配置。</para>
+        </section>
+    </section>
+    <section>
+        <title>页面布局</title>
+        <para>Webx Turbine的页面，由以下几个部分组成：</para>
+        <figure>
+            <title>Webx Turbine页面的构成</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata fileref="images/o4/page-layout.png" />
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>其中：<itemizedlist>
+                <listitem>
+                    <para>Screen，代表页面的主体。</para>
+                </listitem>
+                <listitem>
+                    <para>Layout，代表页面的布局。</para>
+                </listitem>
+                <listitem>
+                    <para>Control，代表嵌在screen和layout中的页面片段。 </para>
+                </listitem>
+            </itemizedlist></para>
+    </section>
+    <section>
+        <title>处理页面的基本流程</title>
+        <para>Webx Turbine的处理流程被定义在pipeline中。Webx Framework没有规定Pipeline的内容，但Webx
+            Turbine却定义了一系列valves。下面是一个Webx Turbine推荐的pipeline配置：</para>
+        <example>
+            <title>Webx Turbine推荐的pipeline配置 - <filename>pipeline.xml</filename></title>
+            <programlisting language="xml">&lt;services:pipeline xmlns="http://www.alibaba.com/schema/services/pipeline/valves">
+
+    &lt;!-- 初始化turbine rundata，并在pipelineContext中设置可能会用到的对象(如rundata、utils)，以便valve取得。 -->
+    &lt;prepareForTurbine />
+
+    &lt;!-- 设置日志系统的上下文，支持把当前请求的详情打印在日志中。 -->
+    &lt;setLoggingContext />
+
+    &lt;!-- 分析URL，取得target。 -->
+    &lt;analyzeURL homepage="homepage" />
+
+    &lt;!-- 检查csrf token，防止csrf攻击和重复提交。假如request和session中的token不匹配，则出错，或显示expired页面。 -->
+    &lt;checkCsrfToken />
+
+    &lt;loop>
+        &lt;choose>
+            &lt;when>
+                &lt;!-- 执行带模板的screen，默认有layout。 -->
+                &lt;pl-conditions:target-extension-condition extension="null, vm, jsp" />
+                &lt;performAction />
+                &lt;performTemplateScreen />
+                &lt;renderTemplate />
+            &lt;/when>
+            &lt;when>
+                &lt;!-- 执行不带模板的screen，默认无layout。 -->
+                &lt;pl-conditions:target-extension-condition extension="do" />
+                &lt;performAction />
+                &lt;performScreen />
+            &lt;/when>
+            &lt;otherwise>
+                &lt;!-- 将控制交还给servlet engine。 -->
+                &lt;exit />
+            &lt;/otherwise>
+        &lt;/choose>
+
+        &lt;!-- 假如rundata.setRedirectTarget()被设置，则循环，否则退出循环。 -->
+        &lt;breakUnlessTargetRedirected />
+    &lt;/loop>
+
+&lt;/services:pipeline></programlisting>
+        </example>
+        <para>假设用户以URL：<code>http://localhost:8081/</code>来访问Webx应用。域名和端口不重要，取决于应用服务器的配置，这里假设为<code>localhost:8081</code>。Webx
+                Framework的处理流程，从<code>WebxFrameworkFilter</code>接收请求，并且一路顺利到达pipeline。然后Pipeline开始依次执行它的valves。（下面的描述略过一些相对次要的步骤。）</para>
+        <procedure>
+            <step>
+                <title><code>&lt;analyzeURL></code> - 分析URL</title>
+                <para>分析URL的目的是取得target。由于用户访问的URL中并没有提供path信息，通常被理解为：用户想要访问“主页”。<code>AnalyzeURL</code>
+                        valve提供了一个可选的参数“<code>homepage</code>”，即是在这种情况下起作用 ——
+                        <code>http://localhost:8081/</code>对应的target为“<code>homepage</code>”。</para>
+                <para>需要注意的是，<emphasis>target不代表模板名，也不代表类名</emphasis>。Target只是一个抽象的概念 ——
+                        当前页面需要达成的目标。Target可能被后续的valves<emphasis>解释成</emphasis>模板名、类名或者其它东西。 </para>
+            </step>
+            <step>
+                <title>进入<code>&lt;choose></code> - 多重分支</title>
+                <para>很明显，“<code>homepage</code>”满足了第一个<code>&lt;when></code>所附带的条件：<code>&lt;target-extension-condition
+                        extension="null, vm,
+                        jsp"></code>，意思是target的后缀不存在（<code>null</code>）或为“<code>jsp</code>”或为“<code>vm</code>”。</para>
+            </step>
+            <step>
+                <title><code>&lt;performAction></code> - 执行action</title>
+                <para>和其它框架中的action概念不同，在Webx Turbine中，action是用来处理用户提交的表单的。</para>
+                <para>因为本次请求未提供action参数，所以跳过该步骤。 </para>
+            </step>
+            <step>
+                <title><code>&lt;performTemplateScreen></code> - 查找并执行screen。</title>
+                <para>这里要用到一个规则：target映射成screen module类名的规则。</para>
+                <para>假设target为<code>xxx/yyy/zzz</code>，那么Webx Turbine会依次查找下面的screen模块：<itemizedlist>
+                        <listitem>
+                            <para><code>screen.xxx.yyy.Zzz</code>，</para>
+                        </listitem>
+                        <listitem>
+                            <para><code>screen.xxx.yyy.Default</code>，</para>
+                        </listitem>
+                        <listitem>
+                            <para><code>screen.xxx.Default</code>，</para>
+                        </listitem>
+                        <listitem>
+                            <para><code>screen.Default</code>。 </para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>本次请求的target为<code>homepage</code>，因此它会尝试查找<code>screen.Homepage</code>和<code>screen.Default</code>这两个类。</para>
+                <para>如果找到screen类，Webx
+                    Turbine就会执行它。Screen类的功能，通常是读取数据库，然后把模板所需要的对象放到context中。</para>
+                <para>如果找不到，也没关系 ——
+                    这就是“页面优先”：像<code>homepage</code>这样的主页，通常没有业务逻辑，因此不需要screen类，只需要有模板就可以了。 </para>
+            </step>
+            <step>
+                <title><code>&lt;renderTemplate></code> - 渲染模板</title>
+                <para>这里用到两个规则：target映射成screen template，以及target映射成layout template。</para>
+                <para>假设target为<code>xxx/yyy/zzz</code>，那么Webx
+                        Turbine会查找下面的screen模板：<code>/templates/screen/xxx/yyy/zzz</code>。Screen模板如果未找到，就会报<code>404
+                        Not Found</code>错误。 找到screen模板以后，Webx Turbine还会试着查找下面的layout模板：<itemizedlist>
+                        <listitem>
+                            <para><code>/templates/layout/xxx/yyy/zzz</code></para>
+                        </listitem>
+                        <listitem>
+                            <para><code>/templates/layout/xxx/yyy/default</code></para>
+                        </listitem>
+                        <listitem>
+                            <para><code>/templates/layout/xxx/default</code></para>
+                        </listitem>
+                        <listitem>
+                            <para><code>/templates/layout/default</code></para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>Layout模板如果找不到，就直接渲染screen模板；如果存在，则把渲染screen模板后的结果，嵌入到layout模板中。</para>
+                <para>Layout模板和screen模板中，都可以调用control。每个页面只有一个screen，却可以有任意多个controls。 </para>
+            </step>
+            <step>
+                <title><code>&lt;breakUnlessTargetRedirected></code> - 内部重定向</title>
+                <para>在screen和action中，可以进行“内部重定向”。内部重定向实质上就是由<code>&lt;breakUnlessTargetRedirected></code>实施的
+                    —— 如果没有重定向标记，就退出；否则循环到<code>&lt;loop></code>标签。</para>
+                <para>和外部重定向不同，外部重定向是向浏览器返回一个<code>302</code>或<code>303</code>
+                        response，其中包含<code>Location</code>
+                    header，浏览器看到这样的response以后，就会发出第二个请求。而内部重定向发生在pipeline内部，浏览器并不了解内部重定向。</para>
+            </step>
+        </procedure>
+    </section>
+    <section>
+        <title>依赖注入</title>
+        <section>
+            <title>Spring原生注入手段</title>
+            <para>依赖注入是Spring的重要特性，Webx既然建立在Spring基础上，当然支持Spring原有的依赖注入手段，例如，你可以在Screen/control/action
+                module类中这样写：</para>
+            <example>
+                <title>通过<code>@Autowired</code> annotation注入</title>
+                <programlisting language="java">public class LoginAction {
+    @Autowired
+    private UserManager userManager; <co xml:id="co.spring.autowired" />
+    ...
+}</programlisting>
+                <calloutlist>
+                    <callout arearefs="co.spring.autowired">
+                        <para><code>UserManager</code>是在spring context中配置的bean。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>在使用Spring原生注入手段时，需要注意beans的scope。你只能注入相同scope或较大的scope中的bean。例如，screen/action/control的scope为singleton，因此用<code>@Autowired</code>注入时，只能注入singleton的对象，不能注入诸如request、session等较小的scope对象。</para>
+        </section>
+        <section>
+            <title>注入request、response和session对象</title>
+            <para>在Webx Framework中，你可以这样做：</para>
+            <example>
+                <title>注入request、response和session对象</title>
+                <programlisting language="java">public class LoginAction {
+    @Autowired
+    private HttpServletRequest request;
+
+    @Autowired
+    private HttpServletResponse response;
+
+    @Autowired
+    private HttpSession session;
+    ...
+}</programlisting>
+            </example>
+            <para>前面我们刚讲过，你<emphasis>不能把request scope的对象，注入到singleton
+                        scope的对象中</emphasis>。但在Webx中，你<emphasis>可以将<code>HttpServletRequest</code>、<code>HttpServletResponse</code>和<code>HttpSession</code>对象注入到singleton对象中</emphasis>。为什么呢？原来，<code>&lt;request-contexts></code>对这几个常用对象进行了特殊处理，将它们转化成了singleton对象。
+            </para>
+        </section>
+        <section>
+            <title>参数注入</title>
+            <para>有一些对象，是无法通过Spring的bean来注入的，例如：用户提交的参数、表单等。好在Webx
+                    Turbine提供了一种可扩展的机制（<code>DataResolver</code>
+                service），通过它，我们可以在screen/control/action的方法中注入任意对象。</para>
+            <table frame="none">
+                <title>参数注入</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1.24*" />
+                    <colspec colname="c2" colnum="2" colwidth="3.33*" />
+                    <colspec colname="c3" colnum="3" colwidth="1.0*" />
+                    <thead valign="middle">
+                        <row>
+                            <entry>功能</entry>
+                            <entry>代码示例</entry>
+                            <entry>适用于module类型</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry>注入一个query参数</entry>
+                            <entry>
+                                <programlisting language="java">void doGetInt(@Param("aaa") int i)</programlisting>
+                            </entry>
+                            <entry>screen、 action、 control</entry>
+                        </row>
+                        <row>
+                            <entry>将query参数注入bean properties</entry>
+                            <entry>
+                                <programlisting language="java">void doSetData(@Params MyData data) </programlisting>
+                            </entry>
+                            <entry>screen、 action、 control</entry>
+                        </row>
+                        <row>
+                            <entry morerows="2">注入框架对象</entry>
+                            <entry>
+                                <programlisting language="java">void doGetNavigator(Navigator nav)</programlisting>
+                            </entry>
+                            <entry>screen、 action</entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <programlisting language="java">void doGetContext(Context context) </programlisting>
+                            </entry>
+                            <entry>screen、 action、 control</entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <programlisting language="java">void execute(ControlParameters params) </programlisting>
+                            </entry>
+                            <entry>control</entry>
+                        </row>
+                        <row>
+                            <entry>注入context和control参数</entry>
+                            <entry>
+                                <programlisting language="java">void execute(@ContextValue("myvalue") int value) </programlisting>
+                            </entry>
+                            <entry>screen、 action、 control</entry>
+                        </row>
+                        <row>
+                            <entry morerows="1">注入表单对象</entry>
+                            <entry>
+                                <programlisting language="java">void doGetGroup(@FormGroup("myGroup1") Group group) </programlisting>
+                            </entry>
+                            <entry>action</entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <programlisting language="java">void doGetGroups(@FormGroups("myGroup1") Group[] groups) </programlisting>
+                            </entry>
+                            <entry>action</entry>
+                        </row>
+                        <row>
+                            <entry>将表单值注入bean properties</entry>
+                            <entry>
+                                <programlisting language="java">void doGetGroupsBeans(@FormGroups("myGroup1") MyData[] data) </programlisting>
+                            </entry>
+                            <entry>action</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+    </section>
+    <section>
+        <title>定制Webx Turbine</title>
+        <para>通过改进pipeline中的valves，我们很容易改变webx turbine的行为。</para>
+        <para>最常见的一种需求，是要对页面进行授权 —— 只有符合条件的用户才能访问相应的页面。在pipeline中，很容易添加这样的逻辑： </para>
+        <example>
+            <title>改进pipeline，增加页面授权功能 - <filename>pipeline.xml</filename></title>
+            <programlisting language="xml">&lt;services:pipeline xmlns="http://www.alibaba.com/schema/services/pipeline/valves">
+    &lt;prepareForTurbine />
+    &lt;setLoggingContext />
+    &lt;analyzeURL homepage="homepage" />
+    &lt;checkCsrfToken />
+    &lt;valve class="com.mycompany.auth.PageAuthorizationValve" /> <co xml:id="co.pipeline.auth" />
+    ...
+&lt;/services:pipeline></programlisting>
+            <calloutlist>
+                <callout arearefs="co.pipeline.auth">
+                    <para>插入用于验证权限的valve。</para>
+                </callout>
+            </calloutlist>
+        </example>
+        <para>事实上，你甚至可以重写整个pipeline，以实现另一种风格的WEB框架。</para>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>Webx Turbine建立在pipeline的基础上，基于页面驱动和约定胜于配置的理念，定义了一组处理页面的流程。Webx
+            Turbine的灵活性在于，你可以轻易定制pipeline，以改变它的任何一个方面。</para>
+    </section>
+</chapter>

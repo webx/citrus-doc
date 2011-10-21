@@ -1,0 +1,1925 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.requestcontexts" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="requestcontexts.html" ?>
+    <title>Request Contexts功能指南</title>
+    <para>在<xref xl:href="#webx.filter.requestcontexts.pipeline" />中，我们已经介绍了Request
+        Contexts服务的作用和原理。本章我们将介绍除了session机制以外，每一个可用的Request
+            Context的功能和用法。由于Session机制比较复杂，所以我们另辟单独的一章（<xref xl:href="#webx.requestcontext.session"
+         />）来解释它。</para>
+    <para>本章涉及的内容包括： <informaltable frame="none">
+            <tgroup cols="3">
+                <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                <colspec colname="c2" colnum="2" colwidth="2.0*" />
+                <colspec colname="c3" colnum="3" colwidth="3.0*" />
+                <thead>
+                    <row>
+                        <entry>名称</entry>
+                        <entry>接口</entry>
+                        <entry>功能</entry>
+                    </row>
+                </thead>
+                <tbody valign="middle">
+                    <row>
+                        <entry><code>&lt;basic></code></entry>
+                        <entry><code>BasicRequestContext</code></entry>
+                        <entry>提供基础安全特性，例如：过滤response headers、cookies，限制cookie的大小等。</entry>
+                    </row>
+                    <row>
+                        <entry><code>&lt;set-locale></code></entry>
+                        <entry><code>SetLocaleRequestContext</code></entry>
+                        <entry>设置locale区域和charset字符集编码。</entry>
+                    </row>
+                    <row>
+                        <entry><code>&lt;parser></code></entry>
+                        <entry><code>ParserRequestContext</code></entry>
+                        <entry>解析参数，支持<code>multipart/form-data</code>（即上传文件请求）。</entry>
+                    </row>
+                    <row>
+                        <entry><code>&lt;buffered></code></entry>
+                        <entry><code>BufferedRequestContext</code></entry>
+                        <entry>缓存response中的内容。</entry>
+                    </row>
+                    <row>
+                        <entry><code>&lt;lazy-commit></code></entry>
+                        <entry><code>LazyCommitRequestContext</code></entry>
+                        <entry>延迟提交response。</entry>
+                    </row>
+                    <row>
+                        <entry><code>&lt;rewrite></code></entry>
+                        <entry><code>RewriteRequestContext</code></entry>
+                        <entry>重写请求的URL和参数。</entry>
+                    </row>
+                </tbody>
+            </tgroup>
+        </informaltable></para>
+    <section xml:id="webx3.requestcontexts.basic">
+        <title><code>&lt;basic></code> - 提供基础特性</title>
+        <section>
+            <title>拦截器接口</title>
+            <para><code>BasicRequestContext</code>提供了一组interceptors拦截器接口，通过它们，你可以拦截并干预一些事件。</para>
+            <figure>
+                <title><code>BasicRequestContext</code>所提供的拦截器</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/requestcontexts/basic-rc.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>你可以在<code>&lt;basic></code>中指定上图所示的任何一个<code>Interceptor</code>接口，以便干预特定的事件：</para>
+            <table frame="none">
+                <title><code>BasicRequestContext</code>所提供的拦截器</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="6.5*" />
+                    <colspec colname="c2" colnum="2" colwidth="8.5*" />
+                    <thead>
+                        <row>
+                            <entry>拦载器接口</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry>
+                                <code>RequestContextLifecycleInterceptor</code>
+                            </entry>
+                            <entry>拦截“预处理（prepare）”和“提交（commit）”事件。</entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>ResponseHeaderInterceptor</code>
+                            </entry>
+                            <entry>拦截所有对response header的修改。</entry>
+                        </row>
+                        <row>
+                            <entry>➥ <code>HeaderNameInterceptor</code>
+                            </entry>
+                            <entry>拦截所有对header的修改、添加操作。可修改header name，或拒绝对header的修改。</entry>
+                        </row>
+                        <row>
+                            <entry>➥ <code>HeaderValueInterceptor</code>
+                            </entry>
+                            <entry>拦截所有对header的修改、添加操作。可修改header value，或拒绝对header的修改。</entry>
+                        </row>
+                        <row>
+                            <entry>➥ <code>CookieInterceptor</code>
+                            </entry>
+                            <entry>拦截所有对cookie的添加操作。可修改或拒绝cookie对象。需要注意的是，有两种方法可以添加cookie：通过cookie对象，或者直接写response
+                                    header。对于后者，需要使用<code>CookieHeaderValueInterceptor</code>才能拦截得到。</entry>
+                        </row>
+                        <row>
+                            <entry>➥ <code>CookieHeaderValueInterceptor</code>
+                            </entry>
+                            <entry>拦截所有通过添加header来创建cookie的操作。可修改或拒绝该cookie。</entry>
+                        </row>
+                        <row>
+                            <entry>➥ <code>RedirectLocaitonInterceptor</code>
+                            </entry>
+                            <entry>拦截所有外部重定向的操作。可修改或拒绝重定向URL。</entry>
+                        </row>
+                        <row>
+                            <entry>➥ <code>StatusMessageInterceptor</code>
+                            </entry>
+                            <entry>拦截所有设置status message的操作。可以修改或拒绝该message。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>通过下面的配置，就可以指定任意多个interceptor的实现。</para>
+            <example>
+                <title>配置interceptors（<filename>/WEB-INF/webx.xml</filename>）</title>
+                <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;basic>
+        &lt;request-contexts:interceptors
+            xmlns="http://www.alibaba.com/schema/services/request-contexts/basic/interceptors">
+                &lt;interceptor class="...Interceptor1" />
+                &lt;interceptor class="...Interceptor2" />
+        &lt;/request-contexts:interceptors>
+    &lt;/basic>
+    ...
+&lt;/services:request-contexts></programlisting>
+            </example>
+        </section>
+        <section>
+            <title>默认拦截器</title>
+            <para>即使你不加说明，<code>BasicRequestContext</code>也总是会启用一个默认的interceptor实现：<code>ResponseHeaderSecurityFilter</code>。这个类实现了下列功能：<itemizedlist>
+                    <listitem>
+                        <para>避免header name和value中出现CRLF字符 ──
+                            在header中嵌入CRLF（回车换行）字符是一种常见的攻击手段。攻击者嵌入CRLF以后，使服务器对HTTP请求发生错误判断，从而执行攻击者的恶意代码。事实上，现在的servlet引擎如tomcat已经可以防御这种攻击。但作为框架，并不能依赖于特定的servlet引擎，所以加上这个额外的安全检查，确保万无一失。</para>
+                    </listitem>
+                    <listitem>
+                        <para>将status message用HTML entity编码重写 ── 通常status
+                            message会被显示在HTML页面中。攻击者可以利用这一点在页面中嵌入恶意代码。将status message以HTML
+                            entity编码重写以后，就可以避免这个问题。</para>
+                    </listitem>
+                    <listitem>
+                        <para>限制cookie的总大小 ──
+                            过大的cookie可能使WEB服务器拒绝响应请求。攻击者同样可以利用这一点使用户无法正常访问网站。限制cookie的总大小可以部分地解决这种危机。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>如果需要，你可以对<code>ResponseHeaderSecurityFilter</code>指定一些参数。</para>
+            <example>
+                <title>配置<code>ResponseHeaderSecurityFilter</code>（<filename>/WEB-INF/webx.xml</filename>）</title>
+                <programlisting language="xml">&lt;request-contexts:interceptors
+            xmlns="http://www.alibaba.com/schema/services/request-contexts/basic/interceptors">
+    &lt;interceptor class="...Interceptor1" />
+    &lt;interceptor class="...Interceptor2" />
+    &lt;response-header-security-filter maxSetCookieSize="5K" />
+&lt;/request-contexts:interceptors></programlisting>
+            </example>
+        </section>
+    </section>
+    <section xml:id="webx3.requestcontexts.setlocale">
+        <title><code>&lt;set-locale></code> -设置locale区域和charset字符集编码</title>
+        <para>区域和编码问题（尤其是后者）是每个WEB应用都必须处理好的基本问题。它虽然本身并不复杂，但是在现实开发中，由于涉及面很广，一旦发生问题（例如乱码）经常让人手足无措。<code>&lt;set-locale></code>提供了一个机制，确保Web应用能够设置正确的区域和编码。</para>
+        <section>
+            <title>Locale基础</title>
+            <para>Locale是国际化的基础。</para>
+            <para>一个locale的格式是：<code>language_country_variant</code>，例如：<code>zh_CN</code>、<code>zh_TW</code>、<code>en_US</code>、<code>es_ES_Traditional_WIN</code>等。</para>
+            <para>Java和框架根据不同的locale，可以取得不同的文本、对象。下面的Java代码根据不同的locale，取得不同语言版本的文字： </para>
+            <example>
+                <title>利用<code>ResourceBundle</code>和locale取得国际化字符</title>
+                <programlisting language="java">Locale.setDefault(Locale.US);
+
+String s1 = getResourceBundle(Locale.CHINA).getString("happy"); // 快乐
+String s2 = getResourceBundle(Locale.TAIWAN).getString("happy"); // 快樂
+String s3 = getResourceBundle(Locale.US).getString("happy"); // happy
+...
+ResourceBundle getResourceBundle(Locale locale) {
+    return ResourceBundle.getBundle("ApplicationResources", locale);
+}</programlisting>
+                <para>其中所用到的<code>ResourceBundle</code>文件定义如下：</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <filename>ApplicationResources.properties</filename>
+                                </entry>
+                                <entry>
+                                    <programlisting language="ini">happy = happy</programlisting>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <filename>ApplicationResources_zh_CN.properties</filename>
+                                </entry>
+                                <entry>
+                                    <programlisting language="ini">happy = \u5FEB\u4E50</programlisting>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <filename>ApplicationResources_zh_TW.properties</filename>
+                                </entry>
+                                <entry>
+                                    <programlisting language="ini">happy = \u5FEB\u6A02</programlisting>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </example>
+        </section>
+        <section>
+            <title>Charset编码基础</title>
+            <para>Charset全称Character
+                    Encoding或字符集编码。Charset是将字符（characters）转换成字节（bytes）或者将字节转换成字符的算法。Java内部采用unicode来表示一个字符。将unicode字符转换成字节的过程，称为“<emphasis>编码</emphasis>”；将字节恢复成unicode字符的过程，称为“<emphasis>解码</emphasis>”。</para>
+            <para>浏览器发送给WEB应用的request参数，是以字节流的方式来表示的。Request参数必须经过解码才能被Java程序所解读。用来解码request参数的charset被称为“<emphasis>输入字符集编码（Input
+                    Charset）</emphasis>”；</para>
+            <para>WEB应用返回给浏览器的response响应内容必须编码成字节流，才能被浏览器或客户端解读。用来编码response内容的charset被称为“<emphasis>输出字符集编码（Output
+                    Charset）</emphasis>”。</para>
+            <para>一般情况下，input charset和output
+                    charset是相同的。因为浏览器发送表单数据时，总是采用当前页面的charset来编码的。例如，有一个表单页面，它的“<code>contentType=text/html;
+                    charset=GBK</code>”，那么用户填完全表单并提交时，浏览器会以<code>GBK</code>来编码用户所输入的表单数据。如果input
+                charset和output charset不相同，服务器就不能正确解码浏览器根据output charset所发回给WEB应用的表单数据。</para>
+            <para>然而有一些例外情况下面，输入和输出的charset可能会不同：<itemizedlist>
+                    <listitem>
+                        <para>通过Java
+                            Script发送的表单，总是用<code>UTF-8</code>编码的。这意味着你必须用<code>UTF-8</code>作为input
+                            charset方能正确解码参数。这样，除非output
+                            charset也是<code>UTF-8</code>，否则两者就是不同的。</para>
+                    </listitem>
+                    <listitem>
+                        <para>应用间互相用HTTP访问时，可能采用不同的编码。例如，应用A以<code>UTF-8</code>访问应用B，而应用B是以<code>GBK</code>作为input/output
+                            charset的。此时会产生参数解码的错误。</para>
+                    </listitem>
+                    <listitem>
+                        <para>直接在浏览器地址栏里输入包含参数的URL，根据不同的浏览器和操作系统的设置，会有不同的结果：<itemizedlist>
+                                <listitem>
+                                    <para>例如，中文Windows中，无论ie还是firefox，经试验，默认都以<code>GBK</code>来编码参数。IE对直接输入的参数，连URL
+                                        encoding也没做。</para>
+                                </listitem>
+                                <listitem>
+                                    <para>而在mac系统中，无论safari还是firefox，经试验，默认都是以<code>UTF-8</code>来编码参数。
+                                    </para>
+                                </listitem>
+                            </itemizedlist></para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>框架必须要能够应付上面各种不确定的charset编码。</para>
+        </section>
+        <section>
+            <title>Locale和charset的关系</title>
+            <para>Locale和charset是相对独立的两个参数，但是又有一定的关系。</para>
+            <para>Locale决定了要显示的文字的语言，而charset则将这种语言的文字编码成bytes或从bytes解码成文字。因此，charset必须能够涵盖locale所代表的语言文字，如果不能，则可能出现乱码。下表列举了一些locale和charset的组合：</para>
+            <table frame="none">
+                <title>Locale和Charset的关系</title>
+                <tgroup cols="7">
+                    <colspec colname="c1" colnum="1" colwidth="5.0*" align="center" />
+                    <colspec colname="c2" colnum="2" colwidth="2.0*" align="center" />
+                    <colspec colname="c3" colnum="3" colwidth="1.0*" align="center" />
+                    <colspec colname="c4" colnum="4" colwidth="1.0*" align="center" />
+                    <colspec colname="c5" colnum="5" colwidth="1.0*" align="center" />
+                    <colspec colname="c6" colnum="6" colwidth="1.5*" align="center" />
+                    <colspec colname="c7" colnum="7" colwidth="1.0*" align="center" />
+                    <thead valign="middle">
+                        <row>
+                            <entry morerows="1">Locale</entry>
+                            <entry>英文字符集</entry>
+                            <entry namest="c3" nameend="c5">中文字符集</entry>
+                            <entry namest="c6" nameend="c7">全字符集</entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>ISO-8859-1</code>
+                            </entry>
+                            <entry>
+                                <code>GB2312</code>
+                            </entry>
+                            <entry>
+                                <code>Big5</code>
+                            </entry>
+                            <entry>
+                                <code>GBK</code>
+                            </entry>
+                            <entry>
+                                <code>GB18030</code>
+                            </entry>
+                            <entry>
+                                <code>UTF-8</code>
+                            </entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>en_US</code>（美国英文）</entry>
+                            <entry>√</entry>
+                            <entry>√</entry>
+                            <entry>√</entry>
+                            <entry>√</entry>
+                            <entry>√</entry>
+                            <entry>√</entry>
+                        </row>
+                        <row>
+                            <entry><code>zh_CN</code>（简体中文）</entry>
+                            <entry />
+                            <entry>√</entry>
+                            <entry />
+                            <entry>√</entry>
+                            <entry>√</entry>
+                            <entry>√</entry>
+                        </row>
+                        <row>
+                            <entry><code>zh_TW</code>、<code>zh_HK</code>（台湾中文、香港中文）</entry>
+                            <entry />
+                            <entry />
+                            <entry>√</entry>
+                            <entry>√</entry>
+                            <entry>√</entry>
+                            <entry>√</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>在所有charset中，有几个“全能”编码：<variablelist>
+                    <varlistentry>
+                        <term><code>UTF-8</code></term>
+                        <listitem>
+                            <para>涵盖了unicode中的所有字符。然而用<code>UTF-8</code>来编码中文为主的页面时，每个中文会占用3个字节。建议以非中文为主的页面采用<code>UTF-8</code>编码。</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><code>GB18030</code></term>
+                        <listitem>
+                            <para>中文国际标准，和<code>UTF-8</code>一样，涵盖了unicode中的所有字符。用<code>GB18030</code>来编码中文为主的页面时有一定优势，因为绝大多数常用中文仅占用2个字节，比<code>UTF-8</code>短1/3。然而<code>GB18030</code>在非中文的操作系统中，有可能不能识别，其通用性不如<code>UTF-8</code>好。因此仅建议以中文为主的页面采用<code>GB18030</code>编码。</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><code>GBK</code></term>
+                        <listitem>
+                            <para>严格说，<code>GBK</code>不是全能编码（例如对很多西欧字符就支持不好），也不是国际标准。但它支持的字符数量接近于<code>GB18030</code>。</para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist></para>
+        </section>
+        <section>
+            <title>设置locale和charset</title>
+            <para>在Servlet API中，以下API是和locale和charset有关的。</para>
+            <table frame="all">
+                <title>和locale、charset相关的servlet API</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1.35*" />
+                    <colspec colname="c2" colnum="2" colwidth="1*" />
+                    <colspec colname="c3" colnum="3" colwidth="1.43*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c3"><code>HttpServletRequest</code></entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>.getCharacterEncoding()</code></entry>
+                            <entry>读取输入编码</entry>
+                            <entry />
+                        </row>
+                        <row>
+                            <entry><code>.setCharacterEncoding(charset)</code></entry>
+                            <entry>设置输入编码</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>必须在第一次调用<code>request.getParameter()</code>
+                                                和<code>request.getParameterMap()</code>前设置，否则无效。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>如果不设置，则默认以<code>ISO-8859-1</code>来解码参数。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>一般只影响POST请求参数的解码，但这里有一些复杂性，参见<xref
+                                                xl:href="#webx3.requestcontexts.parser" />。</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>.getLocale()</code></entry>
+                            <entry>取得Accept-Language中浏览器首选的locale</entry>
+                            <entry />
+                        </row>
+                        <row>
+                            <entry><code>.getLocales()</code></entry>
+                            <entry>取得所有Accept-Language中所指定的locales</entry>
+                            <entry />
+                        </row>
+                    </tbody>
+                </tgroup>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1.35*" />
+                    <colspec colname="c2" colnum="2" colwidth="1*" />
+                    <colspec colname="c3" colnum="3" colwidth="1.43*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c3"><code>HttpServletResponse</code></entry>
+                        </row>
+                    </thead>
+                    <tbody valign="middle">
+                        <row>
+                            <entry><code>.getCharacterEncoding()</code></entry>
+                            <entry>取得输出编码</entry>
+                            <entry />
+                        </row>
+                        <row>
+                            <entry><code>.setCharacterEncoding(charset)</code></entry>
+                            <entry>设置输出编码</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>Since Servlet 2.4</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>.getContentType()</code></entry>
+                            <entry>取得content type</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>Since Servlet 2.4</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>.setContentType(contentType)</code></entry>
+                            <entry>设置content type</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>Content type中可能包含charset定义，例如：<code>text/html;
+                                                charset=GBK</code></para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry><code>.getLocale()</code></entry>
+                            <entry>取得输出locale</entry>
+                            <entry />
+                        </row>
+                        <row>
+                            <entry><code>.setLocale(locale)</code></entry>
+                            <entry>设置输出locale</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>必须在response被commit之前调用，否则无效。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>它同时也会设置charset，除非content
+                                            type已经被设置过，并用包含了charset的定义。</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>设置locale和charset是一件看起来容易，做起来不容易的事：<itemizedlist>
+                    <listitem>
+                        <para>输入编码必须<emphasis>在第一个读取request参数的调用之前</emphasis>设置好，否则就无效。只有把<code>&lt;set-locale></code>作为Request
+                            Contexts服务的一环，才有可能确保读取request参数之前，设置好输入编码。</para>
+                    </listitem>
+                    <listitem>
+                        <para>在Servlet 2.3之前，设置输出参数的唯一方法，是通过设置带有charset定义的content type。这一点在Servlet
+                                2.4以后得到改进，添加了独立的设置输出编码的方法。<code>&lt;set-locale></code>弥补了Servlet
+                            2.3和Servlet 2.4之间的差异，使WEB应用在所有的环境下，都可以独立设置content type和charset。</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>使用方法</title>
+            <section>
+                <title>使用默认值</title>
+                <example>
+                    <title>设置默认的locale和charset</title>
+                    <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;set-locale defaultLocale="zh_CN" defaultCharset="GB18030" />
+    ...
+&lt;/services:request-contexts></programlisting>
+                </example>
+                <para>上面的配置，将WEB应用的输入charset、输出charset均设置成<code>GB18030</code>，将输出locale设置成<code>zh_CN</code>。</para>
+            </section>
+            <section>
+                <title>临时覆盖默认的charset</title>
+                <para>前面讲到在一些情况下面，服务器所收到的参数（表单数据）不是用应用默认的charset来编码的。例如Java
+                        Script总是以<code>UTF-8</code>来提交表单；系统间通过HTTP协议通信；或者用户直接在浏览器地址栏中输入参数。</para>
+                <para>如何应付这些不确定的charset呢？<code>&lt;set-locale></code>提供的方法是，在URL中指定输入编码，并覆盖默认值。</para>
+                <para>假设当前应用的默认值是<code>defaultLocale=zh_CN</code>、<code>defaultCharset=GB18030</code>，那么下面的请求将使用默认的<code>GB18030</code>来解码参数，并用默认的<code>GB18030</code>来输出页面：</para>
+                <screen>http://localhost:8081/myapp/myform</screen>
+                <para>假如你希望改用<code>UTF-8</code>来解码参数，那么可以使用下面的URL来覆盖默认值：</para>
+                <example>
+                    <title>在URL中覆盖默认的input charset</title>
+                    <screen>http://localhost:8081/myapp/myform<emphasis>?_input_charset=UTF-8</emphasis></screen>
+                </example>
+                <para>这样，Webx将采用<code>UTF-8</code>来解码参数，但<emphasis>仍然使用默认的<code>GB18030</code>来输出页面</emphasis>。</para>
+                <para>需要注意的是，对于POST请求，你必须把<code>_input_charset</code>这个特殊的参数写在URL中，而不能写成普通的表单字段，例如：</para>
+                <example>
+                    <title>在POST表单中覆盖默认的input charset</title>
+                    <programlisting language="xml">&lt;form action="http://localhost:8081/myapp/myform?_input_charset=UTF-8" method="POST"> <co xml:id="co.charset.override.post" />
+    &lt;input type="hidden" name="param1" value="value1"/>
+    &lt;input type="hidden" name="param2" value="value2"/>
+&lt;/form></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.charset.override.post">
+                            <para>必须把<code>_input_charset</code>这个特殊的参数写在URL中，即便是POST类型的表单。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>在写AJAX Java Script代码时，也要注意：</para>
+                <example>
+                    <title>在AJAX代码中覆盖默认的input charset</title>
+                    <programlisting language="javascript">var xhreq = new XMLHttpRequest();
+xhreq.open("post", "/myapp/myform?_input_charset=UTF-8", true); <co xml:id="co.charset.override.ajax" />
+...
+xhreq.send("a=1&amp;b=2");</programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.charset.override.ajax">
+                            <para>必须把<code>_input_charset</code>这个特殊的参数写在URL中。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>此外，<code>&lt;set-locale></code>也提供了临时覆盖输出编码的方法：</para>
+                <example>
+                    <title>在URL中覆盖默认的output charset</title>
+                    <screen>http://localhost:8081/myapp/myform<emphasis>?_output_charset=UTF-8</emphasis></screen>
+                </example>
+                <para>临时覆盖的输入、输出编码只会影响当前请求，它不会被记住。当一个不带有覆盖参数的请求进来时，将仍然按照默认值来设置输入、输出编码。</para>
+            </section>
+            <section>
+                <title>持久覆盖默认的locale和charset</title>
+                <para>还有一种需求，就是多语言网页的支持。用户可以选择自己的语言：简体中文、繁体中文等。一旦用户作出选择，那么后续的网页将全部以用户所选择的语言和编码来显示。<code>&lt;set-locale></code>直接支持这个功能。只要你按下面的URL访问页面，用户的语言和编码即被切换成简体中文和<code>UTF-8</code>编码。</para>
+                <example>
+                    <title>持久覆盖默认的locale和charset</title>
+                    <screen>http://localhost:8081/myapp<emphasis>?_lang=zh_CN:UTF-8</emphasis></screen>
+                </example>
+                <para>参数值<code>_lang=zh_CN:UTF-8</code>将被保存在session中，后续的请求不需要再次指定<code>_lang</code>参数。用户所作出的选择将一直持续在整个session中，直到session被作废。</para>
+                <para>需要说明的是，假如我们采用了<code>&lt;session></code> request
+                    context来取代原来的session机制，那么该参数实际的保存位置将取决于session框架的设置 ──
+                        例如：你可以把参数值保存在某个cookie中。然而，<code>&lt;set-locale></code>并不需要关心于session的实现细节或是用来保存参数的cookie的细节。</para>
+            </section>
+            <section>
+                <title><code>&lt;set-locale></code>的影响力</title>
+                <para><code>&lt;set-locale></code>所设置的<emphasis>输出locale</emphasis>和<emphasis>输出charset</emphasis>值将会被保存在当前线程中，从而对整个线程产生影响。</para>
+                <table frame="none">
+                    <title>被&lt;set-locale>影响的API</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.3*" />
+                        <thead>
+                            <row>
+                                <entry>API</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <code>LocaleUtil.getContext().getLocale()</code>
+                                </entry>
+                                <entry morerows="1"
+                                    >可以通过这两个方法取得当前线程的输出locale和charset。Webx框架中凡是要用到默认locale和charset的地方，都会从这里去取得值。
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>LocaleUtil.getContext().getCharset()</code>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>StringEscapeUtil.escapeURL()</code>
+                                </entry>
+                                <entry morerows="1"
+                                        >Webx调用这两个方法进行URL编码、解码时，不需要指定charset（不同于JDK的<code>URLEncoder</code>/<code>URLDecoder</code>）。这两个函数将从<code>LocaleUtil.getContext().getCharset()</code>中取得当前线程的输出charset。
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>StringEscapeUtil.unescapeURL()</code>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>TemplateService</code>
+                                </entry>
+                                <entry><code>TemplateService</code>如果指定了<code>searchLocalizedTemplates=true</code>参数，那么它会利用当前线程的locale来搜索本地化的模板，例如：
+                                        <code>screen/myTemplate_zh_CN.vm</code></entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title><code>&lt;set-locale></code>的配置参数</title>
+                <example>
+                    <title><code>&lt;set-locale></code>的配置参数</title>
+                    <programlisting language="xml">&lt;set-locale defaultLocale="..."
+            defaultCharset="..."
+            inputCharsetParam="_input_charset"
+            outputCharsetParam="_output_charset"
+            paramKey="_lang"
+            sessionKey="_lang" /></programlisting>
+                </example>
+                <table frame="none">
+                    <title><code>&lt;set-locale></code>配置参数说明</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.13*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <code>defaultLocale</code>
+                                </entry>
+                                <entry>默认locale。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>defaultCharset</code>
+                                </entry>
+                                <entry>默认charset。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>inputCharsetParam</code>
+                                </entry>
+                                <entry>用来临时改变输入charset的参数名，支持多个名称，以“<code>|</code>”分隔，例如“<code>_input_charset|ie</code>”。
+                                        默认值为“<code>_input_charset</code>”。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>outputCharsetParam</code>
+                                </entry>
+                                <entry>用来临时改变输出charset的参数名，支持多个名称，以“<code>|</code>”分隔，例如“<code>_output_charset|oe</code>”。
+                                        默认为“<code>_output_charset</code>”。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>paramKey</code>
+                                </entry>
+                                <entry>用来持久改变输出locale和charset的参数名，默认为“<code>_lang</code>”。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>sessionKey</code>
+                                </entry>
+                                <entry>用来在session中保存用户所选择的locale和charset的key，默认为“<code>_lang</code>”。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+        </section>
+    </section>
+    <section xml:id="webx3.requestcontexts.parser">
+        <title><code>&lt;parser></code> - 解析参数</title>
+        <section>
+            <title>基本使用方法</title>
+            <section>
+                <title>基本配置</title>
+                <example>
+                    <title><code>&lt;parser></code>基本配置</title>
+                    <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;parser />
+    ...
+&lt;/services:request-contexts>
+
+&lt;services:upload sizeMax="5M" fileSizeMax="2M" /></programlisting>
+                </example>
+                <para>绝大多数情况，你只需要上面的配置就足够了 ── <code>&lt;parser></code>会自动解析所有类型的请求，包括：<itemizedlist>
+                        <listitem>
+                            <para>GET请求</para>
+                        </listitem>
+                        <listitem>
+                            <para>普通的POST请求（Content
+                                    Type：<code>application/x-www-form-urlencoded</code>）</para>
+                        </listitem>
+                        <listitem>
+                            <para>可上传文件的POST请求（Content Type：<code>multipart/form-data</code>）</para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>通过<code>HttpServletRequest</code>接口访问参数</title>
+                <para><code>&lt;parser></code>对于大部分应用是透明的。也就是说，你不需要知道<code>&lt;parser></code>的存在，就可以访问所有的参数，包括访问<code>multipart/form-data</code>请求的参数。</para>
+                <example>
+                    <title>通过<code>HttpServletRequest</code>接口访问参数</title>
+                    <programlisting language="java">@Autowired
+HttpServletRequest request;
+
+...
+String s = request.getParameter("myparam");</programlisting>
+                </example>
+            </section>
+            <section>
+                <title>通过<code>ParserRequestContext</code>接口访问参数</title>
+                <para>你也可以选择使用<code>ParserRequestContext</code>接口。</para>
+                <example>
+                    <title>通过<code>ParserRequestContext</code>接口访问参数</title>
+                    <programlisting language="java">@Autowired
+ParserRequestContext parser;
+
+...
+String s = parser.getParameters().getString("myparam");</programlisting>
+                </example>
+                <para>和<code>HttpServletRequest</code>接口相比，<code>ParserRequestContext</code>提供了如下便利：<variablelist>
+                        <varlistentry>
+                            <term>直接取得指定类型的参数，例如：直接取得<code>int</code>、<code>boolean</code>值等。</term>
+                            <listitem>
+                                <example>
+                                    <title>直接取得指定类型的参数</title>
+                                    <programlisting language="java">// myparam=true, myparam=false
+parser.getParameters().getBoolean("myparam");
+
+// myparam=123
+parser.getParameters().getInt("myparam");</programlisting>
+                                </example>
+                            </listitem>
+                        </varlistentry>
+                        <varlistentry>
+                            <term>如果参数值未提供，或者值为空，则返回指定默认值。</term>
+                            <listitem>
+                                <example>
+                                    <title>取得参数的默认值</title>
+                                    <programlisting language="java">parser.getParameters().getBoolean("myparam", false);
+parser.getParameters().getString("myparam", "no_value");
+parser.getParameters().getInt("myparam", -1);</programlisting>
+                                </example>
+                            </listitem>
+                        </varlistentry>
+                        <varlistentry>
+                            <term>取得上传文件的<code>FileItem</code>对象（这是Apache Jakarta
+                                项目commons-fileupload所定义的接口）。</term>
+                            <listitem>
+                                <example>
+                                    <title>取得<code>FileItem</code>上传文件</title>
+                                    <programlisting language="java">FileItem fileItem = parser.getParameters().getFileItem("myfile");
+FileItem[] fileItems = parser.getParameters().getFileItems("myfile");</programlisting>
+                                </example>
+                            </listitem>
+                        </varlistentry>
+                        <varlistentry>
+                            <term><code>ParserRequestContext</code>还提供了比较方便的访问cookie值的方法。</term>
+                            <listitem>
+                                <example>
+                                    <title>访问cookie值</title>
+                                    <programlisting language="java">parser.getCookies().getString("mycookie");</programlisting>
+                                </example>
+                            </listitem>
+                        </varlistentry>
+                    </variablelist></para>
+            </section>
+        </section>
+        <section>
+            <title>上传文件</title>
+            <para>用于上传文件的请求是一种叫作<code>multipart/form-data</code>的特殊请求，它的格式类似于富文本电子邮件的样子。下面HTML创建了一个支持上传文件的表单：</para>
+            <example>
+                <title>创建<code>multipart/form-data</code>表单</title>
+                <programlisting language="xml">&lt;form action="..." method="post" enctype="multipart/form-data">
+    &lt;input type="file" name="myfile" value="" />
+    ...
+&lt;/form></programlisting>
+            </example>
+            <para>提示：不是只有需要上传文件时，才可以用<code>multipart/form-data</code>表单。<emphasis>假如你的表单中包含富文本字段（即字段的内容是以
+                        HTML或类似的技术描述的），特别是当字段的内容比较长的时候，用<code>multipart/form-data</code>比用普通的表单更高效，生成的HTTP请求也更短</emphasis>。</para>
+            <para>只要upload服务存在，那么<code>&lt;parser></code>就可以解析<code>multipart/form-data</code>（即上传文件）的请求。Upload服务扩展于Apache
+                Jakarta的一个项目：commons-fileupload。 </para>
+            <section>
+                <title>配置Upload服务</title>
+                <example>
+                    <title>Upload服务的配置参数</title>
+                    <programlisting language="xml">&lt;services:upload sizeMax="5M"
+                 fileSizeMax="2M"
+                 repository="/tmp"
+                 sizeThreshold="10K"
+                 keepFormFieldInMemory="true" /></programlisting>
+                </example>
+                <para>各参数的说明如下：</para>
+                <table frame="none">
+                    <title>Upload服务配置参数说明</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.0*" />
+                        <thead>
+                            <row>
+                                <entry>参数名称</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <code>sizeMax</code>
+                                </entry>
+                                <entry>HTTP请求的最大尺寸（字节，支持K/M/G），超过此尺寸的请求将被抛弃。值<code>-1</code>表示没有限制。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>fileSizeMax</code>
+                                </entry>
+                                <entry>单个文件允许的最大尺寸（字节，支持K/M/G），超过此尺寸的文件将被抛弃。值<code>-1</code>表示没有限制。
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>repository</code>
+                                </entry>
+                                <entry>暂存上传文件的目录。 注意，这个目录是用Spring
+                                        <code>ResourceLoader</code>装载的，而不是一个物理路径。关于<code>ResourceLoader</code>，详见ResourceLoading服务的文档。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>sizeThreshold</code>
+                                </entry>
+                                <entry>将文件放在内存中的阈值（字节，支持K/M/G），小于此值的文件被保存在内存中。 </entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>keepFormFieldInMemory</code>
+                                </entry>
+                                <entry>是否将普通的form field保持在内存里？
+                                        默认为<code>false</code>，但当<code>sizeThreshold</code>为<code>0</code>时，默认为<code>true</code>。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <note>
+                    <para>当上传文件的请求的总尺寸超过<code>sizeMax</code>的值时，整个请求将被抛弃 ——
+                            这意味着你不可能读到请求中的其它任何参数。而当某个上传文件的尺寸超出<code>fileSizeMax</code>的限制，但请求的总尺寸仍然在<code>sizeMax</code>的范围内时，只有超出该尺寸的单个上传文件被抛弃，而你还是可以读到其余的参数。</para>
+                </note>
+                <para>假如有多个upload服务（当然这种情况极少），你也可以明确指定<code>&lt;parser></code>使用哪个upload服务：</para>
+                <example>
+                    <title>明确指定upload服务</title>
+                    <programlisting language="xml">&lt;parser uploadServiceRef="myUpload" /></programlisting>
+                </example>
+            </section>
+            <section>
+                <title>手工解析上传请求</title>
+                <para>在默认情况下，当<code>&lt;parser></code>收到一个上传文件的请求时，会立即解析并取得所有的参数和文件。然而你可以延迟这个过程，在需要的时候，再手工解析上传请求。</para>
+                <example>
+                    <title>手工解析upload请求</title>
+                    <para>首先，你需要关闭自动上传</para>
+                    <programlisting language="xml">&lt;parser autoUpload="false"></programlisting>
+                    <para>可选参数<code>autoUpload</code>默认值为<code>true</code>，当你把它改成<code>false</code>时，就可以实现延迟手工解析请求。在你需要解析请求时，只需要调用下面的语句即可：</para>
+                    <programlisting language="java">parser.getParameters().parseUpload();</programlisting>
+                    <para>手工调用<code>parseUpload</code>可以指定和默认不同的参数：</para>
+                    <programlisting language="java">UploadParameters params = new UploadParameters();
+        
+params.applyDefaultValues();
+params.setSizeMax(new HumanReadableSize("10M"));
+params.setFileSizeMax(new HumanReadableSize("1M"));
+params.setRepository(new File("mydir"));
+        
+parser.getParameters().parseUpload(params);</programlisting>
+                </example>
+            </section>
+        </section>
+        <section>
+            <title>高级选项</title>
+            <section>
+                <title>参数名称大小写转换</title>
+                <para>在默认情况下，假设有一个参数名为：<code>myProductId</code>，那么你可以使用下列<emphasis>任意一种方法</emphasis>来访问到它：</para>
+                <example>
+                    <title>取得参数<code>myProductId</code>的值的方法</title>
+                    <programlisting language="java">request.getParameter("MyProductId");
+request.getParameter("myProductId");
+request.getParameter("my_product_id");
+request.getParameter("MY_PRODUCT_ID");
+request.getParameter("MY_productID");</programlisting>
+                </example>
+                <para>假如你不希望具备这种灵活性，则需要修改配置以关闭大小写转换功能：</para>
+                <example>
+                    <title>关闭大小写转换功能</title>
+                    <programlisting language="xml">&lt;parser caseFolding="none"></programlisting>
+                </example>
+            </section>
+            <section>
+                <title>参数值去空白</title>
+                <para>在默认情况下，假设有一个参数：<code>id=" 123
+                        "</code>（两端有空白字符），那么<code>&lt;parser></code>会把它转化成<code>"123"</code>（两端没有空白字符）。
+                        假如你不希望<code>&lt;parser></code>做这件事，则需要修改配置： </para>
+                <example>
+                    <title>关闭参数值去空白功能</title>
+                    <programlisting language="xml">&lt;parser trimming="false"></programlisting>
+                </example>
+                <para>这样，所有的参数值将会保持原状，不会被去除空白。</para>
+            </section>
+            <section>
+                <title>参数值entity解码</title>
+                <para>浏览器在提交表单时，如果发现被提交的字符不能以当前的charset来编码，浏览器就会把该字符转换成<code>&amp;#unicode;</code>这样的形式。例如，假设一个表单页面的content
+                            type为：<emphasis><code>text/html;
+                        charset=ISO-8859-1</code></emphasis>。在这个页面的输入框中输入汉字“你好”，然后提交。你会发现，提交的汉字变成了这个样子：<code>param=</code><emphasis><code>"&amp;#20320;&amp;#22909;"</code></emphasis>。 </para>
+                <para>在默认情况下，<code>&lt;parser></code>会对上述参数进行entity解码，使之恢复成“你好”。但是，其它的entity如“<code>&amp;lt;</code>”、“<code>&amp;amp;</code>”等并不会被转换。
+                        如果你不希望<code>&lt;parser></code>还原上述内容，则需要修改配置：</para>
+                <example>
+                    <title>关闭参数值entity解码功能</title>
+                    <programlisting language="xml">&lt;parser unescapeParameters="false"></programlisting>
+                </example>
+            </section>
+            <section>
+                <title>取得任意类型的参数值</title>
+                <para>前面提到，<code>ParserRequestContext</code>支持直接取得<code>boolean</code>、<code>int</code>等类型的参数值。事实上，它还支持取得任意类型的参数值
+                    —— 只要Spring中有相应的<code>PropertyEditor</code>支持即可。</para>
+                <para>假设<code>MyEnum</code>是一个<code>enum</code>类型，这是Spring原生支持的一种类型。你可以用下面的代码来取得它：</para>
+                <example>
+                    <title>将参数值转换成<code>enum</code>类型</title>
+                    <programlisting language="java">MyEnum myEnum = params.getObjectOfType("myparam", MyEnum.class);</programlisting>
+                </example>
+                <para>但是，下面的语句就不是那么顺利了 ——
+                        因为Spring不知道怎么把一个参数值，例如：“<code>1975-12-15</code>”，转换成<code>java.util.Date</code>类型。</para>
+                <example>
+                    <title>将参数值转换成<code>java.util.Date</code>类型</title>
+                    <programlisting language="java">Date birthday = params.getObjectOfType("birthday", Date.class);</programlisting>
+                    <para>好在<code>&lt;parser></code>提供了一种扩展机制，可以添加新的类型转换机制。对于<code>Date</code>类型，你只需要添加下面的配置，就可以被支持了。</para>
+                    <programlisting language="xml">&lt;parser>
+    &lt;property-editor-registrar
+        class="com.alibaba.citrus.service.configuration.support.CustomDateRegistrar"
+        p:format="yyyy-MM-dd" p:locale="zh_CN" p:timeZone="GMT+8" /> <co xml:id="co.propedit.date" />
+&lt;/parser></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.propedit.date">
+                            <para><code>PropertyEditorRegistrar</code>是Spring提供的一种类型注册机制，其细节详见Spring的文档。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>另一个问题是，如果类型转换失败怎么办？<code>&lt;parser></code>支持两种方法。默认情况下，类型转换失败会“保持安静”（不抛异常），然后返回默认值。但你也可以选择让类型转换失败的异常被抛出来，以便应用程序处理。</para>
+                <example>
+                    <title>设置“非安静”模式：当类型转换失败时，抛出异常</title>
+                    <programlisting language="xml">&lt;parser converterQuiet="false"></programlisting>
+                    <para>程序里这样写：</para>
+                    <programlisting language="java">MyEnum myEnum = null;
+
+try {
+    myEnum = params.getObjectOfType("myparam", MyEnum.class);
+} catch (TypeMismatchException e) {
+    ...
+}</programlisting>
+                </example>
+            </section>
+            <section>
+                <title>解析GET请求的参数</title>
+                <para>GET请求是最简单的请求方式。它的参数以URL编码的方式包含在URL中。当你在浏览器地址栏中敲入“<code>http://localhost:8081/user/login.htm?name=%E5%90%8D%E5%AD%97&amp;password=password</code>”这样一个址址的时候，浏览器就会向<code>localhost:8081</code>服务器出如下HTTP请求：</para>
+                <screen>GET /user/login.htm?name=%E5%90%8D%E5%AD%97&amp;password=password HTTP/1.1
+Host: localhost:8081</screen>
+                <para>GET请求中的参数是以<code>application/x-www-form-urlencoded</code>方式和特定的charset编码的。假如用来编码URL参数的charset与应用的默认charset不同，那么你必须通过特殊的参数来指定charset（参见<xref
+                        xl:href="#webx3.requestcontexts.setlocale" />）：</para>
+                <screen>GET /user/login.htm?<emphasis>_input_charset=UTF-8</emphasis>&amp;name=%E5%90%8D%E5%AD%97&amp;password=password HTTP/1.1</screen>
+                <para>可是，上面的请求在不同的Servlet引擎中，会产生不确定的结果。这是怎么回事呢？</para>
+                <para>原来，尽管<code>&lt;set-locale></code>会调用<code>request.setCharacterEncoding(charset)</code>这个方法来设置input
+                    charset编码，然而根据Servlet API的规范，这个设定只能对request
+                        content生效，而不对URL生效。换句话说，<code>request.setCharacterEncoding(charset)</code>方法只能用来解析POST请求的参数，而不是GET请求的参数。</para>
+                <para>那么，应该怎样处理GET请求的参数呢？根据URL规范，URL中非US-ASCII的字符必须进行基于<code>UTF-8</code>的URL编码。然而实际上，从浏览器到服务器，没有人完全遵守这些规范，于是便造成了一些混乱。目前应用服务器端，我们所遇到的，有下面几种不同的解码方案：</para>
+                <table frame="none">
+                    <title>服务器对参数进行解码的逻辑</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>服务器</entry>
+                                <entry>解码的逻辑</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>Tomcat 4</entry>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>根据<code>request.setCharacterEncoding(charset)</code>所设置的值来解码GET参数；</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>如果未特别指定charset，则默认采用<code>ISO-8859-1</code>来解码参数。
+                                            </para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>Tomcat 5及更新版 以及搭载Tomcat 5以上版本的JBoss </entry>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>如果Tomcat配置文件<filename>conf/server.xml</filename>中设置了：
+                                                  <code>&lt;Connector
+                                                  useBodyEncodingForURI="true"></code>那么根据<code>request.setCharacterEncoding(charset)</code>所设置的值来解码GET参数。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>如未设置<code>useBodyEncodingForURI</code>，或其值为<code>false</code>，则根据<filename>conf/server.xml</filename>中的配置<code>&lt;Connector
+                                                  URIEncoding="xxx"></code>所指定的编码，来解码GET请求的参数。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>如未配置<code>URIEncoding</code>，默认采用<code>ISO-8859-1</code>。
+                                            </para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>Jetty Server</entry>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>Jetty总是以<code>UTF-8</code>来解码GET请求的参数。</para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <para>综上所述，所有的应用服务器对于POST请求的参数的处理方法是没有差别的，然而对于GET请求的参数处理方法各有不同。</para>
+                <para>如果不加任何特别的设置，Tomcat最新版是以<code>ISO-8859-1</code>来解码GET请求的参数，而Jetty却是以<code>UTF-8</code>来解码的。因此，无论你以哪一种charset来编码GET请求的参数，都不可能在所有服务器上取得相同的结果
+                    ──
+                        除非修改服务器的配置，但这是一件既麻烦又容易出错的事情。为了使应用程序对服务器的配置依赖较少，且可以灵活地处理GET请求的解码，<code>&lt;parser></code>对GET请求进行了手工解码，从而解决了应用服务器解码的不确定性。</para>
+                <para><code>&lt;parser></code>完全解决了上面的问题。<emphasis>依据默认值，<code>&lt;parser></code>会以<code>&lt;set-locale></code>中设定的input
+                        charset为准，来解码所有类型的请求</emphasis>，包括GET和POST请求，以及<code>multipart/form-data</code>（上传文件）类型的请求。</para>
+                <para>然而<code>&lt;parser></code>仍保留了一些可选方案，以备不时之需。</para>
+                <variablelist>
+                    <varlistentry>
+                        <term>保留Servlet引擎的解码机制</term>
+                        <listitem>
+                            <example>
+                                <title>使用Servlet引擎原来的解码机制</title>
+                                <programlisting language="xml">&lt;parser useServletEngineParser="true" /></programlisting>
+                            </example>
+                            <para><emphasis>这个选项在用HttpUnit进行单元测试时非常有用</emphasis>。因为HttpUnit单元测试工具并没有完全遵循Servlet
+                                API的规范 ── 目前版本的HttpUnit不能正确取得query
+                                    string，从而导致<code>&lt;parser></code>解析GET参数错误。</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>使用固定的charset来解码GET请求</term>
+                        <listitem>
+                            <example>
+                                <title>使用固定的charset来解码GET请求</title>
+                                <programlisting language="xml">&lt;parser URIEncoding="UTF-8" useBodyEncodingForURI="false" /></programlisting>
+                            </example>
+                            <para>上面的配置强制所有的GET请求均使用<code>UTF-8</code>作为固定的charset编码。这段逻辑和tomcat的完全相同，但你却不需要去修改tomcat的<filename>conf/server.xml</filename>就可以实现上面的逻辑。
+                                事实上，使用固定的charset来解码GET请求的参数是符合Servlet
+                                    API规范以及URL的规范的。而根据情况设置charset是一种对现实的妥协。然而<emphasis>你有选择的自由 ──
+                                        无论你选择何种风格，<code>&lt;parser></code>都支持你</emphasis>。 </para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+            </section>
+            <section>
+                <title>过滤参数</title>
+                <para>出于安全的考虑，<code>&lt;parser></code>还支持对输入参数进行过滤。请看示例：</para>
+                <example>
+                    <title>配置过滤参数</title>
+                    <programlisting language="xml">&lt;parser>
+    &lt;filters>
+        &lt;parser-filters:uploaded-file-whitelist extensions="jpg, gif, png" />
+    &lt;/filters>
+&lt;/parser></programlisting>
+                </example>
+                <para>上面的配置将会禁止文件名后缀不在列表中的文件被上传到服务器上。如果做得更好一点，你甚至可以对上传文件进行病毒扫描。</para>
+                <para>目前，<code>&lt;parser></code>支持两种过滤器接口：<code>ParameterValueFilter</code>和<code>UploadedFileFilter</code>。前者用来对普通的参数值进行过滤（例如排除可能造成攻击的HTML代码）；后者用来对上传文件的file
+                        item对象进行过滤，就像刚才的<code>uploaded-file-whitelist</code>的例子。</para>
+            </section>
+        </section>
+    </section>
+    <section xml:id="webx3.requestcontexts.buffered">
+        <title><code>&lt;buffered></code> - 缓存response中的内容</title>
+        <section>
+            <title>实现原理</title>
+            <para>Webx
+                Turbine支持用layout/screen/control等部件共同购成一个页面。其中，每个layout可包含一个screen和多个control，每个screen可包含多个control，每个control还可以再包含其它的control。Screen和control的内容都可以用程序代码直接生成：</para>
+            <example>
+                <title>在Screen中直接输出页面内容</title>
+                <programlisting language="java">public class MyScreenOrControl {
+    @Autowired
+    private HttpServletResponse response;
+
+    public void execute() throws IOException {
+        PrintWriter out = response.getWriter();
+
+        out.println("&lt;p>hello world&lt;/p>");
+    }
+}</programlisting>
+            </example>
+            <para>上面的代码是非常直观、易理解的。事实上，如果你写一个简单的servlet来生成页面，代码也是和上面的类似。</para>
+            <para>但是，在简单的代码后面有一个玄机 ——
+                那就是这段代码可被用于生成嵌套的页面部件，它所生成的内容可被上一层嵌套的部件所利用。例如，一个screen中包含了一个control，那么screen可以获得它所调用的control的完整的渲染内容。</para>
+            <para>这个玄机就是靠<code>&lt;buffered></code>来实现的。<code>&lt;buffered></code>改变了response的输出流，包括output
+                stream（二进制流）和writer（文本流），使写到输出流中的内容被暂存在内存中。当需要时，可以取得缓存中的所有内容。</para>
+            <figure>
+                <title>Webx利用<code>&lt;buffered></code>机制生成嵌套式页面的过程</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/requestcontexts/buffered-rc.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示。<code>BufferedRequestContext</code>主要包括了两条用来操作buffer栈的指令：push和pop。</para>
+            <itemizedlist>
+                <listitem>
+                    <para>每次push就会在栈顶创建一个新的buffer。</para>
+                </listitem>
+                <listitem>
+                    <para>每次pop就会弹出栈顶buffer，并返回其内容。当最后一个buffer被弹出时，就会自动push一个新的buffer，从而确保任何时候栈都非空。</para>
+                </listitem>
+                <listitem>
+                    <para>所有写入<code>response.getWriter()</code>和<code>response.getOutputStream()</code>输出流的数据，将被保存在栈顶的buffer中。</para>
+                </listitem>
+                <listitem>
+                    <para>Push和pop必须成对出现。如果在commit时发现栈内有两个或两个以上的buffer存在，说明有push/pop未匹配，则报错。</para>
+                </listitem>
+                <listitem>
+                    <para>Commit时，将仅存的栈顶buffer提交给浏览器。</para>
+                </listitem>
+            </itemizedlist>
+            <para><code>&lt;buffered></code>还有一个重要的作用，就是可以用来支持基于cookie的session机制（参见：<xref
+                    xl:href="#webx.requestcontext.session" />）。因为cookie是response
+                    header的一部分，根据HTTP协议，headers出现在content的前面。一旦content开始向浏览器输出，headers就不可能再被改变了。这会导致基于cookie的session无法保存的问题。<code>&lt;buffered></code>将所有的输出内容缓存在内存中，从而避免了response过早地提交给浏览器，也就解决了cookie无法保存的问题。</para>
+        </section>
+        <section>
+            <title>使用方法</title>
+            <section>
+                <title>配置</title>
+                <para><code>&lt;buffered></code>的配置比较简单，没有任何额外的参数。只要像下面这样写就可以了：</para>
+                <example>
+                    <title>配置<code>&lt;buffered></code>（<filename>/WEB-INF/webx.xml</filename>）</title>
+                    <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;buffered />
+    ...
+&lt;/services:request-contexts></programlisting>
+                </example>
+            </section>
+            <section>
+                <title>操作buffer栈</title>
+                <example>
+                    <title>操作buffer栈</title>
+                    <programlisting language="java">@Autowired
+BufferedRequestContext buffered;
+
+@Autowired
+HttpServletResponse response;
+
+...
+
+PrintWriter out = response.getWriter();
+
+buffered.pushBuffer(); // 创建新buffer，并压入栈顶
+out.print("world");  // 在新buffer中写入
+
+String content = buffered.popCharBuffer(); // 弹出顶层buffer
+
+out.print("hello, ");
+out.print(content); // 写入较低层的buffer</programlisting>
+                </example>
+                <para>需要注意的是，response中有两种输出流：二进制流<code>response.getOutputStream()</code>和文本流<code>response.getWriter()</code>。与之对应的，<code>BufferedRequestContext</code>也会创建两种类型的buffer。这两种buffer类型是互斥的：<itemizedlist>
+                        <listitem>
+                            <para>假如你的应用使用了<code>response.getWriter()</code>，那么，你必须使用<code>buffered.popCharBuffer()</code>以取得文本buffer的内容；</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如你的应用使用了<code>response.getOutputStream()</code>，那么，你必须使用<code>buffered.popByteBuffer()</code>以取得二进制buffer的内容。</para>
+                        </listitem>
+                        <listitem>
+                            <para>如果用错，则抛<code>IllegalStateException</code>。 </para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>关闭buffer机制</title>
+                <para>Buffer机制会延迟服务器对用户的响应。在大部分情况下，这不会造成明显的问题。但在某些情况下会产生严重的问题。此时，你需要把buffer机制关闭。</para>
+                <para>例如，动态生成excel文件、PDF文件以及图片文件。这样的需求有如下特点：<itemizedlist>
+                        <listitem>
+                            <para>数据量大 —— 有可能达到几兆。如果把这样大的数据放在内存中，势必导致服务器性能的下降。</para>
+                        </listitem>
+                        <listitem>
+                            <para>没有layout/screen/control这样的嵌套页面的需求，因此不需要buffer这样的机制来帮倒忙。</para>
+                        </listitem>
+                        <listitem>
+                            <para>无状态，不需要修改session，因此也不需要buffer机制来帮助延迟提交。反过来，对于这样的大文件，提交越早越好 ——
+                                甚至可以在文档还未完全生成的时候，就开始向用户浏览器输出，边生成边下载，从而节省大量的下载时间。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>下面的程序代码模拟了一种情况 ——
+                    生成一个120M的PDF文件。每生成1M内容，就故意暂停半秒。这样一来，120M的文件需要大约一分钟才能生成完毕。</para>
+                <example>
+                    <title>模拟生成PDF文档，关闭buffer以提高性能</title>
+                    <programlisting language="java">public class MyDocument {
+    @Autowired
+    private BufferedRequestContext buffered;
+
+    @Autowired
+    private HttpServletResponse response;
+
+    public void execute() throws Exception {
+        buffered.setBuffering(false);
+
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=\"mydocument.pdf\"");
+
+        OutputStream out = response.getOutputStream();
+
+        for (int m = 0; m &lt; 120; m++) {
+            for (int k = 0; k &lt; 1024; k++) {
+                for (int b = 0; b &lt; 1024; b++) {
+                    out.write((byte) b);
+                }
+            }
+
+            // 每生成1M，暂停半秒
+            Thread.sleep(500);
+        }
+    }
+}</programlisting>
+                </example>
+                <para>把上述类代码，放在screen目录中。然后访问URL：<code>http://localhost:8081/myapp/my_document.do</code>，就可以启动下载。</para>
+                <para>假如不关闭buffer机制，从用户点击下载，到浏览器提示保存文件，中间会相隔一分钟。这种用户体验是不可接受的。更糟糕的是，文件会占用至少120M的服务器内存，这也是几乎不可接受的。关闭buffer机制以后，以上两个问题就没有了：<itemizedlist>
+                        <listitem>
+                            <para>用户点击下载链接，浏览器立即提示保存文件。</para>
+                        </listitem>
+                        <listitem>
+                            <para>边下载边生成数据，生成数据的时间是一分钟，下载所需的时间也是一分钟左右。</para>
+                        </listitem>
+                        <listitem>
+                            <para>生成的数据立即输出，不会占用过多的内存。 </para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+        </section>
+    </section>
+    <section xml:id="webx3.requestcontexts.lazycommit">
+        <title><code>&lt;lazy-commit></code> - 延迟提交response</title>
+        <section>
+            <title>什么是提交</title>
+            <para>当浏览器向服务器发出请求，服务器就会返回一个response响应。每个response分成两部分：headers和content。下面是一个HTTP响应的例子：</para>
+            <example>
+                <title>HTTP请求的headers和content</title>
+                <screen>HTTP/1.0 200 OK
+Date: Sat, 08 Jan 2011 23:19:52 GMT
+Server: Apache/2.0.63 (Unix)
+...
+
+&lt;html>...</screen>
+            </example>
+            <para>在服务器应用响应request的全过程中，都可以向浏览器输出response的内容。然而，已经输出到浏览器上的内容，是不可更改的；还没有输出的内容，还有改变的余地。这个输出的过程，被称为提交（commit）。</para>
+            <para>Servlet API中有一个方法，可以判定当前的response是否已经被提交。</para>
+            <example>
+                <title>判断response是否已经被提交</title>
+                <programlisting language="java">if (response.isCommitted()) {
+    ...
+}</programlisting>
+            </example>
+            <para>在Servlet API中，有下列操作可能导致response被提交：<itemizedlist>
+                    <listitem>
+                        <para><code>response.sendError()</code></para>
+                    </listitem>
+                    <listitem>
+                        <para><code>response.sendRedirect()</code></para>
+                    </listitem>
+                    <listitem>
+                        <para><code>response.flushBuffer()</code></para>
+                    </listitem>
+                    <listitem>
+                        <para><code>response.setContentLength()</code>
+                                或者<code>response.setHeader("Content-Length", length)</code></para>
+                    </listitem>
+                    <listitem>
+                        <para>response输出流被写入并达到内部buffer的最大值（例如：8KB）</para>
+                    </listitem>
+                </itemizedlist></para>
+        </section>
+        <section>
+            <title>实现原理</title>
+            <para>当response被提交以后，一切headers都不可再改变。这对于某些应用（例如cookie-based session）的实现是一个问题。</para>
+            <para><code>&lt;lazy-commit></code>通过拦截response中的某些方法，来将可能导致提交的操作延迟到请求处理结束的时候，也就是request
+                context本身被提交的时候。</para>
+            <para><code>&lt;lazy-commit></code>必须和<code>&lt;buffered></code>配合，才能完全实现延迟提交。如前所述，<code>&lt;buffered></code>将所有的输出暂存在内存里，从而避免了因输出流达到内部buffer的最大值（例如：8KB）而引起的提交。
+            </para>
+        </section>
+        <section>
+            <title>使用方法</title>
+            <section>
+                <title>配置</title>
+                <para><code>&lt;lazy-commit></code>的配置比较简单，没有任何额外的参数。只要像下面这样写就可以了：</para>
+                <example>
+                    <title>配置<code>&lt;lazy-commit></code>（<filename>/WEB-INF/webx.xml</filename>）</title>
+                    <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;lazy-commit />
+    ...
+&lt;/services:request-contexts></programlisting>
+                </example>
+            </section>
+            <section>
+                <title>取得当前response的状态</title>
+                <para>通过<code>LazyCommitRequestContext</code>接口，你可以访问当前response的一些状态：</para>
+                <table frame="none">
+                    <title>通过<code>LazyCommitRequestContext</code>访问response状态</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.74*" />
+                        <thead>
+                            <row>
+                                <entry><code>LazyCommitRequestContext</code>方法名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <code>isError()</code>
+                                </entry>
+                                <entry>判断当前请求是否已出错</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>getErrorStatus()</code>
+                                </entry>
+                                <entry>如果<code>sendError()</code>方法曾被调用，则该方法返回一个error状态值。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>getErrorMessage()</code>
+                                </entry>
+                                <entry>如果<code>sendError()</code>方法曾被调用，则该方法返回一个error信息。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>isRedirected()</code>
+                                </entry>
+                                <entry>判断当前请求是否已被重定向。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>getRedirectLocation()</code>
+                                </entry>
+                                <entry>取得重定向的URI。</entry>
+                            </row>
+                            <row>
+                                <entry>
+                                    <code>getStatus()</code>
+                                </entry>
+                                <entry>取得最近设置的HTTP status</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+        </section>
+    </section>
+    <section xml:id="webx3.requestcontexts.rewrite">
+        <title><code>&lt;rewrite></code> -重写请求的URL和参数</title>
+        <section>
+            <title>概述</title>
+            <para>&lt;rewrite>的功能和设计完全类似于Apache HTTPD
+                Server所提供的mod_rewrite模块。它可以根据规则，在运行时修改URL和参数。</para>
+            <figure>
+                <title>Rewrite工作原理</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/requestcontexts/rewrite-rc.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>当一个请求进入<code>&lt;rewrite></code>以后，它的处理过程如上图所示。过程可分为两个大的步骤，即：匹配和执行。</para>
+            <itemizedlist>
+                <listitem>
+                    <para>匹配</para>
+                    <orderedlist>
+                        <listitem>
+                            <para>取得URL中的path路径。</para>
+                        </listitem>
+                        <listitem>
+                            <para>用所取得的path，依次匹配rule1、rule2、rule3中的pattern，直到找到第一个匹配。</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如rule中包含conditions，则测试conditions。如果condtions不满足，则当前的rule匹配失败，回到第2步，继续匹配下一个rules。</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如rule不包含conditions，或者conditions被满足，则当前的rule匹配成功，进入“执行”阶段。 </para>
+                        </listitem>
+                    </orderedlist>
+                </listitem>
+                <listitem>
+                    <para>执行</para>
+                    <orderedlist>
+                        <listitem>
+                            <para>执行substitution替换。这可能导致path和参数的改变。</para>
+                        </listitem>
+                        <listitem>
+                            <para>执行所有的handlers。这为编程者提供了更灵活的手段来改变request中的数据。</para>
+                        </listitem>
+                        <listitem>
+                            <para>根据substitution中的指示，结束<code>&lt;rewrite></code>的执行、或者回到匹配阶段，用新的path和参数继续匹配后续的rules。</para>
+                        </listitem>
+                        <listitem>
+                            <para><code>&lt;rewrite></code>结束时，根据substitution中的指示，改写request或者重定向到新的URL。
+                            </para>
+                        </listitem>
+                    </orderedlist>
+                </listitem>
+            </itemizedlist>
+            <para>下面是一个<code>&lt;rewrite></code>配置的模板：</para>
+            <example>
+                <title>配置<code>&lt;rewrite></code>（<filename>/WEB-INF/webx.xml</filename>）</title>
+                <programlisting language="xml">&lt;services:request-contexts xmlns="http://www.alibaba.com/schema/services/request-contexts">
+    &lt;rewrite>
+
+        &lt;!-- rule 1 -->
+        &lt;rule pattern="...">
+            &lt;condition test="..." pattern="..." flags="..." />
+            &lt;condition test="..." pattern="..." flags="..." />
+            &lt;substitution uri="..." flags="...">
+                &lt;parameter key="..." value="..." />
+                &lt;parameter key="..." value="..." />
+                &lt;parameter key="..." value="..." />
+            &lt;/substitution>
+            &lt;handlers>
+                &lt;rewrite-handlers:handler class="..." />
+            &lt;/handlers>
+        &lt;/rule>
+
+        &lt;!-- rule 2 -->
+        &lt;rule pattern="...">
+        &lt;/rule>
+
+        &lt;!-- rule 3 -->
+        &lt;rule pattern="...">
+        &lt;/rule>
+
+    &lt;/rewrite>
+    ...
+&lt;/services:request-contexts></programlisting>
+            </example>
+        </section>
+        <section>
+            <title>取得路径</title>
+            <para>和Apache mod_rewrite不同，用来匹配rules的路径并不是URL的整个路径，而是由<code>servletPath +
+                    pathInfo</code>两部分组成，其中并不包含<code>contextPath</code>。</para>
+            <para>这是因为<code>&lt;rewrite></code>是属于WEB应用的，它只能匹配当前应用中的路径。在基于servlet的WEB应用中，一个完整的URL路径是由<code>contextPath
+                    + servletPath +
+                    pathInfo</code>三部分组成的。其中<code>contextPath</code>是用来区分应用的，所以对<code>&lt;rewrite></code>没有意义。</para>
+            <para>例如，URL是<code>http://localhost:8081/myapp</code><emphasis><code>/myservlet/path/path</code></emphasis>，那么<code>&lt;rewrite></code>用来匹配rules的路径是：<emphasis><code>/myservlet/path/path</code></emphasis>。
+            </para>
+        </section>
+        <section>
+            <title>匹配rules</title>
+            <para>下面是一个简单的rule。</para>
+            <example>
+                <title>匹配规则的配置</title>
+                <programlisting language="xml">&lt;rule pattern="/test1/hello\.htm">
+    ...
+&lt;/rule></programlisting>
+            </example>
+            <para>其中，rule pattern是一个正则表达式。特别需要注意的是，<emphasis>这个正则表达式是部分匹配的</emphasis>。如上例pattern可以匹配下面的路径：<itemizedlist>
+                    <listitem>
+                        <para><emphasis><code>/test1/hello.htm</code></emphasis></para>
+                    </listitem>
+                    <listitem>
+                        <para><code>/mypath</code><emphasis><code>/test1/hello.htm</code></emphasis></para>
+                    </listitem>
+                    <listitem>
+                        <para><code>/mypath</code><emphasis><code>/test1/hello.htm</code></emphasis><code>/mypath
+                            </code></para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>如果你希望匹配整个path，请使用正则表达式的“<code>^</code>”和“<code>$</code>”标记。例如：</para>
+            <example>
+                <title>匹配整个path</title>
+                <programlisting language="xml">&lt;rule pattern="^/test1/hello\.htm$"></programlisting>
+            </example>
+            <para>部分匹配的正则表达式为你提供了较灵活的匹配能力，例如，下面的rule可以用来匹配所有以jpg为后缀的URL。</para>
+            <example>
+                <title>后缀匹配</title>
+                <programlisting language="xml">&lt;rule pattern="\.jpg$"></programlisting>
+            </example>
+            <para>此外，rules pattern还支持否定的pattern ——
+                即在正常的pattern前加上“<code>!</code>”即可。例如下面的rule匹配所有不以jpg为后缀的URL：</para>
+            <example>
+                <title>否定匹配</title>
+                <programlisting language="xml">&lt;rule pattern="!\.jpg$"></programlisting>
+            </example>
+        </section>
+        <section>
+            <title>匹配conditions</title>
+            <para>每个rule都可以包含多个额外的conditions。Conditions提供了除path匹配以外的其它条件。下面是condition配置的基本格式：</para>
+            <example>
+                <title>配置conditions</title>
+                <programlisting language="xml">&lt;rule pattern="/path">
+    &lt;condition test="..." pattern="..." flags="..." />
+    &lt;condition test="..." pattern="..." flags="..." />
+    &lt;condition test="..." pattern="..." flags="..." />
+    ...
+&lt;/rule></programlisting>
+            </example>
+            <para>每个condition由两个主要的参数：测试表达式和pattern。测试表达式中可以使用下面的变量：</para>
+            <table frame="none">
+                <title>Condition变量</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.5*" />
+                    <colspec colname="c3" colnum="3" colwidth="1.3*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c3">客户端信息</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>
+                                <code>%{REMOTE_HOST}</code>
+                            </entry>
+                            <entry>客户端主机名。</entry>
+                            <entry>相当于<code>request.getRemoteHost()</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{REMOTE_ADDR}</code>
+                            </entry>
+                            <entry>客户端地址。</entry>
+                            <entry>相当于<code>request.getRemoteAddr()</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{REMOTE_USER}</code>
+                            </entry>
+                            <entry>用户名。</entry>
+                            <entry>相当于<code>request.getRemoteUser()</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{AUTH_TYPE}</code>
+                            </entry>
+                            <entry>验证用户的方法。例如BASIC、FORM、CLIENT_CERT、DIGEST等。</entry>
+                            <entry>相当于<code>request.getAuthType()</code></entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.5*" />
+                    <colspec colname="c3" colnum="3" colwidth="1.3*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c3">服务端信息</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>
+                                <code>%{SERVER_NAME}</code>
+                            </entry>
+                            <entry>服务器主机名。</entry>
+                            <entry>相当于<code>request.getServerName()</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{SERVER_PORT}</code>
+                            </entry>
+                            <entry>服务器端口。</entry>
+                            <entry>相当于<code>request.getServerPort()</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{SERVER_PROTOCOL}</code>
+                            </entry>
+                            <entry>服务器协议。</entry>
+                            <entry>相当于<code>request.getProtocol()</code></entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.5*" />
+                    <colspec colname="c3" colnum="3" colwidth="1.3*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c3">请求信息</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>
+                                <code>%{REQUEST_METHOD}</code>
+                            </entry>
+                            <entry>HTTP方法名。例如GET、POST等。</entry>
+                            <entry>相当于<code>request.getMethod()</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{REQUEST_URI}</code>
+                            </entry>
+                            <entry>所请求的URI，不包括主机名、端口和参数。</entry>
+                            <entry>相当于<code>request.getRequestURI()</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{QUERY_STRING}</code>
+                            </entry>
+                            <entry>参数和值。注意，对于POST请求取得QUERY_STRING，可能会影响性能。</entry>
+                            <entry>相当于<code>request.getQueryString()</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{QUERY:param}</code>
+                            </entry>
+                            <entry>取得参数值。无论哪一种类型的请求（GET/POST/上传文件），都可以取得参数值。 </entry>
+                            <entry>相当于<code>request.getParameter("param")</code></entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.5*" />
+                    <colspec colname="c3" colnum="3" colwidth="1.3*" />
+                    <thead>
+                        <row>
+                            <entry namest="c1" nameend="c3">HTTP headers</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>
+                                <code>%{HTTP_USER_AGENT}</code>
+                            </entry>
+                            <entry>浏览器名称。</entry>
+                            <entry>相当于<code>request.getHeader("User-Agent")</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{HTTP_REFERER}</code>
+                            </entry>
+                            <entry>前一个URL。</entry>
+                            <entry>相当于<code>request.getHeader("Referer")</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{HTTP_HOST}</code>
+                            </entry>
+                            <entry>HTTP请求中的主机名，一般代表虚拟主机。</entry>
+                            <entry>相当于<code>request.getHeader("Host")</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{HTTP_ACCEPT}</code>
+                            </entry>
+                            <entry>浏览器可以接受的文档类型。</entry>
+                            <entry>相当于<code>request.getHeader("Accept")</code></entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <code>%{HTTP_COOKIE}</code>
+                            </entry>
+                            <entry>浏览器发送过来的cookie。</entry>
+                            <entry>相当于<code>request.getHeader("Cookie")</code></entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>Condition pattern和rule
+                pattern类似，也是<emphasis>部分匹配的正则表达式，并且支持否定的pattern</emphasis>。举例说明：</para>
+            <example>
+                <title>Condition patterns</title>
+                <programlisting language="xml">&lt;rule pattern="/path"> <co xml:id="co.rewrite.conditions.rule1" />
+    &lt;condition test="%{SERVER_NAME}:%{SERVER_PORT}" pattern="www.(\w+).com:8080" />  <co xml:id="co.rewrite.conditions.c1" />
+    &lt;condition test="%{QUERY:x}" pattern="!1" /> <co xml:id="co.rewrite.conditions.c2" />
+    &lt;condition test="%{QUERY:y}" pattern="2" /> <co xml:id="co.rewrite.conditions.c3" />
+&lt;/rule></programlisting>
+                <para>上面的rule匹配符合以下条件的请求：</para>
+                <calloutlist>
+                    <callout arearefs="co.rewrite.conditions.rule1">
+                        <para>匹配路径<code>/path</code>。</para>
+                    </callout>
+                    <callout arearefs="co.rewrite.conditions.c1">
+                        <para>服务器名为<code>www.*.com</code>，端口为<code>8080</code>。</para>
+                    </callout>
+                    <callout arearefs="co.rewrite.conditions.c2">
+                        <para>并且参数<code>x!=1</code></para>
+                    </callout>
+                    <callout arearefs="co.rewrite.conditions.c3">
+                        <para>并且参数<code>y=2</code></para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <para>默认情况下，必须所有的conditions条件都符合，rule才会继续执行下去。但是condition还支持一个选项：<code>OR</code>或者<code>ornext</code>。如果condtion带有这个选项，只要符合当前condition<emphasis>或者</emphasis>后续的conditions，rule就会执行下去。例如：</para>
+            <example>
+                <title>部分匹配conditions</title>
+                <programlisting language="xml">&lt;rule pattern="/path"> <co xml:id="co.rewrite.conditions.rule2" />
+    &lt;condition test="%{QUERY:x}" pattern="1" flags="OR" /> <co xml:id="co.rewrite.conditions.c4" />
+    &lt;condition test="%{QUERY:y}" pattern="2" flags="ornext" /> <co xml:id="co.rewrite.conditions.c5" />
+    &lt;condition test="%{QUERY:z}" pattern="3" /> <co xml:id="co.rewrite.conditions.c6" />
+&lt;/rule></programlisting>
+                <para>上例中，“<code>OR</code>”和“<code>ornext</code>”代表完全一样的意思。这个rule匹配符合以下条件的请求：</para>
+                <calloutlist>
+                    <callout arearefs="co.rewrite.conditions.rule2">
+                        <para>匹配路径<code>/path</code>。</para>
+                    </callout>
+                    <callout arearefs="co.rewrite.conditions.c4">
+                        <para>参数<code>x=1</code>，</para>
+                    </callout>
+                    <callout arearefs="co.rewrite.conditions.c5">
+                        <para><emphasis>或者</emphasis><code>y=2</code>，</para>
+                    </callout>
+                    <callout arearefs="co.rewrite.conditions.c6">
+                        <para><emphasis>或者</emphasis><code>z=3</code>。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+        </section>
+        <section>
+            <title>替换路径</title>
+            <para>当路径匹配，并且conditions也匹配（如果有的话），那么<code>&lt;rewrite></code>就会执行所匹配的rule。</para>
+            <example>
+                <title>替换路径</title>
+                <programlisting language="xml">&lt;rule pattern="/test1/hello\.htm">
+    &lt;substitution uri="/test1/new_hello\.htm" />
+&lt;/rule></programlisting>
+            </example>
+            <para>上例中的rule将执行下面的替换（别忘了，rule支持部分匹配，只有匹配的部分被替换）：<itemizedlist>
+                    <listitem>
+                        <para>将<emphasis><code>/test1/hello.htm</code></emphasis>替换成<emphasis><code>/test1/new_hello.htm</code></emphasis>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>将<code>/mypath</code><emphasis><code>/test1/hello.htm</code></emphasis>替换成<code>/mypath</code><emphasis><code>/test1/new_hello.htm</code></emphasis>。</para>
+                    </listitem>
+                    <listitem>
+                        <para>将<code>/mypath</code><emphasis><code>/test1/hello.htm</code></emphasis><code>/mypath</code>替换成<code>/mypath</code><code>/test1/new_hello.htm</code><code>/mypath</code>。
+                        </para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>路径替换时，还支持正则表达式变量。例如：</para>
+            <example>
+                <title>用正则表达式变量替换路径</title>
+                <programlisting language="xml">&lt;rule pattern="/(\w+)\.htm">
+    &lt;condition test="%{SERVER_NAME}" pattern="(\w+).blogs.com" />
+    &lt;substitution uri="/%1/new_$1\.htm" />
+&lt;/rule></programlisting>
+            </example>
+            <para>需要注意的是，rule
+                pattern中的匹配项，是用“<code>$1</code>”、“<code>$2</code>”、“<code>$3</code>”表示的；而condition
+                    pattern中的匹配项，是用“<code>%1</code>”、“<code>%2</code>”、“<code>%3</code>”表示的。只有最后一个被匹配的condition中的匹配项，才被保留用于替换。</para>
+            <para>上面的rule将执行下面的替换：将<code>http://</code><emphasis><code>myname</code></emphasis><code>.blogs.com</code><emphasis><code>/hello.htm</code></emphasis>替换成同服务器上的路径：<emphasis><code>/myname/new_hello.htm</code></emphasis>。</para>
+        </section>
+        <section>
+            <title>替换参数</title>
+            <para><code>&lt;rewrite></code>不仅可以替换路径，还可以替换参数。</para>
+            <example>
+                <title>替换参数</title>
+                <programlisting language="xml">&lt;rule pattern="/hello.(\w+)">
+    &lt;condition test="%{SERVER_NAME}" pattern="www.(\w+).com" />
+    &lt;substitution>
+        &lt;parameter key="ext" value="$1" />
+        &lt;parameter key="host" value="%1" />
+        &lt;parameter key="count">
+            &lt;value>1&lt;/value>
+            &lt;value>2&lt;/value>
+            &lt;value>3&lt;/value>
+        &lt;/parameter>
+    &lt;/substitution>
+&lt;/rule></programlisting>
+            </example>
+            <para>替换参数和替换路径类似，也可以指定rule和condition pattern中的匹配项。参数支持多值，例如上例中的<code>count</code>参数。 上面的例子将执行以下替换行为：<itemizedlist>
+                    <listitem>
+                        <para>对于请求：<code>http://www.</code><emphasis><code>myserver</code></emphasis><code>.com/hello.</code><emphasis><code>htm</code></emphasis>，不改变其路径，只改变其参数：<itemizedlist>
+                                <listitem>
+                                    <para>创建单值参数：ext=<emphasis><code>htm</code></emphasis>（从rule
+                                            pattern中取得<code>$1</code>）</para>
+                                </listitem>
+                                <listitem>
+                                    <para>创建单值参数：host=<emphasis><code>myserver</code></emphasis>（从condition
+                                            pattern中取得<code>%1</code>）</para>
+                                </listitem>
+                                <listitem>
+                                    <para>创建多值参数：count=<emphasis><code>[1, 2,
+                                        3]</code></emphasis></para>
+                                </listitem>
+                                <listitem>
+                                    <para><emphasis>删除其它所有参数</emphasis>。 </para>
+                                </listitem>
+                            </itemizedlist></para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>如果你想保留原来所有参数，只是修改或添加一些参数，可以指定<code>QSA</code>或<code>qsappend</code>选项。</para>
+            <example>
+                <title>保留原来的参数</title>
+                <programlisting language="xml">&lt;substitution flags="QSA">
+    ...
+&lt;/substitution></programlisting>
+            </example>
+        </section>
+        <section>
+            <title>后续操作 </title>
+            <para>当一个rule和其中的conditions被匹配时，<code>&lt;rewrite></code>就会执行这个rule。执行的结果通常是改变请求的路径或参数。当一个rule执行完毕以后，接下来做什么呢？有几种可能的情况。</para>
+            <section>
+                <title>继续匹配剩余的rules</title>
+                <example>
+                    <title>默认后续操作：继续匹配剩余的rules</title>
+                    <programlisting language="xml">&lt;rule pattern="...">
+    &lt;substitution uri="..." />
+&lt;/rule>
+&lt;rule pattern="...">
+    &lt;substitution uri="..." />
+&lt;/rule></programlisting>
+                </example>
+                <para>上面第一个rule执行完以后，<code>&lt;rewrite></code>会用改变过的路径和参数去继续匹配余下的规则。这是默认情况。</para>
+            </section>
+            <section>
+                <title>停止匹配</title>
+                <example>
+                    <title>后续操作：停止匹配</title>
+                    <programlisting language="xml">&lt;rule pattern="...">
+    &lt;substitution uri="..." flags="L" />
+&lt;/rule>
+&lt;rule pattern="...">
+    &lt;substitution uri="..." />
+&lt;/rule></programlisting>
+                </example>
+                <para>当在substitution中指定<code>L</code>或者<code>last</code>选项时，rule匹配会到此中止。后续的rules不会再被匹配。</para>
+            </section>
+            <section>
+                <title>串接rules</title>
+                <example>
+                    <title>后续操作：串接rules</title>
+                    <programlisting language="xml">&lt;rule pattern="^/common-prefix">
+    &lt;substitution flags="C" />
+&lt;/rule>
+&lt;rule pattern="\.jpg">
+    &lt;substitution uri="..." />
+&lt;/rule>
+&lt;rule pattern="\.htm">
+    &lt;substitution uri="..." />
+&lt;/rule></programlisting>
+                </example>
+                <para>当在substitution中指定<code>C</code>或者<code>chain</code>选项时，假如当前rule匹配，则会像默认情况一样继续匹配剩余的rules；否则，就像<code>last</code>选项一样立即中止匹配。</para>
+                <para>串接rules在下面的情况下非常有用：即对一个路径进行匹配多个patterns。例如上面的例子中，第一个rule限定了路径前缀必须是“<code>/common-prefix</code>”，接下来的rules在此基础上继续判断：后缀是“<code>jpg</code>”还是“<code>htm</code>”？</para>
+            </section>
+        </section>
+        <section>
+            <title>重定向</title>
+            <example>
+                <title>重定向</title>
+                <para>永久重定向，status code=<code>301</code></para>
+                <programlisting language="xml">&lt;rule pattern="^/hello1\.htm">
+    &lt;substitution uri="/new_hello.htm" flags="L,R=301" />
+&lt;/rule></programlisting>
+                <para>临时重定向，status code=<code>302</code>，不保留参数</para>
+                <programlisting language="xml">&lt;rule pattern="^/hello2\.htm">
+    &lt;substitution uri="/new_hello.htm" flags="L,R" />
+&lt;/rule></programlisting>
+                <para>临时重定向，status code=<code>302</code>，保留参数</para>
+                <programlisting language="xml">&lt;rule pattern="^/hello3\.htm">
+    &lt;substitution uri="/new_hello.htm" flags="L,R,QSA" />
+&lt;/rule></programlisting>
+                <para>绝对URL重定向，status code=<code>302</code></para>
+                <programlisting language="xml">&lt;rule pattern="^/hello4\.htm">
+    &lt;substitution uri="http://www.other-site.com/new_hello.htm" flags="L,R" />
+&lt;/rule></programlisting>
+            </example>
+            <para>当在substitution中指定<code>R</code>或者<code>redirect</code>的时候，<code>&lt;rewrite></code>会返回“重定向”的响应。
+                    重定向有两种：<code>301</code>永久重定向，和<code>302</code>临时重定向。默认是<code>302</code>临时重定向，但你可以指定<code>301</code>来产生一个永久的重定向。</para>
+            <para>通常，<code>R</code>标记会和<code>L</code>标记一起使用，使<code>&lt;rewrite></code>立即结束。</para>
+            <para>重定向和<code>QSA</code>标记一起使用时，可以将当前请求的所有参数附加到重定向请求中。不过这里需要注意的是，假如当前请求是一个post请求，那么将参数附加到新的URL中，可能会导致URL过长而重定向失败的问题。</para>
+            <para>重定向可以指向另一个不同域名的网站 ——
+                反过来说，<emphasis>假如你希望rewrite到另一个网站，那么你必须指定重定向的选项才行</emphasis>。</para>
+        </section>
+        <section>
+            <title>自定义处理器</title>
+            <example>
+                <title>自定义处理器</title>
+                <programlisting language="xml">&lt;rule pattern="...">
+    &lt;handlers>
+        &lt;rewrite-handlers:handler class="..." />
+        &lt;rewrite-handlers:handler class="..." />
+    &lt;/handlers>
+&lt;/rule></programlisting>
+            </example>
+            <para>有时候，基于正则表达式替换的substitution不能满足较复杂的需求，好在<code>&lt;rewrite></code>还提供了另一种机制：自定义处理器。</para>
+            <para>当rule和conditions被匹配的时候，所有的handlers将被执行。Webx提供了一个handler参考实现：</para>
+            <example>
+                <title>自定处理器参考实现：规格化路径</title>
+                <programlisting language="xml">&lt;rule pattern="...">
+    &lt;handlers>
+        &lt;rewrite-handlers:handler
+            class="com.alibaba.citrus.service.requestcontext.rewrite.support.UrlNormalizer"
+        />
+    &lt;/handlers>
+&lt;/rule></programlisting>
+            </example>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>本文详细介绍了Request Contexts的功能。</para>
+        <para>Request
+            Contexts服务是Webx框架的核心功能之一。它看似简单，但却提供了很多有用功能。相对于其它框架中的解决方案，RequestContexts显得更加优雅，因为其中大部分功能对应用程序是透明的
+            —— 应用程序不需要知道它们的存在，就可以享受它们所提供的功能。 </para>
+    </section>
+</chapter>

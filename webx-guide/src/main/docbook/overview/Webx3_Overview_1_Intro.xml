@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="webx.overview.intro" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="intro.html" ?>
+    <title>Webx总体介绍</title>
+    <para>本章概要地介绍了Webx框架的整体结构和设计。如果你想了解更多，请参考其它详细文档。</para>
+    <section>
+        <title>设计理念</title>
+        <section>
+            <title>框架的本质</title>
+            <figure xml:id="framework-structure">
+                <title>框架结构的建筑</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o1/framework.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>应用框架（Application Framework），让人联想到建筑的框架（Frame Structure）。<itemizedlist>
+                    <listitem>
+                        <para>建筑框架确定了整个建筑的结构；应用框架确定了应用的结构。</para>
+                    </listitem>
+                    <listitem>
+                        <para>建筑框架允许你在不改变结构的基础上，自由改变其内容。例如，你可以用墙体随意分隔房间。应用框架允许你在不改变整体结构的基础上，自由扩展功能。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>可以这样说，框架的本质就是“扩展”。维基百科这样定义描写“软件框架”，它说一个软件框架必须符合如下要素：<informaltable frame="all"
+                    colsep="0" rowsep="0">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <tbody>
+                            <row>
+                                <entry>Inversion of Control 反转控制</entry>
+                                <entry>应用的流程不是由应用控制的，而是由框架控制的。</entry>
+                            </row>
+                            <row>
+                                <entry>Default Behavior 默认行为</entry>
+                                <entry>框架会定义一系列默认的行为。</entry>
+                            </row>
+                            <row>
+                                <entry>Extensibility 扩展性</entry>
+                                <entry>应用可以扩展框架的功能，也可以修改框架的默认行为。</entry>
+                            </row>
+                            <row>
+                                <entry>Non-modifiable Framework Code 框架本身不可更改</entry>
+                                <entry>框架在被扩展时，自身的代码无须被改变。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable></para>
+            <para>在一个框架中，实现丰富的功能固然重要，然而更重要的是：<emphasis>建立良好的扩展机制</emphasis>。我们知道，Webx目前虽然欠缺一些流行的功能。然而Webx却有一个良好的扩展机制，来支持开发者增加新的功能。</para>
+        </section>
+        <section>
+            <title>基础框架</title>
+            <para>纵观开源的Web框架，做得比较好的框架，都有一个共性 —— 它们并不是简单地实现Web应用所需要的功能（诸如Action、模板、表单验证等），而是把框架建立在另一个基础框架之上。这个基础框架的作用是：组装模块；提供扩展机制。建立在这种基础上的Web框架有很好的适应性和扩展性，可以应对Web应用不断变化和发展的需求。<itemizedlist>
+                    <listitem>
+                        <para>早期的Turbine，建立在Service框架之上。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Webwork，建立在Xwork框架之上。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Tapestry，建立在HiveMind或Tapestry IOC框架之上。</para>
+                    </listitem>
+                    <listitem>
+                        <para>早期的Struts 1.x由于没有一个轻量框架作为基础，因此很难扩展。而Struts
+                            2.x使用了Webwork和Xwork，因此适用能力大为提高。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Spring MVC，建立在Spring框架之上。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para><emphasis>一个Web框架的好坏，往往不是由它所实现的具体功能的好坏决定的，而是由其所用的基础框架的好坏决定的。</emphasis></para>
+            <para>Webx建立在SpringExt的基础上 ——
+                SpringExt是对Spring的扩展。Spring是当今主流的轻量级框架。SpringExt没有损失任何Spring的功能，但它能够提供比Spring自身更强大的扩展能力。</para>
+        </section>
+        <section>
+            <title>层次化</title>
+            <para><emphasis>设计良好的模块，应该是层次化的。</emphasis></para>
+            <para>例如，模块B扩展了模块A，同时被模块C扩展。这样就形成了A、B、C三个层次。</para>
+            <figure xml:id="tiers">
+                <title>模块的层次</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o1/tiers.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如图所示，层次之间有如下的关系：<itemizedlist>
+                    <listitem>
+                        <para>上层定义规则，下层定义细节；（上层、下层也可称为内层、外层）</para>
+                    </listitem>
+                    <listitem>
+                        <para>上层是抽象的，下层是具体的；</para>
+                    </listitem>
+                    <listitem>
+                        <para>越上层，越稳定（越少改变）；越下层，越易变。</para>
+                    </listitem>
+                    <listitem>
+                        <para>依赖倒转（Dependency Inversion）。下层（具体）依赖上层（抽象），而不是上层依赖下层。</para>
+                    </listitem>
+                    <listitem>
+                        <para>下层扩展上层时，不需要修改到上层的任何代码和配置。即符合开闭原则（Open-Closed Principle简称OCP – Open for
+                            extension, Closed for modification）。</para>
+                    </listitem>
+                    <listitem>
+                        <para>每一层均可被替换。 </para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>层次化的设计，使软件中的每一个部分都可被增强或替换。</para>
+            <para><emphasis>层次化不是自然而然的，而是需要精心的设计。</emphasis>设计一个层次化的组件，可以从下面几方面来考虑：<itemizedlist>
+                    <listitem>
+                        <para>切分功能。每个组件专心做一件事。</para>
+                    </listitem>
+                    <listitem>
+                        <para>分析哪些会改变，哪些不会改变。不变部分固化在组件中，可能会改变的部分抽象成接口，以便扩展。</para>
+                    </listitem>
+                    <listitem>
+                        <para>考虑默认值和默认扩展。默认值和默认扩展应该是最安全、最常用的选择。对于默认值和默认扩展，用户在使用时不需要额外的配置。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>Webx鼓励层次化的模块设计，而SpringExt提供了创建和配置层次化组件的机制。</para>
+        </section>
+    </section>
+    <section>
+        <title>Webx的层次</title>
+        <section>
+            <title>三个大层次</title>
+            <para>很多用过Webx框架的人说起Webx，就想到：Webx如何处理页面、如何验证表单、如何渲染模板等等功能。事实上，这些只不过是Webx最外层、最易变、非本质的功能。</para>
+            <para>Webx框架不仅鼓励层次化设计，它本身也是层次化的。<emphasis>你既可以使用全部的Webx框架，也可以只使用部分的Webx框架。</emphasis>大体上，Webx框架可以划分成三个大层次，如图所示。</para>
+            <figure xml:id="webx-tiers">
+                <title>Webx的层次</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/o1/webx-tiers.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <orderedlist>
+                <listitem>
+                    <para>SpringExt：基于Spring，提供扩展组件的能力。它是整个框架的基础。</para>
+                </listitem>
+                <listitem>
+                    <para>Webx Framework：基于Servlet
+                        API，提供基础的服务，例如：初始化Spring、初始化日志、接收请求、错误处理、开发模式等。Webx
+                        Framework只和servlet及spring相关 ——
+                        它不关心Web框架中常见的一些服务，例如Action处理、表单处理、模板渲染等。因此，事实上，你可以用Webx
+                        Framework来创建多种风格的Web框架。</para>
+                </listitem>
+                <listitem>
+                    <para>Webx Turbine：基于Webx Framework，实现具体的网页功能，例如：Action处理、表单处理、模板渲染等。</para>
+                </listitem>
+            </orderedlist>
+        </section>
+        <section>
+            <title>剪裁和定制Webx</title>
+            <para>并非所有的开发者都需要使用Webx的全部。下面列举几种情形。</para>
+            <section>
+                <title>级别一：仅使用SpringExt，适用于非Web应用、单元测试</title>
+                <para>对于非Web应用和单元测试，但却想拥有Spring和SpringExt的功能，可以直接创建SpringExt容器：</para>
+                <example>
+                    <title>直接创建SpringExt容器</title>
+                    <programlisting language="java">import java.io.File;
+import org.springframework.core.io.FileSystemResource;
+import com.alibaba.citrus.springext.support.context.XmlApplicationContext; <co xml:id="co.xac" />
+
+...
+
+XmlApplicationContext parentContext = new XmlApplicationContext(
+        new FileSystemResource(new File(srcdir, "parent.xml")));  <co xml:id="co.xac.normal" />
+
+XmlApplicationContext context = new XmlApplicationContext(
+        new FileSystemResource(new File(srcdir, "app.xml")), parentContext); <co xml:id="co.xac.w.parent" />
+
+Object mybean = context.getBean("mybean");</programlisting>
+                </example>
+                <calloutlist>
+                    <callout arearefs="co.xac">
+                        <para>请注意代码所使用的<code>ApplicationContext</code>实现类为SpringExt扩展的类型（<code>c.a.c.springext.s.c.XmlApplicationContext</code>）。通过这个实现类，你除了可以使用原来Spring的所有功能以外，还可以使用SpringExt的所有功能，包括：Schema、Configuration
+                            Points和Contributions、ResourceLoadingService等。</para>
+                    </callout>
+                    <callout arearefs="co.xac.normal">
+                        <para>这行代码从一个配置文件中创建容器。</para>
+                    </callout>
+                    <callout arearefs="co.xac.w.parent">
+                        <para>这行代码创建了一个子容器。多个子容器和父容器之间可组成一个树状级联的容器结构。在子容器中可以访问到所有父容器中的beans和服务，但反过来是不成立的。</para>
+                    </callout>
+                </calloutlist>
+            </section>
+            <section>
+                <title>级别二：仅使用SpringExt及Web组件，在此基础上运行Spring MVC、Struts等非webx框架</title>
+                <para>非webx框架也可以使用SpringExt的全部功能。</para>
+                <example>
+                    <title>修改<filename>/WEB-INF/web.xml</filename>，让非webx框架支持SpringExt</title>
+                    <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://java.sun.com/xml/ns/j2ee  http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd
+    ">
+
+    &lt;!-- 初始化日志系统，装载/WEB-INF/log4j.xml或/WEB-INF/logback.xml -->
+    &lt;listener>
+        &lt;listener-class>com.alibaba.citrus.logconfig.LogConfiguratorListener&lt;/listener-class>
+    &lt;/listener>
+
+    &lt;!-- 初始化Spring容器，装载/WEB-INF/webx.xml, /WEB-INF/webx-*.xml -->
+    &lt;listener>
+        &lt;listener-class>com.alibaba.citrus.webx.context.WebxContextLoaderListener&lt;/listener-class> <co xml:id="co.context-loader" />
+    &lt;/listener>
+
+    &lt;!-- 下面配置：Spring MVC、Struts的filter、servlet、mapping... -->
+    ……
+
+&lt;/web-app></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.context-loader">
+                            <para>这里使用了webx的<code>WebxContextLoaderListener</code>来初始化spring容器，而不是用spring原生的<code>ContextLoaderListener</code>。不用担心，前者完全兼容后者。事实上前者是从后者派生而来的。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+            <section>
+                <title>级别三：仅使用Webx Framework，创造新的Web框架</title>
+                <para>也许你想做一个新的Web框架 —— 因为你并不想使用Webx Turbine中提供的页面处理的方案，但你仍然可以使用Webx
+                    Framework所提供的服务，例如：错误处理、开发模式等。</para>
+                <example>
+                    <title>修改<filename>/WEB-INF/webx.xml</filename>，以创建新的WEB框架</title>
+                    <programlisting language="xml">&lt;webx-configuration xmlns="http://www.alibaba.com/schema/services">
+    &lt;components defaultControllerClass="com.myframework.MyController"> <co xml:id="co.controller" />
+        &lt;rootController class="com.myframework.MyRootController" /> <co xml:id="co.root-controller" />
+    &lt;/components>
+&lt;/webx-configuration></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.controller">
+                            <para><code>MyController</code>扩展了<code>AbstractWebxController</code>。</para>
+                        </callout>
+                        <callout arearefs="co.root-controller">
+                            <para><code>MyRootController</code>扩展了<code>AbstractWebxRootController</code>。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>这个方案非常适合作为一个新Web框架的起点 ——
+                    免去了创建Servlet/Filter、初始化Spring容器、处理request/response等繁杂事务，并且完全支持SpringExt的所有功能，此外还包含了错误处理、开发模式等Webx
+                    Framework中的一切便利。</para>
+                <para>另一种以Webx
+                        Framework为基础的创建新框架的方法，是从pipeline入手。<emphasis>通过pipeline，理论上可以实现任何框架的功能</emphasis>。</para>
+            </section>
+            <section>
+                <title>级别四：使用整个Webx框架，定制Turbine</title>
+                <para>假如你想使用几乎大部分Webx的功能，但希望对少数步骤进行改进，你可以修改pipeline。</para>
+                <para>Webx Turbine本身定义了一套pipeline的实现，但是你完全可以去修改它：插入一些步骤、删除一些步骤、修改一些步骤 ——
+                    所有都取决于你。</para>
+                <para>最常见的一个需求，是在Webx Turbine中添加权限验证 —— 只需要插入一个步骤就可以做到了。</para>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>Webx框架是一个稳定、强大的Web框架。倒不是说它实现了所有的功能，而是它建立在SpringExt的基础上，具有超强的扩展能力。你可以使用全部的Webx，也可以使用部分Webx。你也可以比较容易地用SpringExt做出自己的可扩展组件。</para>
+    </section>
+</chapter>

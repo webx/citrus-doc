@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../target/pom.ent">
+  %placeholders;
+]>
+<preface xmlns="http://docbook.org/ns/docbook" xmlns:xl="http://www.w3.org/1999/xlink" version="5.0"
+    xml:lang="zh-CN">
+    <?dbhtml filename="preface.html" ?>
+    <title>引言</title>
+    <section>
+        <title>阅读向导</title>
+        <note>
+            <itemizedlist>
+                <listitem>
+                    <para>如果你希望马上尝试用webx来搭建应用，请转至<xref linkend="webx.practicing" />。</para>
+                </listitem>
+                <listitem>
+                    <para>如果你想了解webx的整体设计思想，请转至<xref linkend="webx.overview" />。</para>
+                </listitem>
+                <listitem>
+                    <para>如果你想进一步了解webx的每个具体服务，请转至<xref linkend="webx.basic.services" />以及<xref
+                            linkend="webx.services" />。</para>
+                </listitem>
+                <listitem>
+                    <para>如果你想了解一些常用的开发工具，请转至<xref linkend="webx.tools" />。</para>
+                </listitem>
+            </itemizedlist>
+        </note>
+    </section>
+    <section>
+        <title>Webx是什么？</title>
+        <para>Webx是一套基于Java Servlet API的通用Web框架。它在Alibaba集团内部被广泛使用。从2010年底，向社会开放源码。</para>
+    </section>
+    <section>
+        <title>Webx的历史</title>
+        <itemizedlist>
+            <listitem>
+                <para>2001年，阿里巴巴内部开始使用Java Servlet作为WEB服务器端的技术，以取代原先的Apache HTTPD
+                    server和mod_perl的组合。</para>
+            </listitem>
+            <listitem>
+                <para>2002年，选择Jakarta Turbine作为WEB框架，并开始在此之上进行扩展。</para>
+            </listitem>
+            <listitem>
+                <para>2003年，经过大约一年的扩展，框架开始成熟。我们私下称这个经过改进的Turbine框架为Webx 1.0。</para>
+            </listitem>
+            <listitem>
+                <para>2004年，借着淘宝网的第一次改版，我们正式推出了Webx 2.0。由于Turbine开源项目发展过于缓慢，我们不得不放弃它。Webx
+                    2.0是从零开始完全重写的，仅管它仍然延续了Turbine的使用风格。</para>
+            </listitem>
+            <listitem>
+                <para>2004年11月，Webx 2.0和Spring框架整合。</para>
+            </listitem>
+            <listitem>
+                <para>从那以后，Webx 2.0一直在进化，但没有作根本性的改动。</para>
+            </listitem>
+            <listitem>
+                <para>2010年，Webx 3.0发布。Webx 3.0抛弃了Webx
+                    2.0中过时的、从Turbine中发展而来的Service框架，直接采用Spring作为其基础，并对Spring作了重大改进。Webx 3.0完全兼容Webx
+                    2.0的代码，只需要修改配置文件就可完成升级。</para>
+            </listitem>
+            <listitem>
+                <para>2010年底，Webx 3.0开源。</para>
+            </listitem>
+        </itemizedlist>
+    </section>
+    <section>
+        <title>为什么要用Webx而不是其它的开源框架？</title>
+        <para>现在有很多Java的Web框架可供选择，并且它们也都是免费的。例如，<itemizedlist>
+                <listitem>
+                    <para>Struts - <link xl:href="http://struts.apache.org/" /></para>
+                </listitem>
+                <listitem>
+                    <para>Webwork - <link xl:href="http://www.opensymphony.com/webwork/" /></para>
+                </listitem>
+                <listitem>
+                    <para>Tapestry - <link xl:href="http://tapestry.apache.org/" /></para>
+                </listitem>
+                <listitem>
+                    <para>Spring MVC - <link xl:href="http://www.springsource.org/" /></para>
+                </listitem>
+                <listitem>
+                    <para>⋯⋯</para>
+                </listitem>
+            </itemizedlist></para>
+        <para>以上框架都是非常优秀的。说实话，如果阿里巴巴网站在2001年开始，就有这么多可选择的话，无论选择哪一个都不会有问题。因为这些年来，所有的开源Web框架都在互相学习、并趋于相似。Webx也不例外，它吸收了其它框架的很多想法。因此，当你使用Webx的时候，你会觉得在很多方面，它和其它开源的框架非常类似。</para>
+        <para>我并不是说所有的框架都一样好，而是说只要假以时日，所有的框架在发展过程中，必然会积聚好的方面，淘汰坏的方面，从而变得足够好。从这个角度看，的确没有特别明显的理由来选择Webx，但也没有明显的理由不选择Webx。</para>
+        <para>另一方面，由于每一种框架采用不同的设计，必然会有各自的优势。Webx也是如此 —— 它在某些方面有一些独到的设计，超越了同类框架。Webx有哪些优势呢？</para>
+    </section>
+    <section>
+        <title>Webx的优势</title>
+        <section>
+            <title>成熟可靠性</title>
+            <para>这个优势主要是针对阿里巴巴及属下网站而言。因为Webx在阿里巴巴和淘宝用了很多年。对于这种超大访问量的电子商务网站，Webx经受了考验，被证明是成熟可靠的。</para>
+        </section>
+        <section>
+            <title>开放和扩展性</title>
+            <itemizedlist>
+                <listitem>
+                    <para>对Spring的直接支持 —— Spring是当今主流的轻量级框架。Webx 3.0和Spring
+                        MVC一样，完全建立在Spring框架之上，故可运用Spring的所有特性。</para>
+                </listitem>
+                <listitem>
+                    <para>扩展性 —— Webx 3.0对Spring做了扩展，使Spring
+                        Bean不再是“bean”，而是升级成“组件”。一个组件可以扩展另一个组件，也可以被其它组件扩展。这种机制造就了Webx的非常好的扩展性，且比未经扩展的Spring更易使用。</para>
+                </listitem>
+                <listitem>
+                    <para>开放性 ——
+                        Webx被设计成多个层次，层次间的分界线很清晰。每个层次都足够开放和易于扩展。你可以使用全部的Webx，也可以仅仅使用到Webx的任何一个层次。</para>
+                </listitem>
+            </itemizedlist>
+        </section>
+    </section>
+    <section>
+        <title>Webx还缺少什么？</title>
+        <para>和目前快速发展的开源框架相比，Webx似乎不够时髦，因为它还缺少对很多流行功能的直接支持 —— 并非不支持，而是没有方便的方法来直接完成。例如：<itemizedlist>
+                <listitem>
+                    <para>目前Webx只支持服务端的表单验证，而没有直接支持客户端的JS验证。</para>
+                </listitem>
+                <listitem>
+                    <para>目前Webx没有直接支持AJAX编程。</para>
+                </listitem>
+                <listitem>
+                    <para>目前Webx没有直接支持REST编程。</para>
+                </listitem>
+                <listitem>
+                    <para>目前Webx没有直接支持Web Flow。</para>
+                </listitem>
+            </itemizedlist></para>
+        <para>凡是缺少的功能，我们将在未来的版本中陆续加上。</para>
+    </section>
+</preface>

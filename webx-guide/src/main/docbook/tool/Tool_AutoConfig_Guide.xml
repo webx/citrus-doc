@@ -1,0 +1,1509 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+<!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+%placeholders;
+]>
+<chapter xml:id="tool.autoconfig" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="autoconfig.html" ?>
+    <title>AutoConfig工具使用指南</title>
+    <section>
+        <title>需求分析</title>
+        <para>在一个应用中，我们总是会遇到一些参数，例如：<itemizedlist>
+                <listitem>
+                    <para>数据库服务器IP地址、端口、用户名；</para>
+                </listitem>
+                <listitem>
+                    <para>用来保存上传资料的目录。</para>
+                </listitem>
+                <listitem>
+                    <para>一些参数，诸如是否打开cache、加密所用的密钥名称等等。</para>
+                </listitem>
+            </itemizedlist></para>
+        <para>这些参数有一个共性，那就是：<emphasis>它们和应用的逻辑无关，只和当前环境、当前系统用户相关</emphasis>。以下场景很常见：<itemizedlist>
+                <listitem>
+                    <para>在开发、测试、发布阶段，使用不同的数据库服务器；</para>
+                </listitem>
+                <listitem>
+                    <para>在开发阶段，使用Windows的A开发者将用户上传的文件存放在<filename>d:\my_upload</filename>目录中，而使用Linux的B开发者将同样的文件存放在<filename>/home/myname/my_upload</filename>目录中。</para>
+                </listitem>
+                <listitem>
+                    <para>在开发阶段设置<code>cache=off</code>，在生产环境中设置<code>cache=on</code>。 </para>
+                </listitem>
+            </itemizedlist></para>
+        <para>很明显，<emphasis>这些参数不适合被“硬编码”在配置文件或代码中</emphasis>。因为每一个从源码库中取得它们的人，都有可能需要修改它们，使之与自己的环境相匹配。</para>
+        <section>
+            <title>解决方案</title>
+            <section>
+                <title>运行时替换的placeholders</title>
+                <para>很多框架支持在运行时刻替换配置文件中的placeholder占位符。例如， Webx/Spring就有这个功能。</para>
+                <example>
+                    <title>在Webx中定义placeholders</title>
+                    <programlisting language="xml">&lt;services:property-placeholder />
+
+&lt;services:webx-configuration>
+    &lt;services:productionMode>${productionMode:true}&lt;/services:productionMode>
+&lt;/services:webx-configuration></programlisting>
+                </example>
+                <para>在上面这个例子中，你可以在启动应用时，加上JVM参数：“<code>-DproductionMode=false|true</code>”来告诉系统用哪一种模式来工作。如果不指定，则取默认值“<code>true</code>”。</para>
+                <para>运行时替换placeholder是一种非常实用的技术，它有如下优缺点：</para>
+                <table frame="none">
+                    <title>运行时替换placeholders的优缺点</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>优点</entry>
+                                <entry>缺点</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>配置文件是静态的、不变的。即使采用不同的参数值，你也不需要更改配置文件本身。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>你可以随时改变参数的值，只需要启动时指定不同的JVM参数、或指定不同的properties文件即可。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>这种配置对于应用程序各组件是透明的 ——
+                                                应用程序不需要做特别的编程，即可使用placeholders。</para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>并非所有框架都支持这种技术。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>支持该技术的框架各有不同的用法。例如：Spring和Log4j都支持placeholder替换，然则它们的做法是完全不同的。Spring通过<code>PropertyPlaceholderConfigurer</code>类来配置，而Log4j则需要在<code>DomConfigurator</code>中把参数传进去。</para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>中心配置服务器（Config Server）</title>
+                <para>这也是一种运行时技术。它可以在运行时刻，将应用所需的参数推送到应用中。</para>
+                <para>它有如下优缺点：</para>
+                <table frame="none">
+                    <title>中心配置服务器的优缺点</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>优点</entry>
+                                <entry>缺点</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>它可以集中管理所有应用的配置，避免可能的错误；</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>它可以在运行时改变参数的值，并推送到所有应用中。参数的更改可立即生效。</para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>需要一套独立的服务器系统。性能、可用性（availability）都是必须考虑的问题。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>对应用不是透明的，有一定的侵入性。应用程序必须主动来配合该技术。因此，该技术不可能适用于所有情况，特别对于第三方提供的代码，很难使用该技术。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>为了连接到中心配置服务器，你仍然需要配置适当的IP、端口等参数。你需要用其它技术来处理这些参数（例如placeholders）。</para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>Maven Filtering机制</title>
+                <para>Maven提供了一种过滤机制，可以在资源文件被复制到目标目录的同时，替换其中的placeholders。</para>
+                <example>
+                    <title>配置Maven Filtering机制</title>
+                    <para>假设你的项目目录结构如下：</para>
+                    <screen>web-project
+ │  pom.xml
+ │
+ └─src
+     └─main
+         ├─java
+         ├─resources
+         └─webapp
+             └─WEB-INF
+                     web.xml</screen>
+                    <para>在<filename>pom.xml</filename>中这样写：</para>
+                    <programlisting language="xml">&lt;build>
+    &lt;filters>
+        &lt;filter>${user.home}/antx.properties&lt;/filter> <co xml:id="co.autoconfig.mavenfilters.props" />
+    &lt;/filters>
+    &lt;resources>
+        &lt;resource>
+            &lt;directory>src/main/resources&lt;/directory> <co xml:id="co.autoconfig.mavenfilters.resources" />
+            &lt;includes>
+                &lt;include>**.xml&lt;/include>
+            &lt;/includes>
+            &lt;filtering>true&lt;/filtering>
+        &lt;/resource>
+        &lt;resource>
+            &lt;directory>src/main/resources&lt;/directory>
+            &lt;excludes>
+                &lt;exclude>**.xml&lt;/exclude>
+            &lt;/excludes>
+        &lt;/resource>
+    &lt;/resources>
+    &lt;plugins>
+        &lt;plugin>
+            &lt;artifactId>maven-war-plugin&lt;/artifactId>
+            &lt;configuration>
+                &lt;webResources>
+                    &lt;resource>
+                        &lt;directory>src/main/webapp&lt;/directory> <co xml:id="co.autoconfig.mavenfilters.resources.web" />
+                        &lt;includes>
+                            &lt;include>WEB-INF/**.xml&lt;/include>
+                        &lt;/includes>
+                        &lt;filtering>true&lt;/filtering>
+                    &lt;/resource>
+                    &lt;resource>
+                        &lt;directory>src/main/webapp&lt;/directory>
+                        &lt;excludes>
+                            &lt;include>WEB-INF/**.xml&lt;/include>
+                        &lt;/excludes>
+                    &lt;/resource>
+                &lt;/webResources>
+            &lt;/configuration>
+        &lt;/plugin>
+    &lt;/plugins>
+&lt;/build></programlisting>
+                    <para>这段pom定义告诉maven：</para>
+                    <calloutlist>
+                        <callout arearefs="co.autoconfig.mavenfilters.props">
+                            <para>用指定的properties文件（<filename>${user.home}/antx.properties</filename>）中的值，替换文件中的placeholders。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.mavenfilters.resources">
+                            <para>过滤<filename>src/main/resources/</filename>目录中的所有xml文件，替换其中的placeholders。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.mavenfilters.resources.web">
+                            <para>过滤<filename>src/webapp/WEB-INF/</filename>目录中的所有xml文件，替换其中的placeholders。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>如果上述xml文件中，包含“<code>${xxx.yyy.zzz}</code>”这样的placeholders，将被替换成properties文件中的相应值。</para>
+                <para>和运行时替换placeholders方案相比，Maven Filtering是一个build时进行的过程。它的优缺点是： </para>
+                <table frame="none">
+                    <title>Maven Filtering机制的优缺点</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>优点</entry>
+                                <entry>缺点</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>Maven
+                                                filtering机制和应用所采用的技术、框架完全无关，对应用完全透明，通用性好。</para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                                <entry>
+                                    <itemizedlist>
+                                        <listitem>
+                                            <para>Maven
+                                                filtering机制在build时刻永久性改变被过滤的配置文件的内容，build结束以后无法更改。这将导致一个问题：如果要改变配置文件的参数，必须获取源码并重新build。</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>缺少验证机制。当某个placeholder拼写错误；当properties中的值写错；当某配置文件中新增了一个placeholder，而你的properties文件中没有对应的值时，maven不会提醒你。而这些错误往往被拖延到应用程序运行时才会被报告出来。</para>
+                                        </listitem>
+                                    </itemizedlist>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>AutoConfig机制</title>
+                <para>AutoConfig是一种类似于Maven
+                    Filtering的<emphasis>build时刻的工具</emphasis>。这意味着该机制与应用所采用的技术、框架完全无关，对应用完全透明，具有良好的通用性。同时，AutoConfig与运行时的配置技术并不冲突。它可以和运行时替换的placeholders以及中心配置服务器完美并存，互为补充。</para>
+                <para>AutoConfig书写placeholder的方法和Maven Filtering机制完全相同。换言之，Maven
+                        Filtering的配置文件模板（前例中的<filename>/WEB-INF/**.xml</filename>）可以不加修改地用在AutoConfig中。</para>
+                <para>然而，autoconfig成功克服了Maven Filtering的主要问题。</para>
+                <table frame="none">
+                    <title>Maven Filtering和AutoConfig的比较</title>
+                    <tgroup cols="3">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <colspec colname="c3" colnum="3" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>问题</entry>
+                                <entry>Maven Filtering</entry>
+                                <entry>AutoConfig</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>如何修改配置文件的参数？</entry>
+                                <entry>Maven Filtering必须获得源码并重新build；</entry>
+                                <entry>而AutoConfig不需要提取源码，也不需要重新build，即可改变<emphasis>目标文件</emphasis>中所有配置文件中placeholders的值。</entry>
+                            </row>
+                            <row>
+                                <entry>如何确保placeholder替换的正确性？</entry>
+                                <entry>Maven Filtering不能验证placeholder值的缺失和错误；</entry>
+                                <entry>但AutoConfig可以对placeholder及其值进行检查。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+                <para>接下来，我们将将详细介绍AutoConfig的使用方法。</para>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>AutoConfig的设计</title>
+        <para>很多人会把AutoConfig看作Maven Filtering机制的简单替代品。事实上，这两者的设计初衷有很大的区别。</para>
+        <section>
+            <title>角色与职责</title>
+            <para>为了把事情说清楚，我们必须要定义两种角色：<emphasis>开发者（Developer）</emphasis>和<emphasis>布署者（Deployer）</emphasis>。</para>
+            <table frame="none">
+                <title>角色和职责</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                    <thead>
+                        <row>
+                            <entry>角色名称</entry>
+                            <entry>职责</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>开发者</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>定义应用所需要的properties，及其限定条件；</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>提供包含placeholders的配置文件模板。</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>布署者</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>根据所定义的properties，提供符合限定条件的属性值。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>调用AutoConfig来生成目标配置文件。</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>例如，一个宠物店（petstore）的WEB应用中需要指定一个用来上传文件的目录。于是，</para>
+            <table frame="none">
+                <title>Petstore应用中的角色和职责</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                    <thead>
+                        <row>
+                            <entry>开发者</entry>
+                            <entry>布署者</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>
+                                <para>开发者定义了一个property：<code>petstore.upload_dir</code>，</para>
+                                <para>限定条件为：“合法的文件系统的目录名”。</para>
+                            </entry>
+                            <entry>
+                                <para>布署者取得petstore的二进制发布包，通过AutoConfig了解到，应用需要一个名为<code>petstore.upload_dir</code>目录名。</para>
+                                <para>布署者便指定一个目录给petstore，该目录名的具体值可能因不同的系统而异。</para>
+                                <para>AutoConfig会检验该值是否符合限定条件（是否为合法目录名），如果检验通过，就生成配置文件，并将其中的<code>${petstore.upload_dir}</code>替换成该目录名。</para>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>需要注意的是，一个“物理人”所对应的“角色”不是一成不变的。例如：某“开发者”需要试运行应用，此时，他就变成“布署者”。</para>
+        </section>
+        <section>
+            <title>分享二进制目标文件</title>
+            <para>假设现在有两个team要互相合作，team A的开发者创建了project A，而team B的开发者创建了project B。假定project
+                B依赖于project A。如果我们利用maven这样的build工具，那么最显而易见的合作方案是这样的：<itemizedlist>
+                    <listitem>
+                        <para>Team A发布一个project A的版本到maven repository中。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Team B从maven repository中取得project A的二进制目标文件。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>这种方案有很多好处，<itemizedlist>
+                    <listitem>
+                        <para>每个team都可以独立控制自己发布版本的节奏；</para>
+                    </listitem>
+                    <listitem>
+                        <para>Team之间的关系较松散，唯一的关系纽带就是maven repository。</para>
+                    </listitem>
+                    <listitem>
+                        <para>Team之间不需要共享源码。</para>
+                    </listitem>
+                </itemizedlist></para>
+            <para>然而，假如project A中有一些配置文件中的placeholders需要被替换，如果使用Maven Filtering机制，就会出现问题。因为Maven
+                Filtering只能在project A被build时替换其中的placeholders，一旦project A被发布到repository中，team
+                B的人将无法修改任何project A中的配置参数。除非team B的人取得project A的源码，并重新build。这将带来很大的负担。</para>
+            <para>AutoConfig解决了这个问题。因为当team B的人从maven repository中取得project
+                A的二进制包时，仍然有机会修改其配置文件里的placeholders。Team B的人甚至不需要了解project
+                A里配置文件的任何细节，AutoConfig会自动发现所有的properties定义，并提示编辑。</para>
+        </section>
+        <section>
+            <title>布署二进制目标文件</title>
+            <para>布署应用的人（即布署者、deployer）也从中受益。因为deployer不再需要亲手去build源代码，而是从maven
+                repository中取得二进制目标文件即可。</para>
+            <figure>
+                <title>多团队多角色的合作</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/tool/co-op.png" />
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>从这个意义上讲，AutoConfig不应当被看成是一个build时的简单配置工具，而是一个“<emphasis>软件安装工具</emphasis>”。如同我们安装一个Windows软件
+                ——
+                我们当然不需要从源码开始build它们，而是执行其安装程序，设定一些参数诸如安装目录、文档目录、可选项等。安装程序就会自动把软件设置好，确保软件可正确运行于当前的Windows环境中。</para>
+        </section>
+        <section>
+            <title>AutoConfig特性列表</title>
+            <para>为了满足前面所说的目的，我们将AutoConfig设计成下面的样子：</para>
+            <table frame="none">
+                <title>AutoConfig Features</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="2.57*" />
+                    <thead>
+                        <row>
+                            <entry>名称</entry>
+                            <entry>描述</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>两种用法</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>既可独立使用（支持Windows和Unix-like平台）。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>也可以作为maven插件来使用。</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>对目标文件而不是源文件进行配置</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>可对同一个目标文件反复配置。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>配置时不依赖于项目源文件。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>支持嵌套包文件，例如：ear包含war，war又包含jar。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>高性能，特别对于嵌套的包文件。 </para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>验证和编辑properties</entry>
+                            <entry>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>自动发现保存于war包、jar包、ear包中的properties定义。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>验证properties的正确性。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>交互式编辑properties。</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>当配置文件中出现未定义的placeholders时，提示报错。 </para>
+                                    </listitem>
+                                </itemizedlist>
+                            </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+    </section>
+    <section>
+        <title>AutoConfig的使用 —— 开发者指南</title>
+        <section>
+            <title>建立AutoConfig目录结构</title>
+            <para>和Maven
+                    Filtering不同的是，AutoConfig是针对目标文件的配置工具。因此AutoConfig关心的目录结构是<emphasis>目标文件的目录结构</emphasis>。不同的build工具，创建同一目标目录结构所需要的源文件的目录结构会各有不同。本文仅以maven标准目录结构为例，来说明源文件的目录结构编排。</para>
+            <section>
+                <title>WAR包的目录结构</title>
+                <para>这里所说的war包，可以是一个以zip方式打包的文件，也可以是一个展开的目录。下面以maven标准目录为例，说明项目源文件和目标文件的目录结构的对比：</para>
+                <example>
+                    <title>WAR包的源文件和目标文件目录结构</title>
+                    <screen>war-project（源目录结构）               -> war-project.war（目标目录结构）
+ │  pom.xml
+ │
+ └─src
+     └─main
+         ├─java
+         ├─resources                    -> /WEB-INF/classes
+         │      file1.xml                      file1.xml
+         │      file2.xml                      file2.xml
+         │
+         └─webapp                       -> /
+             ├─<emphasis>META-INF</emphasis>                 -> <emphasis>/META-INF</emphasis>
+             │  └─<emphasis>autoconf</emphasis>              -> <emphasis>/META-INF/autoconf</emphasis> <co xml:id="co.autoconfig.war.config.dir" />
+             │        <emphasis>auto-config.xml</emphasis>          <emphasis>auto-config.xml</emphasis> <co xml:id="co.autoconfig.war.config" />
+             │
+             └─WEB-INF                  -> /WEB-INF
+                   web.xml                     web.xml
+                   file3.xml                   file3.xml</screen>
+                    <calloutlist>
+                        <callout arearefs="co.autoconfig.war.config.dir">
+                            <para><filename>/META-INF/autoconf</filename>目录用来存放AutoConfig的描述文件，以及可选的模板文件。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.war.config">
+                            <para><filename>auto-config.xml</filename>是用来指导AutoConfig行为的关键描述文件。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>创建war包的AutoConfig机制，关键在于创建war目标文件中的<filename>/META-INF/autoconf/auto-config.xml</filename>描述文件。该描述文件对应的maven项目源文件为：<filename>/src/main/webapp/META-INF/autoconf/auto-config.xml</filename>。</para>
+            </section>
+            <section>
+                <title>JAR包的目录结构</title>
+                <para>这里所说的jar包，可以是一个以zip方式打包的文件，也可以是一个展开的目录。下面以maven标准目录为例，说明项目源文件和目标文件的目录结构的对比：</para>
+                <example>
+                    <title>JAR包的源文件和目标文件目录结构</title>
+                    <screen>jar-project（源目录结构）               -> jar-project.jar（目标目录结构）
+ │  pom.xml
+ │
+ └─src
+     └─main
+         ├─java
+         └─resources                    -> /
+             │  file1.xml                      file1.xml
+             │  file2.xml                      file2.xml
+             │
+             └─<emphasis>META-INF</emphasis>                 -> <emphasis>/META-INF</emphasis>
+                 └─<emphasis>autoconf</emphasis>             -> <emphasis>/META-INF/autoconf</emphasis> <co xml:id="co.autoconfig.jar.config.dir" />
+                       <emphasis>auto-config.xml</emphasis>         <emphasis>auto-config.xml</emphasis> <co xml:id="co.autoconfig.jar.config" /></screen>
+                    <calloutlist>
+                        <callout arearefs="co.autoconfig.jar.config.dir">
+                            <para><filename>/META-INF/autoconf</filename>目录用来存放AutoConfig的描述文件，以及可选的模板文件。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.jar.config">
+                            <para><filename>auto-config.xml</filename>是用来指导AutoConfig行为的关键描述文件。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>创建jar包的AutoConfig机制，关键在于创建jar目标文件中的<filename>/META-INF/autoconf/auto-config.xml</filename>描述文件。该描述文件对应的maven项目源文件为：<filename>/src/main/resources/META-INF/autoconf/auto-config.xml</filename>。</para>
+            </section>
+            <section>
+                <title>普通目录</title>
+                <para>AutoConfig也支持对普通文件目录进行配置。</para>
+                <example>
+                    <title>对普通的目录执行AutoConfig</title>
+                    <screen>directory
+ │  file1.xml
+ │  file2.xml
+ │
+ └─<emphasis>conf</emphasis> <co xml:id="co.autoconfig.dir.config.dir" />
+       <emphasis>auto-config.xml</emphasis> <co xml:id="co.autoconfig.dir.config" /></screen>
+                    <calloutlist>
+                        <callout arearefs="co.autoconfig.dir.config.dir">
+                            <para>默认情况下，AutoConfig在<filename>/conf</filename>目录中寻找AutoConfig的描述文件，以及可选的模板文件。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.dir.config">
+                            <para><filename>auto-config.xml</filename>是用来指导AutoConfig行为的关键描述文件。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+            </section>
+        </section>
+        <section>
+            <title>建立auto-config.xml描述文件</title>
+            <para>AutoConfig系统的核心就是<filename>auto-config.xml</filename>描述文件。该描述文件中包含两部分内容：<orderedlist>
+                    <listitem>
+                        <para>定义properties：properties的名称、描述、默认值、约束条件等信息；</para>
+                    </listitem>
+                    <listitem>
+                        <para>指定包含placeholders的模板文件。 </para>
+                    </listitem>
+                </orderedlist></para>
+            <para>下面是<filename>auto-config.xml</filename>文件的样子：（以petstore应用为例）</para>
+            <example>
+                <title>AutoConfig描述文件示例</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;config>
+    &lt;group>
+
+        &lt;property name="petstore.work"
+                    description="应用程序的工作目录" /> <co xml:id="co.autoconfig.config.property1" />
+
+        &lt;property name="petstore.loggingRoot" 
+                    defaultValue="${petstore.work}/logs"
+                    description="日志文件目录" /> <co xml:id="co.autoconfig.config.property2" />
+
+        &lt;property name="petstore.upload"
+                    defaultValue="${petstore.work}/upload"
+                    description="上传文件的目录" /> <co xml:id="co.autoconfig.config.property3" />
+
+        &lt;property name="petstore.loggingLevel"
+                    defaultValue="warn"
+                    description="日志文件级别"> <co xml:id="co.autoconfig.config.property4" />
+
+            &lt;validator name="choice"
+                         choice="trace, debug, info, warn, error" /> <co xml:id="co.autoconfig.config.validator" />
+
+        &lt;/property>
+
+    &lt;/group>
+    &lt;script>
+        &lt;generate template="WEB-INF/web.xml" /> <co xml:id="co.autoconfig.config.generate" />
+        &lt;generate template="WEB-INF/common/resources.xml" />
+    &lt;/script>
+&lt;/config></programlisting>
+                <calloutlist>
+                    <callout
+                        arearefs="co.autoconfig.config.property1 co.autoconfig.config.property2 co.autoconfig.config.property3 co.autoconfig.config.property4">
+                        <para>定义properties</para>
+                    </callout>
+                    <callout arearefs="co.autoconfig.config.validator">
+                        <para>定义property的验证规则（可选）</para>
+                    </callout>
+                    <callout arearefs="co.autoconfig.config.generate">
+                        <para>生成配置文件的指令。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <section>
+                <title>定义properties</title>
+                <para>定义一个property的完整格式如下：</para>
+                <example>
+                    <title>定义一个property</title>
+                    <programlisting language="xml">&lt;property
+    name="..."
+    [defaultValue="..."]
+    [description="..."]
+    [required="true|false"]
+>
+    &lt;validator name="..." />
+    &lt;validator name="..." />
+    ...
+&lt;/property></programlisting>
+                </example>
+                <para>可用的property参数包括：</para>
+                <table frame="none">
+                    <title>定义property时可用的参数</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.99*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>name</code></entry>
+                                <entry>Property名称。</entry>
+                            </row>
+                            <row>
+                                <entry><code>defaultValue</code>（可选）</entry>
+                                <entry>默认值。默认值中可包含对其它property的引用，如<code>${petstore.work}/logs</code>。</entry>
+                            </row>
+                            <row>
+                                <entry><code>description</code>（可选）</entry>
+                                <entry>对字段的描述，这个描述会显示给deployer，这对他理解该property非常重要。</entry>
+                            </row>
+                            <row>
+                                <entry><code>required</code>（可选）</entry>
+                                <entry>是否“必填”，默认为<code>true</code>。如果deployer未提供必填项的值，就会报错。</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>定义property的验证规则</title>
+                <para>目前，有以下几种验证器：</para>
+                <table frame="none">
+                    <title>可用的property验证规则</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.47*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>验证规则</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="boolean" /></programlisting></entry>
+                                <entry><para>Property值必须为<code>true</code>或<code>false</code>。</para></entry>
+                            </row>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="choice"
+           choice="trace, debug, info, warn, error" /></programlisting></entry>
+                                <entry><para>Property值必须为choice所定义的值之一。</para></entry>
+                            </row>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="email" /></programlisting></entry>
+                                <entry><para>Property值必须为合法的email格式。</para></entry>
+                            </row>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="fileExist"
+           [file="WEB-INF/web.xml"] /></programlisting></entry>
+                                <entry><para>Property值必须为某个存在的文件或目录。</para>
+                                    <para>如果指定了file，那就意味着property值所指的目录下，必须存在file所指的文件或子目录。</para></entry>
+                            </row>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="hostExist" /></programlisting></entry>
+                                <entry><para>Property值必须为合法的IP地址，或者可以解析得到的域名。 </para></entry>
+                            </row>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="keyword" /></programlisting></entry>
+                                <entry><para>Property值必须为字母、数字、下划线的组合。</para></entry>
+                            </row>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="number" /></programlisting></entry>
+                                <entry><para>Property值必须为数字的组合。</para></entry>
+                            </row>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="regexp"
+           regexp="..."
+           [mode="exact|prefix|contain"] /></programlisting></entry>
+                                <entry><para>Property值必须符合regexp所指的正则表达式。</para>
+                                    <para>其中，mode为匹配的方法：<itemizedlist>
+                                            <listitem>
+                                                <para>完全匹配exact</para>
+                                            </listitem>
+                                            <listitem>
+                                                <para>前缀匹配prefix</para>
+                                            </listitem>
+                                            <listitem>
+                                                <para>包含contain</para>
+                                            </listitem>
+                                        </itemizedlist></para>
+                                    <para>如未指定mode，默认mode为contain。</para></entry>
+                            </row>
+                            <row>
+                                <entry><programlisting language="xml">&lt;validator name="url"
+           [checkHostExist="false"]
+           [protocols="http, https"]
+           [endsWithSlash="true"] /></programlisting></entry>
+                                <entry><para>Property值必须是合法URL。</para>
+                                    <para>假如指定了<code>checkHostExist=true</code>，那么还会检查域名或IP的正确性；</para>
+                                    <para>假如指定了protocols，那么URL的协议必须为其中之一；</para>
+                                    <para>假如指定了<code>endsWithSlash=true</code>，那么URL必须以/结尾。</para></entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>生成配置文件的指令</title>
+                <para>描述文件中，每个<code>&lt;generate></code>标签指定了一个包含placeholders的配置文件模板，具体格式为：</para>
+                <example>
+                    <title>生成配置文件的指令</title>
+                    <programlisting language="xml">&lt;generate
+    template="..."
+    [destfile="..."]
+    [charset="..."]
+    [outputCharset="..."]
+></programlisting>
+                </example>
+                <para>下面是参数的说明：</para>
+                <table frame="none">
+                    <title>生成配置文件的指令参数</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="3.12*" />
+                        <thead>
+                            <row>
+                                <entry>参数名</entry>
+                                <entry>说明</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry><code>template</code></entry>
+                                <entry>
+                                    <para>需要配置的模板名。</para>
+                                    <para>模板名为相对路径，相对于当前jar/war/ear包的根目录。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>destfile</code>（可选）</entry>
+                                <entry>
+                                    <para>目标文件。</para>
+                                    <para>如不指定，表示目标文件和模板文件相同。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>charset</code>（可选）</entry>
+                                <entry>
+                                    <para>模板的字符集编码。</para>
+                                    <para>XML文件不需要指定<code>charset</code>，因为AutoConfig可以自动取得XML文件的字符集编码；</para>
+                                    <para>对其它文件必须指定charset。</para>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry><code>outputCharset</code>（可选）</entry>
+                                <entry>
+                                    <para>目标文件的输出字符集编码。</para>
+                                    <para>如不指定，表示和模板charset相同。</para>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+        </section>
+        <section>
+            <title>建立模板文件</title>
+            <section>
+                <title>模板文件的位置</title>
+                <para>定义完<filename>auto-config.xml</filename>描述文件以后，就可以创建模板了。模板放在哪里呢？举例说明。</para>
+                <example>
+                    <title>模板文件的位置</title>
+                    <para>假设在一个典型的WEB应用中，你的<filename>auto-config.xml</filename>中包含指定了如下模板：</para>
+                    <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;config>
+    &lt;group>
+        ...
+    &lt;/group>
+    &lt;script>
+        &lt;generate template="WEB-INF/classes/file1.xml" />
+        &lt;generate template="WEB-INF/classes/file2.xml" />
+        &lt;generate template="WEB-INF/file3.xml" />
+    &lt;/script>
+&lt;/config></programlisting>
+                    <para>那么，你可以把<filename>file1.xml</filename>、<filename>file2.xml</filename>、<filename>file3.xml</filename>放在下面的位置：</para>
+                    <screen>war-project（源目录结构）               -> war-project.war（目标目录结构）
+ │  pom.xml
+ │
+ └─src
+     └─main
+         ├─java
+         ├─<emphasis>resources</emphasis>                    -> <emphasis>/WEB-INF/classes</emphasis>
+         │     <emphasis>file1.xml</emphasis>                       <emphasis>file1.xml - 建议放在这里</emphasis>
+         │     <emphasis>file2.xml</emphasis>                       <emphasis>file2.xml - 建议放在这里</emphasis>
+         │
+         └─webapp
+             ├─META-INF
+             │  └─autoconf
+             │      │  auto-config.xml
+             │      │
+             │      └─WEB-INF           -> /WEB-INF
+             │          │ file3.xml            file3.xml - 也可以放在这里
+             │          │
+             │          └─classes       -> /WEB-INF/classes
+             │                file1.xml        file1.xml - 也可以放在这里
+             │                file2.xml        file2.xml - 也可以放在这里
+             │
+             └─<emphasis>WEB-INF</emphasis>                  -> <emphasis>/WEB-INF</emphasis>
+                   <emphasis>file3.xml</emphasis>                   <emphasis>file3.xml - 建议放在这里</emphasis></screen>
+                </example>
+                <para>AutoConfig的寻找模板的逻辑是：<itemizedlist>
+                        <listitem>
+                            <para>如果在<filename>auto-config.xml</filename>所在的目录下发现模板文件，就使用它；</para>
+                        </listitem>
+                        <listitem>
+                            <para>否则在包的根目录中查找模板文件；如果两处均未找到，则报错。</para>
+                        </listitem>
+                    </itemizedlist></para>
+            </section>
+            <section>
+                <title>模板的写法</title>
+                <para>书写模板是很简单的事，你只要：<itemizedlist>
+                        <listitem>
+                            <para>把需要配置的点替换成placeholder：“<code>${property.name}</code>”。当然，你得确保property.name被定义在<filename>auto-config.xml</filename>中。</para>
+                        </listitem>
+                        <listitem>
+                            <para>假如模板中包含<emphasis>不希望被替换的</emphasis>运行时的placeholder“<emphasis><code>$</code></emphasis><code>{...}</code>”，需要更改成“<emphasis><code>${D}</code></emphasis><code>{...}</code>”
+                                。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <example>
+                    <title>模板示例</title>
+                    <programlisting language="xml">...
+&lt;context-param>
+    &lt;param-name>loggingRoot&lt;/param-name>
+    &lt;param-value><emphasis>${petstore.loggingRoot}</emphasis>&lt;/param-value>
+&lt;/context-param>
+&lt;context-param>
+    &lt;param-name>loggingLevel&lt;/param-name>
+    &lt;param-value><emphasis>${petstore.loggingLevel}</emphasis>&lt;/param-value>
+&lt;/context-param>
+...
+<emphasis>${D}</emphasis>{runtime.placeholder}</programlisting>
+                </example>
+                <para>此外，AutoConfig模板其实是由Velocity模板引擎来渲染的。因此，所有的placeholder必须能够通过velocity的语法。</para>
+                <example>
+                    <title>使用不符合velocity语法的placeholders</title>
+                    <para>例如，下面的placeholder被velocity看作非法：</para>
+                    <programlisting>${my.property<emphasis>.2</emphasis>}</programlisting>
+                    <para>解决的办法是，改写成如下样式：</para>
+                    <programlisting>${my<emphasis>_</emphasis>property<emphasis>_2</emphasis>}</programlisting>
+                </example>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>AutoConfig的使用 —— 布署者指南</title>
+        <para>布署者有两种方法可以使用AutoConfig：<itemizedlist>
+                <listitem>
+                    <para>在命令行上直接运行。</para>
+                </listitem>
+                <listitem>
+                    <para>在maven中调用AutoConfig plugin。</para>
+                </listitem>
+            </itemizedlist></para>
+        <section>
+            <title>在命令行中使用AutoConfig</title>
+            <section xml:id="tool.autoconfig.getbinary">
+                <title>取得可执行文件</title>
+                <para>AutoConfig提供了Windows以及Unix-like（Linux、Mac
+                    OS等）等平台上均可使用的native可执行程序。可执行程序文件被发布在Maven repository中。</para>
+                <para>如果你已经配置好了maven，那么可以让maven来帮你下载目标文件。</para>
+                <example>
+                    <title>让maven帮忙下载AutoConfig可执行文件</title>
+                    <para>请创建一个临时文件：<filename>pom.xml</filename>。</para>
+                    <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    &lt;parent>
+        &lt;groupId>com.alibaba.citrus.tool&lt;/groupId>
+        &lt;artifactId>antx-parent&lt;/artifactId>
+        &lt;version>&antx-version;&lt;/version> <co xml:id="co.autoconfig.native.version" />
+    &lt;/parent>
+    &lt;modelVersion>4.0.0&lt;/modelVersion>
+    &lt;artifactId>temp&lt;/artifactId>
+&lt;/project></programlisting>
+                    <calloutlist>
+                        <callout arearefs="co.autoconfig.native.version">
+                            <para>文件中的parent pom的版本号（&antx-version;）决定了你要取得的AutoConfig的版本号。</para>
+                        </callout>
+                    </calloutlist>
+                    <para>然后在命令行上执行如下命令：</para>
+                    <screen>mvn dependency:copy</screen>
+                </example>
+                <para>这样就取得了两个文件：<itemizedlist>
+                        <listitem>
+                            <para><filename>autoconfig-&antx-version;.tgz</filename></para>
+                        </listitem>
+                        <listitem>
+                            <para><filename>autoexpand-&antx-version;.tgz</filename> -
+                                    AutoExpand是另一个小工具。它是用来展开war、jar、ear包的。关于AutoExpand的详情，请见<xref
+                                    linkend="tool.autoexpand" />。</para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>你也可以直接去maven repository中手工下载以上两个包：<itemizedlist>
+                        <listitem>
+                            <para><link
+                                    xl:href="http://code.taobao.org/mvn/repository/com/alibaba/citrus/tool/antx-autoconfig/&antx-version;/antx-autoconfig-&antx-version;.tgz"
+                                 /></para>
+                        </listitem>
+                        <listitem>
+                            <para><link
+                                    xl:href="http://code.taobao.org/mvn/repository/com/alibaba/citrus/tool/antx-autoexpand/&antx-version;/antx-autoexpand-&antx-version;.tgz"
+                                 /></para>
+                        </listitem>
+                    </itemizedlist></para>
+                <para>取得压缩包以后，可以用下面的命令来展开并安装工具。</para>
+                <table frame="none">
+                    <title>展开并安装工具</title>
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="1.0*" />
+                        <thead>
+                            <row>
+                                <entry>Unix-like系统</entry>
+                                <entry>Windows系统</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>
+                                    <screen>tar zxvf autoconfig-&antx-version;.tgz
+tar zxvf autoexpand-&antx-version;.tgz
+cp autoconfig /usr/local/bin
+cp autoexpand /usr/local/bin</screen>
+                                </entry>
+                                <entry><screen>tar zxvf autoconfig-&antx-version;.tgz
+tar zxvf autoexpand-&antx-version;.tgz
+copy autoconfig.exe c:\windows\system32
+copy autoexpand.exe c:\windows\system32</screen></entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </section>
+            <section>
+                <title>执行AutoConfig命令</title>
+                <para>取得可执行文件以后，就可以试用一下：在命令行上输入<command>autoconfig</command>。不带参数的<command>autoconfig</command>命令会显示出如下帮助信息。 </para>
+                <example>
+                    <title>AutoConfig的帮助信息</title>
+                    <screen>$ <command>autoconfig</command>
+Detected system charset encoding: UTF-8
+If your can't read the following text, specify correct one like this: 
+  autoconfig -c mycharset
+
+使用方法：autoconfig [可选参数] [目录名|包文件名]
+                
+可选参数：
+ -c,--charset                输入/输出编码字符集
+ -d,--include-descriptors
+                             包含哪些配置描述文件，例如：conf/auto-config.xml，可使用*、**、?通配符，如有多项，用逗号分隔
+ -D,--exclude-descriptors    排除哪些配置描述文件，可使用*、**、?通配符，如有多项，用逗号分隔
+ -g,--gui                    图形用户界面（交互模式）
+ -h,--help                   显示帮助信息
+ -i,--interactive            交互模式：auto|on|off，默认为auto，无参数表示on
+ -I,--non-interactive        非交互模式，相当于--interactive=off
+ -n,--shared-props-name      共享的属性文件的名称
+ -o,--output                 输出文件名或目录名
+ -P,--exclude-packages       排除哪些打包文件，可使用*、**、?通配符，如有多项，用逗号分隔
+ -p,--include-packages
+                             包含哪些打包文件，例如：target/*.war，可使用*、**、?通配符，如有多项，用逗号分隔
+ -s,--shared-props           共享的属性文件URL列表，以逗号分隔
+ -T,--type                   文件类型，例如：war, jar, ear等
+ -t,--text                   文本用户界面（交互模式）
+ -u,--userprop               用户属性文件
+ -v,--verbose                显示更多信息
+
+总耗费时间：546毫秒</screen>
+                </example>
+                <para>最简单的AutoConfig命令如下：</para>
+                <example>
+                    <title>最简单的AutoConfig命令</title>
+                    <screen>autoconfig petstore.war</screen>
+                </example>
+                <para>无论<filename>petstore.war</filename>是一个zip包还是目录，AutoConfig都会正确地生成其中的配置文件。</para>
+            </section>
+        </section>
+        <section>
+            <title>在maven中使用AutoConfig</title>
+            <para>AutoConfig也可以通过maven plugin来执行。</para>
+            <para>这种方式使用方式，方便了开发者试运行并测试应用程序。开发者可以在build项目的同时，把AutoConfig也配置好。然而对于非开发的应用测试人员、发布应用的系统管理员来说，最好的方法是使用独立可执行的AutoConfig来配置应用的二进制目标文件。</para>
+            <para>为了使用maven插件，你需要修改项目的<filename>pom.xml</filename>来设定它。请注意，一般来说，不要在parent
+                    <filename>pom.xml</filename>中设定AutoConfig，因为这个设置会作用在每个子项目上，导致不必要的AutoConfig执行。只在生成最终目标文件的子项目<filename>pom.xml</filename>中设定AutoConfig就可以了。例如，对于一个web项目，你可以在生成war包的子项目上设置AutoConfig
+                plugin。</para>
+            <example>
+                <title>在pom.xml中设定AutoConfig plugin</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    ...
+    &lt;properties>
+        ...
+        &lt;!-- 定义autoconfig的版本，建议将此行写在parent pom.xml中。 -->
+        &lt;autoconfig-plugin-version>&antx-version;&lt;/autoconfig-plugin-version>
+    &lt;/properties>
+    ...
+    &lt;build>
+        &lt;plugins>
+            &lt;plugin>
+                &lt;groupId>com.alibaba.citrus.tool&lt;/groupId>
+                &lt;artifactId>maven-autoconfig-plugin&lt;/artifactId>
+                &lt;version>${autoconfig-plugin-version}&lt;/version>
+                &lt;configuration>
+                    &lt;!-- 要进行AutoConfig的目标文件，默认为${project.artifact.file}。 
+                    &lt;dest>${project.artifact.file}&lt;/dest>
+                    -->
+                    &lt;!-- 配置后，是否展开目标文件，默认为false，不展开。 
+                    &lt;exploding>true&lt;/exploding>
+                    -->
+                    &lt;!-- 展开到指定目录，默认为${project.build.directory}/${project.build.finalName}。 
+                    &lt;explodedDirectory>
+                        ${project.build.directory}/${project.build.finalName}
+                    &lt;/explodedDirectory>
+                    -->
+                &lt;/configuration>
+                &lt;executions>
+                    &lt;execution>
+                        &lt;phase>package&lt;/phase>
+                        &lt;goals>
+                            &lt;goal>autoconfig&lt;/goal>
+                        &lt;/goals>
+                    &lt;/execution>
+                &lt;/executions>
+            &lt;/plugin>
+        &lt;/plugins>
+    &lt;/build>
+&lt;/project></programlisting>
+            </example>
+            <para>这样，每次执行<code>mvn package</code>或者<code>mvn
+                install</code>时，都会激活AutoConfig，对package目标文件进行配置。</para>
+            <para>想要避免AutoConfig，只需要一个额外的命令行参数：</para>
+            <example>
+                <title>避免执行AutoConfig</title>
+                <screen>mvn install <emphasis>–Dautoconfig.skip</emphasis></screen>
+            </example>
+        </section>
+        <section>
+            <title>运行并观察AutoConfig的结果</title>
+            <para>第一次执行AutoConfig，无论通过何种方式（独立命令行或maven插件），AutoConfig都会提示你修改user
+                properties文件，以提供所需要的properties值。AutoConfig提供了一套基于文本的交互式界面来编辑这些properties。</para>
+            <example>
+                <title>交互式编辑properties</title>
+                <screen>╭───────────────────────┈┈┈┈
+│
+│ 您的配置文件需要被更新：
+│
+│ file:/.../<emphasis>antx.properties</emphasis>
+│
+│ 这个文件包括了您个人的特殊设置，
+│ 包括服务器端口、您的邮件地址等内容。
+│
+└───────┈┈┈┈┈┈┈┈┈┈┈
+
+ 如果不更新此文件，可能会导致配置文件的内容不完整。
+ 您需要现在更新此文件吗? [Yes][No] y</screen>
+                <para>当你通过交互式界面填写了所有properties的值，并通过了AutoConfig的验证以后，AutoConfig就开始生成配置文件：</para>
+                <screen>即将保存到文件"file:/.../antx.properties"中, 确定? [Yes][No] y
+
+╭───────────────────────┈┈┈┈
+│ 保存文件 file:/.../antx.properties...
+│┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+│petstore.loggingLevel  = warn
+│petstore.loggingRoot   = ${petstore.work}/logs
+│petstore.upload        = ${petstore.work}/upload
+│petstore.work          = /tmp
+└───────┈┈┈┈┈┈┈┈┈┈┈
+ 已保存至文件: file:/.../antx.properties
+Loading file:/.../antx.properties
+&lt;jar:file:/.../Work/my/apps/petstore-webx3/target/petstore.war!/>
+    <emphasis>Generating WEB-INF/web.xml [UTF-8] => WEB-INF/web.xml [UTF-8]</emphasis>
+
+&lt;jar:file:/.../Work/my/apps/petstore-webx3/target/petstore.war!/>
+    <emphasis>Generating WEB-INF/common/resources.xml [UTF-8] => WEB-INF/common/resources.xml [UTF-8]</emphasis>
+
+&lt;jar:file:/.../Work/my/apps/petstore-webx3/target/petstore.war!/>
+    <emphasis>Generating log file: META-INF/autoconf/auto-config.xml.log</emphasis>
+
+Expanding: /.../Work/my/apps/petstore-webx3/target/petstore.war
+       To: /.../Work/my/apps/petstore-webx3/target/petstore
+done.</screen>
+                <para>假如发现模板中某个placeholder，并未在<filename>auto-config.xml</filename>中定义，就会出现以下错误：</para>
+                <screen>ERROR - Undefined placeholders found in template:
+- Template:   META-INF/autoconf/WEB-INF/web.xml
+- Descriptor: META-INF/autoconf/auto-config.xml
+- Base URL:   file:/.../Work/my/apps/petstore-webx3/target/petstore/
+---------------------------------------------------------------
+-> petstore.loggingRoot
+---------------------------------------------------------------</screen>
+            </example>
+            <para>出现错误以后，Maven会报错，并停止build过程。假如你不希望maven停止，可以用下面的命令来执行maven：</para>
+            <example>
+                <title>避免maven因为placeholder未定义而停止</title>
+                <screen>mvn ... <emphasis>–Dautoconfig.strict=false</emphasis></screen>
+            </example>
+            <para>AutoConfig会生成一个日志文件，就在<filename>auto-config.xml</filename>所在的目录下，名字为：<filename>auto-config.xml.log</filename>。</para>
+            <example>
+                <title>AutoConfig所生成的日志文件</title>
+                <screen>Last Configured at: Fri Jun 18 13:54:22 CST 2010
+
+Base URL: file:/.../Work/my/apps/petstore-webx3/target/petstore/
+Descriptor: META-INF/autoconf/auto-config.xml
+
+Generating META-INF/autoconf/WEB-INF/web.xml [UTF-8] => WEB-INF/web.xml [UTF-8]
+Generating META-INF/autoconf/WEB-INF/common/resources.xml [UTF-8] => WEB-INF/common/resources.xml [UTF-8]</screen>
+            </example>
+            <para>最后，让我们查看一下AutoConfig所生成的文件，其中所有的placeholders应当被替换成你所提供的值了。</para>
+            <example>
+                <title>AutoConfig生成的结果</title>
+                <programlisting language="xml">...
+&lt;context-param>
+    &lt;param-name>loggingRoot&lt;/param-name>
+    &lt;param-value><emphasis>/tmp/logs</emphasis>&lt;/param-value>
+&lt;/context-param>
+&lt;context-param>
+    &lt;param-name>loggingLevel&lt;/param-name>
+    &lt;param-value><emphasis>warn</emphasis>&lt;/param-value>
+&lt;/context-param>
+...
+<emphasis>$</emphasis>{runtime.placeholder}</programlisting>
+            </example>
+        </section>
+        <section>
+            <title>共享properties文件</title>
+            <para>当需要配置的内容越来越多时，即使使用AutoConfig这样的机制，也会变得不胜其烦。</para>
+            <para>假如你的项目包含了好几个模块，而你只负责其中的一个模块。一般来说，你对其它模块的配置是什么并不清楚，事实上你也懒得去关心。但是你为了运行这个项目，你不得不去配置这些模块。假如模块A就是一个你不想关心的模块，但为了运行它，你需要告诉模块A一些参数：数据库连接的参数、域名、端口、文件目录、搜索引擎……可你并不清楚这些参数应该取什么值。</para>
+            <para>好在AutoConfig提供了一个共享properties文件的方法。 </para>
+            <section>
+                <title>共享的properties文件</title>
+                <para>你可以创建一系列文件：<filename>module-a-db.properites</filename>，<filename>module-a-searchengine.properties</filename>等等。每个文件中都包含了某个运行环境中的关于module
+                    A模块的配置参数。</para>
+                <para>现在，你可以不关心module A了！你只要使用下面的命令：</para>
+                <example>
+                    <title>指定共享的properties文件</title>
+                    <screen>autoconfig <emphasis>-s module-a-db.properties,module-a-searchengine.properties</emphasis><co xml:id="co.autoconfig.shared.specifiy" /> ……</screen>
+                    <calloutlist>
+                        <callout arearefs="co.autoconfig.shared.specifiy">
+                            <para><code>-s</code>参数代表“共享的properties文件”。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>同时，你的<filename>antx.properties</filename>也被简化了，因为这里只会保存你定义的配置项，而不会包含共享的配置项。</para>
+            </section>
+            <section>
+                <title>共享整个目录</title>
+                <para>假如共享的文件很多的话，AutoConfig还有一个贴心的功能，你可以把这些文件按目录来组织：</para>
+                <example>
+                    <title>按目录组织要被共享的properties文件</title>
+                    <screen>shared-properties/
+ ├─<emphasis>test/</emphasis>                                 // 测试环境的共享配置
+ │    module-a-db.properties
+ │    module-a-searchengine.properties
+ │    module-b.properties
+ └─<emphasis>prod/</emphasis>                                 // 生产环境的共享配置
+       module-a-db.properties
+       module-a-searchengine.properties
+       module-b.properties</screen>
+                </example>
+                <para>然后，你可以直接在AutoConfig中引用目录：</para>
+                <example>
+                    <title>共享指定目录中的所有properties文件</title>
+                    <screen>autoconfig -s <emphasis>shared-propertes/test/</emphasis> ……</screen>
+                </example>
+                <para>AutoConfig就会为你装载这个目录下的所有共享配置文件。（注意，<emphasis>目录必须以斜杠“/”结尾</emphasis>）</para>
+            </section>
+            <section>
+                <title>将共享目录放在http、https或ssh服务器上</title>
+                <para>AutoConfig还支持从http、https或ssh服务器上取得共享配置文件，只需要将前面例子中的文件名改成http或ssh的URI就可以了：</para>
+                <example>
+                    <title>共享远程服务器上的properties文件或目录</title>
+                    <screen>autoconfig -s <emphasis>http://share.alibaba.com</emphasis>/shared-propertes/test/<co xml:id="co.autoconfig.shared.http" /> ……
+autoconfig -s <emphasis>http://myname@share.alibaba.com</emphasis>/shared-propertes/test/<co xml:id="co.autoconfig.shared.http.withuser" /> ……
+autoconfig -s <emphasis>https://share.alibaba.com</emphasis>/shared-propertes/test/<co xml:id="co.autoconfig.shared.https" /> ……
+autoconfig -s <emphasis>https://myname@share.alibaba.com</emphasis>/shared-propertes/test/<co xml:id="co.autoconfig.shared.https.withuser" /> ……
+autoconfig -s <emphasis>ssh://myname@share.alibaba.com</emphasis>/shared-propertes/test/<co xml:id="co.autoconfig.shared.ssh" /> ……</screen>
+                    <calloutlist>
+                        <callout arearefs="co.autoconfig.shared.http">
+                            <para>共享远程http服务器上的properties文件。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.shared.http.withuser">
+                            <para>共享远程http服务器上的properties文件，指定登录用户名。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.shared.https">
+                            <para>共享远程https服务器上的properties文件。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.shared.https.withuser">
+                            <para>共享远程https服务器上的properties文件，指定登录用户名。</para>
+                        </callout>
+                        <callout arearefs="co.autoconfig.shared.ssh">
+                            <para>共享远程ssh服务器上的properties文件，必须指定用户名。</para>
+                        </callout>
+                    </calloutlist>
+                </example>
+                <para>由于Subversion服务器是基于WEB-DAV和HTTP协议的，因此将properties文件存放在subversion服务器上，也是一个极好的办法。由于采用了subversion，properties文件的版本管理问题也被一举解决了。</para>
+                <para>需要注意的是，访问http和ssh有可能需要验证用户和密码。当需要验证时，AutoConfig会提示你输入用户名和密码。输入以后，密码将被保存在<emphasis><filename>$HOME/passwd.autoconfig</filename></emphasis>文件中，以后就不需要重复提问了。
+                </para>
+            </section>
+            <section>
+                <title>在多种配置项中切换</title>
+                <para>当你使用前文所述的<code>autoconfig
+                        –s</code>命令来生成<filename>antx.properties</filename>文件时，你会发现<filename>antx.properties</filename>中增加了几行特别的内容：</para>
+                <example>
+                    <title>包含共享文件、目录信息的<filename>antx.properties</filename>文件</title>
+                    <screen>antx.properties.<emphasis>default</emphasis>  = http://share.alibaba.com/shared-propertes/test/</screen>
+                    <para>如果你在<code>-s</code>参数中指定了多项共享properties文件或目录，那么<filename>antx.properties</filename>中将会这样：</para>
+                    <screen>antx.properties.<emphasis>default.1</emphasis>  = http://share.alibaba.com/shared-propertes/test/
+antx.properties.<emphasis>default.2</emphasis>  = file:/shared-properties/test/my-1.properites
+antx.properties.<emphasis>default.3</emphasis>  = file:/shared-properties/test/my-2.properites</screen>
+                </example>
+                <para>事实上，AutoConfig还支持多组共享配置，请试用下面的命令：</para>
+                <example>
+                    <title>使用多组共享配置</title>
+                    <screen>autoconfig -s http://share.alibaba.com/shared-propertes/test/ <emphasis>-n test</emphasis><co xml:id="co.autoconfig.shared.multi.name" /> ……</screen>
+                    <calloutlist>
+                        <callout arearefs="co.autoconfig.shared.multi.name">
+                            <para>为当前共享配置定义一个名字，以后可以用这个名字来简化命令。</para>
+                        </callout>
+                    </calloutlist>
+                    <para>这时，antx.properties就会是这个样子：</para>
+                    <screen>antx.properties = <emphasis>test</emphasis>
+antx.properties.<emphasis>test</emphasis> = http://share.alibaba.com/shared-propertes/test/</screen>
+                    <para>再执行：</para>
+                    <screen>autoconfig -s http://share.alibaba.com/shared-propertes/prod/ <emphasis>-n prod</emphasis> ……</screen>
+                    <para>antx.properties就会变成这个样子：</para>
+                    <screen>antx.properties = <emphasis>prod</emphasis>
+antx.properties.test = http://share.alibaba.com/shared-propertes/test/
+antx.properties.<emphasis>prod</emphasis> = http://share.alibaba.com/shared-propertes/prod/</screen>
+                    <para>以后再执行，就不需要再指定<code>-s</code>参数了，只需用<code>-n</code>参数选择一组共享properties文件即可。例如：</para>
+                    <screen>autoconfig <emphasis>-n prod</emphasis><co xml:id="co.autoconfig.shared.multi.prod" /> ……                      // 使用prod生产环境的参数
+autoconfig <emphasis>-n test</emphasis><co xml:id="co.autoconfig.shared.multi.test" /> ……                      // 使用test测试环境的参数
+autoconfig <co xml:id="co.autoconfig.shared.multi.last" /> ……                             // 不指定，则使用最近一次所选择的共享文件</screen>
+                </example>
+            </section>
+        </section>
+        <section>
+            <title>AutoConfig常用命令</title>
+            <para>下面罗列了AutoConfig的常用的命令及参数：</para>
+            <section>
+                <title>指定交互式界面的charset</title>
+                <para>一般不需要特别指定charset，除非AutoConfig自动识别系统编码出错，导致显示乱码。</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                        <tbody>
+                            <row>
+                                <entry>运行AutoConfig独立可执行程序</entry>
+                                <entry>
+                                    <screen>autoconfig ... <emphasis>-c GBK</emphasis></screen>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>运行AutoConfig maven插件</entry>
+                                <entry>
+                                    <screen>mvn ... <emphasis>-Dautoconfig.charset=GBK</emphasis></screen>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </section>
+            <section>
+                <title>指定交互模式</title>
+                <para>默认情况下，交互模式为自动（auto）。仅当user
+                    properties中的值不满足auto-config.xml中的定义时，才会交互式地引导用户提供properties值。</para>
+                <para>但你可以强制打开交互模式： </para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                        <tbody>
+                            <row>
+                                <entry>运行AutoConfig独立可执行程序</entry>
+                                <entry>
+                                    <screen>autoconfig ... <emphasis>–i</emphasis>
+autoconfig ... <emphasis>–i on</emphasis></screen>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>运行AutoConfig maven插件</entry>
+                                <entry>
+                                    <screen>mvn ... <emphasis>-Dautoconfig.interactive</emphasis>
+mvn ...  <emphasis>-Dautoconfig.interactive=true</emphasis></screen>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+                <para>或强制关闭交互模式：</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                        <tbody>
+                            <row>
+                                <entry>运行AutoConfig独立可执行程序</entry>
+                                <entry>
+                                    <screen>autoconfig ... <emphasis>–I</emphasis>
+autoconfig ... <emphasis>–i off</emphasis></screen>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>运行AutoConfig maven插件</entry>
+                                <entry>
+                                    <screen>mvn ...  <emphasis>-Dautoconfig.interactive=false</emphasis></screen>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </section>
+            <section>
+                <title>指定user properties</title>
+                <para>默认情况下，AutoConfig会按下列顺序查找user properties：<orderedlist>
+                        <listitem>
+                            <para><filename>当前目录/antx.properties</filename></para>
+                        </listitem>
+                        <listitem>
+                            <para><filename>当前用户HOME目录/antx.properties</filename>
+                            </para>
+                        </listitem>
+                    </orderedlist></para>
+                <para>但你可以指定一个自己的properties文件，用下面的命令：</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                        <tbody>
+                            <row>
+                                <entry>运行AutoConfig独立可执行程序</entry>
+                                <entry>
+                                    <screen>autoconfig ... <emphasis>–u my.props</emphasis></screen>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>运行AutoConfig maven插件</entry>
+                                <entry>
+                                    <screen>mvn ... <emphasis>-Dautoconfig.userProperties=my.props</emphasis></screen>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </section>
+            <section>
+                <title>显示详细的信息</title>
+                <para>默认情况下，AutoConfig只输出重要的信息，但有时你想了解更多内部的情况，只需要用下面的命令：</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                        <tbody>
+                            <row>
+                                <entry>运行AutoConfig独立可执行程序</entry>
+                                <entry>
+                                    <screen>autoconfig ... <emphasis>–v</emphasis></screen>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>运行AutoConfig maven插件</entry>
+                                <entry>不适用</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </section>
+            <section>
+                <title>指定输出文件</title>
+                <para>默认情况下，AutoConfig所生成的配置文件以及日志信息会直接输出到当前包文件或目录中。例如以下命令会改变<filename>petstore.war</filename>的内容：</para>
+                <screen>autoconfig petstore.war</screen>
+                <para>但你可以指定另一个输出文件或目录，这样，原来的文件或目录就不会被修改：</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                        <tbody>
+                            <row>
+                                <entry>运行AutoConfig独立可执行程序</entry>
+                                <entry>
+                                    <screen>autoconfig petstore.war <emphasis>–o petstore-configured.war</emphasis></screen>
+                                </entry>
+                            </row>
+                            <row>
+                                <entry>运行AutoConfig maven插件</entry>
+                                <entry>不适用</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </section>
+            <section>
+                <title>避免执行AutoConfig</title>
+                <para>将AutoConfig和maven package
+                    phase绑定以后，每次build都会激活AutoConfig。假如你想跳过这一步，只需要下面的命令：</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                        <tbody>
+                            <row>
+                                <entry>运行AutoConfig独立可执行程序</entry>
+                                <entry>不适用</entry>
+                            </row>
+                            <row>
+                                <entry>运行AutoConfig maven插件</entry>
+                                <entry>
+                                    <screen>mvn ... <emphasis>-Dautoconfig.skip</emphasis></screen>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </section>
+            <section>
+                <title>避免中断maven build</title>
+                <para>默认情况下，假如发现有未定义的placeholders，AutoConfig会报错并中止maven的执行。假如你不想中断maven
+                    build，可以这样做：</para>
+                <informaltable frame="none">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                        <colspec colname="c2" colnum="2" colwidth="2.33*" />
+                        <tbody>
+                            <row>
+                                <entry>运行AutoConfig独立可执行程序</entry>
+                                <entry>不适用</entry>
+                            </row>
+                            <row>
+                                <entry>运行AutoConfig maven插件</entry>
+                                <entry>
+                                    <screen>mvn ... <emphasis>-Dautoconfig.strict=false</emphasis></screen>
+                                </entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </informaltable>
+            </section>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>AutoConfig是一个简单而有用的小工具，弥补了Maven Filtering及类似机制的不足。但它还有不少改进的余地。<itemizedlist>
+                <listitem>
+                    <para>界面不够直观。如果能够通过GUI或WEB界面来配置，就更好了。</para>
+                </listitem>
+                <listitem>
+                    <para>Properties validator目前不易扩展。</para>
+                </listitem>
+                <listitem>
+                    <para>缺少集成环境的支持。</para>
+                </listitem>
+            </itemizedlist></para>
+    </section>
+</chapter>
