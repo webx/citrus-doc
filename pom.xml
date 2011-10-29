@@ -11,11 +11,10 @@
         <docbook-plugin-version>1.0</docbook-plugin-version>
         <fonts>${project.parent.build.directory}/fonts</fonts>
         <docbook-xsl>${project.parent.build.directory}/docbook</docbook-xsl>
-        <docs-dir>${project.parent.basedir}/webx-site/src/main/site/docs</docs-dir>
+        <docs-dir>${project.parent.build.directory}/docs</docs-dir>
     </properties>
     <modules>
         <module>webx-guide</module>
-        <module>webx-site</module>
     </modules>
     <build>
         <plugins>
