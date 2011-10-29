@@ -1247,7 +1247,7 @@ autoconfig -s <emphasis>ssh://myname@share.alibaba.com</emphasis>/shared-propert
                         </callout>
                     </calloutlist>
                 </example>
-                <para>由于Subversion服务器是基于WEB-DAV和HTTP协议的，因此将properties文件存放在subversion服务器上，也是一个极好的办法。由于采用了subversion，properties文件的版本管理问题也被一举解决了。</para>
+                <para>由于Subversion、Git服务器是支持HTTP/HTTPS协议的，因此将properties文件存放在Subversion或Git服务器上，也是一个极好的办法。由于采用了Subversion或Git，properties文件的版本管理问题也被一举解决了。</para>
                 <para>需要注意的是，访问http和ssh有可能需要验证用户和密码。当需要验证时，AutoConfig会提示你输入用户名和密码。输入以后，密码将被保存在<emphasis><filename>$HOME/passwd.autoconfig</filename></emphasis>文件中，以后就不需要重复提问了。
                 </para>
             </section>

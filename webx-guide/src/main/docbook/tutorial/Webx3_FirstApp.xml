@@ -10,7 +10,7 @@
     <para>本章将帮助你快速创建一个可运行的Webx应用。你可以把它作为你的Webx新项目的开端。</para>
     <section>
         <title>准备工作</title>
-        <para>请耐心，准备工作比创建一个最简单的Webx应用需要花费更多时间。但是磨刀不误砍柴工，做好准备工作将为你将来的开发节省大量时间。</para>
+        <para>请耐心，准备工作会花掉你少许时间。但是磨刀不误砍柴工，做好准备工作将为你将来的开发节省大量时间。</para>
         <section>
             <title>安装JDK</title>
             <para>Webx需要JDK 5.0以上的版本。请从这里下载并安装它：<link
@@ -19,73 +19,23 @@
         <section>
             <title>安装和配置maven</title>
             <para>Webx需要maven 2或更高版本。请从这里下载并安装它：<link xl:href="http://maven.apache.org/" />。</para>
-            <para>请在maven配置中添加Webx所在的repository，以便取得Webx发布版、archetypes、以及相关插件。</para>
-            <example>
-                <title>创建maven配置文件（<filename>$HOME/.m2/settings.xml</filename>）</title>
-                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
-&lt;settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-    xsi:schemaLocation="
-        http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd
-    ">
-
-    &lt;profiles>
-        &lt;profile>
-            &lt;id>code.taobao.org&lt;/id> <co xml:id="co.firstapp.maven.profile" />
-
-            &lt;repositories>
-                &lt;repository>
-                    &lt;id>code.taobao.org&lt;/id>
-                    &lt;name>Repository of code.taobao.org&lt;/name>
-                    &lt;url>http://code.taobao.org/mvn/repository&lt;/url> <co xml:id="co.firstapp.maven.repo" />
-                    &lt;layout>default&lt;/layout>
-                &lt;/repository>
-            &lt;/repositories>
-
-            &lt;pluginRepositories>
-                &lt;pluginRepository>
-                    &lt;id>code.taobao.org&lt;/id>
-                    &lt;name>Repository of code.taobao.org&lt;/name>
-                    &lt;url>http://code.taobao.org/mvn/repository&lt;/url> <co xml:id="co.firstapp.maven.repo.plugin" />
-                    &lt;layout>default&lt;/layout>
-                &lt;/pluginRepository>
-            &lt;/pluginRepositories>
-
-        &lt;/profile>
-    &lt;/profiles>
-
-    &lt;activeProfiles>
-        &lt;activeProfile>code.taobao.org&lt;/activeProfile> <co xml:id="co.firstapp.maven.profile.active" />
-    &lt;/activeProfiles>
-
-&lt;/settings></programlisting>
-                <calloutlist>
-                    <callout arearefs="co.firstapp.maven.profile">
-                        <para>创建一个名为<code>code.taobao.org</code>的profile。</para>
-                    </callout>
-                    <callout arearefs="co.firstapp.maven.repo co.firstapp.maven.repo.plugin">
-                        <para>定义repository
-                            URL：<code>http://code.taobao.org/mvn/repository</code>。</para>
-                    </callout>
-                    <callout arearefs="co.firstapp.maven.profile.active">
-                        <para>可选设置：默认激活<code>code.taobao.org</code> profile。</para>
-                        <para>如果你选择不激活该profile，那么将来你build项目时，需要在命令行上输入参数：<screen>mvn -Pcode.taobao.org ...</screen></para>
-                    </callout>
-                </calloutlist>
-            </example>
-            <para>你也可以把上述maven配置的内容合并到<filename>$MAVEN_HOME/conf/settings.xml</filename>。这样做将会影响所有使用同一个maven安装的用户。</para>
+            <note>
+                <para>你不需要对maven进行特殊的配置，因为运行Webx应用所需要的所有包都存放在全世界共享的中心Maven仓库（Central Maven
+                    Repository）中。Maven将从那里自动获取所有的jar包、源代码和javadoc。</para>
+                <para>你可以从这里查询到所有和Webx有关的发布包：<link
+                        xl:href="http://search.maven.org/#search%7Cga%7C1%7Ccom.alibaba.citrus"
+                     />。</para>
+            </note>
         </section>
         <section>
             <title>安装集成开发环境</title>
             <para>很难想像不用集成开发环境（IDE）来帮助开发Java应用会变成怎样。</para>
             <para>如果你使用Eclipse（从这里下载：<link xl:href="http://www.eclipse.org/" />），建议安装如下插件：<itemizedlist>
                     <listitem>
-                        <para>Maven eclipse插件：<link xl:href="http://m2eclipse.sonatype.org/"
-                             /></para>
+                        <para>Maven eclipse插件：<link xl:href="http://eclipse.org/m2e/" /></para>
                     </listitem>
                     <listitem>
-                        <para>Subversion eclipse插件：<link xl:href="http://subclipse.tigris.org/"
-                             /></para>
+                        <para>Git eclipse插件：<link xl:href="http://eclipse.org/egit/" /></para>
                     </listitem>
                 </itemizedlist></para>
         </section>
@@ -103,10 +53,10 @@
  -Dpackage=com.alibaba.webx.tutorial1 \<co xml:id="co.firstapp.archetype.package" />
  -DarchetypeArtifactId=archetype-webx-quickstart \
  -DarchetypeGroupId=com.alibaba.citrus.sample \
- -DarchetypeVersion=1.0-SNAPSHOT \
+ -DarchetypeVersion=1.0 \
  -DinteractiveMode=false</programlisting>
             <para>由于Windows下不支持命令换行，请改用<emphasis>非换行版</emphasis>：</para>
-            <programlisting>mvn archetype:generate -DgroupId=com.alibaba.webx -DartifactId=tutorial1 -Dversion=1.0-SNAPSHOT -Dpackage=com.alibaba.webx.tutorial1 -DarchetypeArtifactId=archetype-webx-quickstart -DarchetypeGroupId=com.alibaba.citrus.sample -DarchetypeVersion=1.0-SNAPSHOT -DinteractiveMode=false</programlisting>
+            <programlisting>mvn archetype:generate -DgroupId=com.alibaba.webx -DartifactId=tutorial1 -Dversion=1.0-SNAPSHOT -Dpackage=com.alibaba.webx.tutorial1 -DarchetypeArtifactId=archetype-webx-quickstart -DarchetypeGroupId=com.alibaba.citrus.sample -DarchetypeVersion=1.0 -DinteractiveMode=false</programlisting>
             <para>命令执行完后，你会看见一个新目录：<code>tutorial1</code>。它就是我们刚刚创建的新项目。项目的各项参数如下所示：</para>
             <calloutlist>
                 <callout arearefs="co.firstapp.archetype.groupId">
