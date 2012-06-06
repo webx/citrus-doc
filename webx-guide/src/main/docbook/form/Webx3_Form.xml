@@ -2508,10 +2508,122 @@ $field.attachmentHiddenField</programlisting>
             </section>
         </section>
         <section>
+            <title>Field keys的格式</title>
+            <para>表单验证服务所生成的field key是这样的：“<code>_fm.r._0.p</code>”。它是由几部分组成： </para>
+            <table>
+                <title>压缩格式的field key（以<code>_fm.r._0.p</code>为例）的组成</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                    <thead>
+                        <row>
+                            <entry>名称</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>
+                                <para><code>_fm</code></para>
+                            </entry>
+                            <entry>
+                                <para>固定的前缀。它是单词“form”的缩写。表单系统依此来识别该字段为需要验证的表单字段。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <para><code>r</code></para>
+                            </entry>
+                            <entry>被压缩的group名称。</entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <para><code>_0</code></para>
+                            </entry>
+                            <entry>
+                                <para>代表group instance的唯一ID。<code>_0</code>是默认的ID。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <para><code>p</code></para>
+                            </entry>
+                            <entry>被压缩的field名称。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>在以上例子中，field keys被压缩了。压缩以后的field keys更短，但同时也比较难以阅读。由于在多数情况下，我们并不需要去理解field
+                    keys的含义，所以这样做并没有问题。但有一种情况，我们需要对表单进行单元测试或者集成测试。这种压缩的格式会为测试带来一定困难。为此，表单服务提供了另一种非压缩的格式可供使用。非压缩的格式和压缩格式类似，只不过其group和field的名称是完整的。例如，非压缩版的“<code>_fm.register._0.password</code>”和压缩版的<code>_fm.r._0.p</code>是等效的。</para>
+            <table>
+                <title>非压缩格式的field key（以<code>_fm.register._0.password</code>为例）的组成</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*" />
+                    <colspec colname="c2" colnum="2" colwidth="3.31*" />
+                    <thead>
+                        <row>
+                            <entry>名称</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>
+                                <para><code>_fm</code></para>
+                            </entry>
+                            <entry>
+                                <para>固定的前缀，是单词“form”的缩写。表单系统依此来识别该字段为需要验证的表单字段。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <para><code>register</code></para>
+                            </entry>
+                            <entry>完整的group名称。大小写不敏感，以下写法完全等效：<code>register</code>、<code>Register</code>、<code>rEgiSter</code>。</entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <para><code>_0</code></para>
+                            </entry>
+                            <entry>
+                                <para>代表group instance的唯一ID。<code>_0</code>是默认的ID。</para>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>
+                                <para><code>password</code></para>
+                            </entry>
+                            <entry>完整的field名称。大小写不敏感，以下写法完全等效：<code>password</code>、<code>Password</code>、<code>paSswoRd</code>。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>浏览器或单元测试的代码在提交表单数据时，可以混合使用压缩和非压缩的格式。但是在默认情况下，表单系统只会生成压缩格式的field
+                keys。如果你希望表单系统生成非压缩的格式，你可以在配置文件中这样写：</para>
+            <example>
+                <title>让表单系统生成非压缩的格式的field keys</title>
+                <programlisting language="xml">&lt;services:form fieldKeyFormat="uncompressed"> <co xml:id="co.form.fieldKeyFormat" />
+    ...
+&lt;/services:form></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.form.fieldKeyFormat">
+                        <para>如果不指定，其默认值为<code>compressed</code>。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+            <note>
+                <para>当表单系统被配置成<code>fieldKeyFormat="uncompressed"</code>时，系统就<emphasis>不支持</emphasis>压缩格式的field
+                    keys了。</para>
+                <para>当表单系统被配置成<code>fieldKeyFormat="compressed"</code>时，系统就<emphasis>同时支持</emphasis>压缩格式和非压缩格式的field
+                    keys。</para>
+            </note>
+        </section>
+        <section>
             <title>外部验证</title>
-            <para>表单验证服务是被设计成在一个应用的内部使用的。它所生成的field
-                key（像这个样子：“<code>_fm.r._0.p</code>”）是不稳定的，可能随着配置的变化而变化。所以外界系统不可依赖于这些内部的keys。</para>
-            <para>如果真的需要让外部来提交并验证表单，可以做一个screen来转发这个请求。Screen的代码像这个样子：</para>
+            <para>表单验证服务是被设计成供一个<emphasis>应用的内部</emphasis>使用的服务。它所生成的压缩格式的field
+                    key，例如“<code>_fm.r._0.p</code>”，是不稳定的。它和配置文件中的group、field的名称、排列顺序有关，可能随着配置的变化而变化。即便是非压缩的格式，例如“<code>_fm.register._0.password</code>”，也会因配置文件中group、field命名的改变而改变。如果需要让外界系统来提交并验证表单，最好提供一个相对稳定的接口。所以外界系统最好不要依赖于这些内部的field
+                keys。</para>
+            <para>如果真的需要让外界系统来提交并验证表单，可以做一个screen来转发这个请求。Screen的代码像这个样子：</para>
             <example>
                 <title>转发外部表单请求</title>
                 <programlisting language="java">public class RemoteRegister {
