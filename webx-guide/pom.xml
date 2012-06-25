@@ -12,7 +12,7 @@
     <packaging>pom</packaging>
     <name>Webx Guide Documentation</name>
     <properties>
-        <webx-version>3.0.7</webx-version>
+        <webx-version>3.1.1</webx-version>
         <log4j-version>1.2.16</log4j-version>
         <logback-version>0.9.29</logback-version>
         <jcl-version>1.1.1</jcl-version>
