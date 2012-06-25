@@ -53,10 +53,10 @@
  -Dpackage=com.alibaba.webx.tutorial1 \<co xml:id="co.firstapp.archetype.package" />
  -DarchetypeArtifactId=archetype-webx-quickstart \
  -DarchetypeGroupId=com.alibaba.citrus.sample \
- -DarchetypeVersion=1.0 \
+ -DarchetypeVersion=1.1 \
  -DinteractiveMode=false</programlisting>
             <para>由于Windows下不支持命令换行，请改用<emphasis>非换行版</emphasis>：</para>
-            <programlisting>mvn archetype:generate -DgroupId=com.alibaba.webx -DartifactId=tutorial1 -Dversion=1.0-SNAPSHOT -Dpackage=com.alibaba.webx.tutorial1 -DarchetypeArtifactId=archetype-webx-quickstart -DarchetypeGroupId=com.alibaba.citrus.sample -DarchetypeVersion=1.0 -DinteractiveMode=false</programlisting>
+            <programlisting>mvn archetype:generate -DgroupId=com.alibaba.webx -DartifactId=tutorial1 -Dversion=1.0-SNAPSHOT -Dpackage=com.alibaba.webx.tutorial1 -DarchetypeArtifactId=archetype-webx-quickstart -DarchetypeGroupId=com.alibaba.citrus.sample -DarchetypeVersion=1.1 -DinteractiveMode=false</programlisting>
             <para>命令执行完后，你会看见一个新目录：<code>tutorial1</code>。它就是我们刚刚创建的新项目。项目的各项参数如下所示：</para>
             <calloutlist>
                 <callout arearefs="co.firstapp.archetype.groupId">
