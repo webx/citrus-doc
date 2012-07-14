@@ -560,11 +560,11 @@
         &lt;filter-class><emphasis>com.alibaba.citrus.webx.servlet.WebxFrameworkFilter</emphasis>&lt;/filter-class> <co xml:id="co.webx.filter" />
         &lt;init-param>
             &lt;param-name>excludes&lt;/param-name>
-            &lt;param-value>&lt;!-- 需要被“排除”的URL路径，以逗号分隔，如/static, *.jpg -->&lt;/param-value>  <co xml:id="co.webx.filter.exclude" />
+            &lt;param-value>&lt;!-- 需要被“排除”的URL路径，以逗号分隔，前缀!表示“包含”。例如/static, *.jpg, !/uploads/*.jpg -->&lt;/param-value>  <co xml:id="co.webx.filter.exclude" />
         &lt;/init-param>
         &lt;init-param>
             &lt;param-name>passthru&lt;/param-name>
-            &lt;param-value>&lt;!-- 需要被“略过”的URL路径，以逗号分隔，如/myservlet, *.jsp -->&lt;/param-value>  <co xml:id="co.webx.filter.passthru" />
+            &lt;param-value>&lt;!-- 需要被“略过”的URL路径，以逗号分隔，前缀!表示“不要略过”。例如/myservlet, *.jsp -->&lt;/param-value>  <co xml:id="co.webx.filter.passthru" />
         &lt;/init-param>
     &lt;/filter>
 
@@ -580,11 +580,12 @@
                     </callout>
                     <callout arearefs="co.webx.filter.exclude">
                         <para>可选的参数：“排除”指定名称的path，以逗号分隔，例如：<code>/static</code>,
-                            <code>*.jpg</code>。</para>
+                                <code>*.jpg</code>。如果路径以<code>!</code>开始，表示“不排除”特殊目录。例如：<code>*.jpg,
+                                !/uploads/*.jpg</code>表示排除所有JPG图像文件，但不排除<code>/uploads</code>目录下的JPG图像文件。</para>
                     </callout>
                     <callout arearefs="co.webx.filter.passthru">
                         <para>可选的参数：“略过”指定名称的path，以逗号分隔，例如：<code>/myservlet</code>,
-                                <code>*.jsp</code>。</para>
+                                <code>*.jsp</code>。和<code>excludes</code>参数一样，也支持<code>!</code>前缀，表示“不要略过”特殊目录。</para>
                     </callout>
                     <callout arearefs="co.webx.filter.mapping">
                         <para>匹配所有的path。</para>
@@ -605,10 +606,10 @@
                     </listitem>
                 </itemizedlist></para>
             <para>如果你的web.xml中还有一些其它的servlet
-                mappings，为了避免和Webx的URL起冲突，你可以把这些mapping加在excludes或passthru参数里。这样，WebxFrameworkFilter就会排除或略过指定的URL。例如：</para>
+                    mappings，为了避免和Webx的URL起冲突，你可以把这些mapping加在<code>excludes</code>或<code>passthru</code>参数里。这样，WebxFrameworkFilter就会排除或略过指定的URL。例如：</para>
             <programlisting language="xml">        &lt;init-param>
             &lt;param-name>excludes&lt;/param-name>
-            &lt;param-value><emphasis>/static, *.jpg</emphasis>&lt;/param-value>
+            &lt;param-value><emphasis>/static, *.jpg, !/uploads/*.jpg</emphasis>&lt;/param-value>
         &lt;/init-param>
         &lt;init-param>
             &lt;param-name>passthru&lt;/param-name>
