@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="usergide.uribrokerservice" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="usergide_uribrokerservice.html" ?>
+    <title> uriBrokerService 使用</title>
+    <section>
+        <title>功能介绍</title>
+        <para> uriBrokerService提供了uri的定制功能。以解决URI的拼接，转码，以及开发与正式环境切换的问题。 </para>
+    </section>
+    <section>
+        <title>使用</title>
+        <para>
+            <informaltable frame="box">
+                <col width="21%"/>
+                <col width="412pt"/>
+                <col width="412pt"/>
+                <thead style="background:#6666cc">
+                    <tr>
+                        <th> uri配置名称 </th>
+                        <th> 含义 </th>
+                        <th> 举例 </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td> uri </td>
+                        <td>最通用的uri配置</td>
+                        <td> http://user:pass@myserver.com:8080/view?id=1#top </td>
+                    </tr>
+                    <tr>
+                        <td> content-uri  </td>
+                        <td> 通用的content URI，用于显示一般的WEB资源（如图片等） （静态资源一般用这种） </td>
+                        <td> http://user:pass@myserver.com:8080/img/webx.jpg </td>
+                    </tr>
+                    <tr>
+                        <td> servlet-uri  </td>
+                        <td> Servlet风格的URI  </td>
+                        <td>http://user:pass@myserver.com:8080/mycontext/myservlet/view?id=1#top
+                        </td>
+                    </tr>
+                    <tr>
+                        <td> servlet-content-uri  </td>
+                        <td> 通用的servlet content URI，用于显示webapp context path下的资源（如图片等）  </td>
+                        <td>http://user:pass@myserver.com:8080/mycontext/img/webx.jpg </td>
+                    </tr>
+                    <tr>
+                        <td> turbine-classic-uri  </td>
+                        <td> Turbine传统风格的URI（可以不考虑了）  </td>
+                        <td>http://user:pass@myserver.com:8080/mycontext/turbine/template/product,ViewItem?id=1#top
+                        </td>
+                    </tr>
+                    <tr>
+                        <td> turbine-uri  </td>
+                        <td> Turbine风格的URI (我们通常用这种) </td>
+                        <td>
+                            http://user:pass@myserver.com:8080/mycontext/myservlet/mycomponent/myTarget.jhtml </td>
+                    </tr>
+                    <tr>
+                        <td> turbine-content-uri  </td>
+                        <td> Turbine风格的content URI  </td>
+                        <td>
+                            http://user:pass@myserver.com:8080/mycontext/myservlet/mycomponent/myContent.jpg </td>
+                    </tr>
+                    <tr>
+                        <td> uri-bean </td>
+                        <td> 提供扩展机制 </td>
+                        <td/>
+                    </tr>
+                </tbody>
+            </informaltable>
+        </para>
+    </section>
+    <section>
+        <title>uribroker配置介绍</title>
+        <section>
+            <title>uir配置介绍</title>
+            <para> uri的配置由四部分组成：服务器信息，请求参数，属性，path。先举例： </para>
+            <para><inlinemediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/uribroker/1.png"/>
+                    </imageobject>
+                </inlinemediaobject></para>
+            <para> 1、请求参数；2、path；3、服务器信息；4、属性 </para>
+            <para>
+                这个url生成后是：http://myuser2:mypass2@myservername2:1234/aaa/a1/bbb/ccc/ddd?aaa=1111&amp;bbb=2222&amp;ccc=3333#myreference2 </para>
+            <para>
+                <table frame="box" width="482">
+                    <caption>服务器参数配置说明</caption>
+                    <col width="25%"/>
+                    <col width="38%"/>
+                    <col width="37%"/>
+                    <thead style="background:#6666cc">
+                        <tr>
+                            <th>参数</th>
+                            <th>含义</th>
+                            <th>举例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>serverURI </td>
+                            <td>服务器URI</td>
+                            <td> http://www.alibaba.com </td>
+                        </tr>
+                        <tr>
+                            <td>serverScheme </td>
+                            <td>协议</td>
+                            <td>http 或者 https</td>
+                        </tr>
+                        <tr>
+                            <td>loginUser </td>
+                            <td>登录用户名</td>
+                            <td/>
+                        </tr>
+                        <tr>
+                            <td>loginPassword </td>
+                            <td>登录密码</td>
+                            <td/>
+                        </tr>
+                        <tr>
+                            <td>serverName </td>
+                            <td> URL的服务器名称</td>
+                            <td>www.taobao.com</td>
+                        </tr>
+                        <tr>
+                            <td>serverPort </td>
+                            <td> URL的服务器端口号 </td>
+                            <td>80</td>
+                        </tr>
+                        <tr>
+                            <td> reference </td>
+                            <td> URL的参数参考说明 </td>
+                            <td/>
+                        </tr>
+                    </tbody>
+                </table>
+                <table frame="box">
+                    <caption>url配置属性说明</caption>
+                    <col width="18%"/>
+                    <col width="16%"/>
+                    <col width="66%"/>
+                    <thead style="background:#6666cc">
+                        <tr>
+                            <th>参数</th>
+                            <th>默认值</th>
+                            <th>含义</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>requestAware </td>
+                            <td>false</td>
+                            <td> 是否自动从request中填充值，默认不填充  </td>
+                        </tr>
+                        <tr>
+                            <td>charset </td>
+                            <td/>
+                            <td>取得URL encoding的编码字符集。假如值为null，将从LocaleUtil中取得  </td>
+                        </tr>
+                        <tr>
+                            <td>exposed </td>
+                            <td>false</td>
+                            <td>页面是否可引用，默认不可以 </td>
+                        </tr>
+                        <tr>
+                            <td>extends </td>
+                            <td/>
+                            <td>继承前一个uribroker </td>
+                        </tr>
+                        <tr>
+                            <td>type </td>
+                            <td>null</td>
+                            <td>有四种：auto/full/absolute/relative auto：自动选择URI的类型 
+                                full：完整URI，包括serverInfo, path;
+                                absolute：绝对URI，不包括serverInfo，但包括完整的path; 
+                                relative：相对URI，不包括serverInfo，其path为相对于当前请求的URI的相对路径  </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </para>
+        </section>
+        <section>
+            <title>content-uri 配置介绍</title>
+            <para>content-uri 配置跟 uri 类似，不一样的是比uri配置增加了两个配置 :</para>
+            <para>prefixPath：Content前缀路径 ;</para>
+            <para>contentPath: Content路径  </para>
+        </section>
+        <section>
+            <title>servlet-uri 配置介绍</title>
+            <para> serlvet-uri 配置跟 uri 类似，不一样的是比uri配置增加了三个配置  </para>
+            <para>contextPath：Web应用程序context路径  </para>
+            <para>servletPath：Servlet路径  </para>
+            <para>pathInfo： URL的pathInfo部分  </para>
+        </section>
+        <section>
+            <title>servlet-content-uri 配置</title>
+            <para> serlvet-uri 配置跟 uri 类似，不一样的是比uri配置增加了三个配置 </para>
+            <para>contextPath：Web应用程序context路径  </para>
+            <para>prefixPath：Content前缀路径  </para>
+            <para>contextPath：Content路径 </para>
+        </section>
+        <section>
+            <title>turbine-uri 配置</title>
+            <para>turbine-uri 配置比uri增加了不少配置和属性。 </para>
+            <para>配置如下： </para>
+            <para>contextPath:Web应用程序context路径 </para>
+            <para>servletPath: Servlet路径 </para>
+            <para>componentPath: Component路径 </para>
+            <para>target: target路径 </para>
+            <para>action: action名称 </para>
+            <para>属性配置增加如下： </para>
+            <para>mappingRuleServiceRef: 引用mappingRuleService </para>
+            <para>targetMappingRule：目标mappingRule </para>
+            <para>actionParam: action   参数 </para>
+            <para>convertTargetCase: 是非将将target转换成target_name形式 </para>
+        </section>
+        <section>
+            <title>turbine-content-uri 配置</title>
+            <para>比serlvet-content-uri多了一个componentPath</para>
+        </section>
+        <section>
+            <title>uri-bean 配置</title>
+            <para>有两个属性：exposed和extend跟之前的使用一样。举例如下：</para>
+            <programlisting language="xml">&lt;uris:uri id="mybeanBase">
+   &lt;uris:serverURI>http://myserver/aa/bb/cc&lt;/uris:serverURI>
+&lt;/uris:uri>
+
+&lt;!-- 任意bean -->
+&lt;uris:uri-bean id="mybean" class="com.alibaba.citrus.service.uribroker.uri.GenericURIBroker" exposed="true" extends="mybeanBase" p:serverScheme="https" /></programlisting>
+            <para>myBean生成的url是：https://myserver/aa/bb/cc。如果有特殊的需求，可以在GenericURIBroker类或者直接在URIBroker上做扩展。</para>
+        </section>
+    </section>
+</chapter>

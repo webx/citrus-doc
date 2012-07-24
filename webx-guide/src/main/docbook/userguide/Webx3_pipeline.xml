@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="usergide.pipeline" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="usergide_pipeline.html" ?>
+    <title>Pipeline 使用</title>
+    <section>
+        <title>功能介绍</title>
+        <para>pipeline是用来处理页面请求的。一个pipeline有多个valve组成，这些valve一般是按顺序执行，也就是一个请求进来，会经过一个个valve处理。
+            也有些valve有条件关系，如if/else，try,catch/finally类似有语义的valve组合，用于处理复杂的业务逻辑。</para>
+    </section>
+    <section>
+        <title>概念解释</title>
+        <para>valve：（阀门），页面请求的一个处理环节。如：analyzeURL，用来分析页面请求中所带参数，以方便业务代码中使用（target，action，actionEvent）。</para>
+    </section>
+    <section>
+        <title>使用</title>
+        <para>常见pipelline的配置：<programlisting language="xml">    &lt;services:pipeline xmlns="http://www.alibaba.com/schema/services/pipeline/valves">
+
+        &lt;!-- 初始化turbine rundata，并在pipelineContext中设置可能会用到的对象(如rundata、utils)，以便valve取得。 -->
+        &lt;prepareForTurbine />
+
+        &lt;!-- 设置日志系统的上下文，支持把当前请求的详情打印在日志中。 -->
+        &lt;setLoggingContext />
+
+        &lt;!-- 分析URL，取得target。 -->
+        &lt;analyzeURL homepage="homepage" />
+
+        &lt;!-- 检查csrf token，防止csrf攻击和重复提交。假如request和session中的token不匹配，则出错，或显示expired页面。 -->
+        &lt;checkCsrfToken />
+
+        &lt;loop>
+            &lt;choose>
+                &lt;when>
+                    &lt;!-- 执行带模板的screen，默认有layout。 -->
+                    &lt;pl-conditions:target-extension-condition extension="null, vm, jsp, jspx" />
+                    &lt;performAction />
+                    &lt;performTemplateScreen />
+                    &lt;renderTemplate />
+                &lt;/when>
+                &lt;when>
+                    &lt;!-- 执行不带模板的screen，默认无layout。 -->
+                    &lt;pl-conditions:target-extension-condition extension="do" />
+                    &lt;performAction />
+                    &lt;performScreen />
+                &lt;/when>
+                &lt;otherwise>
+                    &lt;!-- 将控制交还给servlet engine。 -->
+                    &lt;exit />
+                &lt;/otherwise>
+            &lt;/choose>
+
+            &lt;!-- 假如rundata.setRedirectTarget()被设置，则循环，否则退出循环。 -->
+            &lt;breakUnlessTargetRedirected />
+        &lt;/loop>
+
+    &lt;/services:pipeline>
+</programlisting></para>
+    </section>
+    <section>
+        <title>原理</title>
+        <para>pipeline的配置表明了页面处理顺序：</para>
+        <para> 如果是一个target后缀为null, vm, jsp,
+            jspx，则先执行action请求，再处理带模板的screen请求，最后才是渲染模板。所以不管是post表单提交也好，还是简单的页面请求也好，都是走这个顺序。
+            如果target后缀为do，则跟上面稍微有区别，不需要渲染模板，它在json请求等会有很大作用。</para>
+    </section>
+    <section>
+        <title>扩展</title>
+        <para>
+            <orderedlist>
+                <listitem>
+                    <para><emphasis role="bold">增加一个valve</emphasis></para>
+                    <para> 需要继承AbstractValve，并在配置文件配置,这样即可 </para>
+                    <para>
+                        <programlisting language="xml">&lt;valve class="*.*" /></programlisting>
+                    </para>
+                </listitem>
+                <listitem>
+                    <para><emphasis role="bold">增加一个后缀处理</emphasis></para>
+                    <para>如：</para>
+                    <para>
+                        <programlisting language="xml">&lt;pl-conditions:target-extension-condition extension="json" /></programlisting>
+                    </para>
+                    <para> 后面跟上要扩展的业务逻辑。</para>
+                </listitem>
+                <listitem>
+                    <para><emphasis role="bold">业务逻辑扩展</emphasis></para>
+                    <para> 如csrftoken校验；页面权限校验。这些都可以通过pipeline来解决。 </para>
+                    <para> 建议：增加的valve放到analyzeURL valve后面。前面几个valve涉及环境初始化工作。 </para>
+                </listitem>
+            </orderedlist>
+        </para>
+    </section>
+</chapter>

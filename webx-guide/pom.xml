@@ -72,6 +72,9 @@
                                     <fileset dir="${project.basedir}/src/main/docbook/tool">
                                         <patternset refid="doc.resources" />
                                     </fileset>
+                                    <fileset dir="${project.basedir}/src/main/docbook/userguide">
+                                        <patternset refid="doc.resources" />
+                                    </fileset>
                                 </copy>
                             </preProcess>
                         </configuration>
