@@ -110,6 +110,10 @@
                             <value><![CDATA[${webx-version}]]></value>
                         </entity>
                         <entity>
+                            <name>webx-archetype-version</name>
+                            <value><![CDATA[${webx-archetype-version}]]></value>
+                        </entity>
+                        <entity>
                             <name>log4j-version</name>
                             <value><![CDATA[${log4j-version}]]></value>
                         </entity>
