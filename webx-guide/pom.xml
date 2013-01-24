@@ -24,7 +24,7 @@
         <plugins>
             <plugin>
                 <groupId>com.alibaba.citrus.tool</groupId>
-                <artifactId>maven-docbook-plugin</artifactId>
+                <artifactId>docbook-maven-plugin</artifactId>
                 <executions>
                     <!-- ==================================================== -->
                     <!-- 生成分页的HTML -->

@@ -20,7 +20,7 @@
         <plugins>
             <plugin>
                 <groupId>com.alibaba.citrus.tool</groupId>
-                <artifactId>maven-docbook-plugin</artifactId>
+                <artifactId>docbook-maven-plugin</artifactId>
                 <executions>
                     <!-- ==================================================== -->
                     <!-- 生成分页的HTML -->
@@ -218,7 +218,7 @@
                         </goals>
                         <configuration>
                             <includeGroupIds>com.alibaba.citrus.tool</includeGroupIds>
-                            <includeArtifactIds>maven-docbook-plugin</includeArtifactIds>
+                            <includeArtifactIds>docbook-maven-plugin</includeArtifactIds>
                             <includes>docbook/**/*</includes>
                             <outputDirectory>${project.build.directory}</outputDirectory>
                         </configuration>
@@ -230,7 +230,7 @@
             <plugins>
                 <plugin>
                     <groupId>com.alibaba.citrus.tool</groupId>
-                    <artifactId>maven-docbook-plugin</artifactId>
+                    <artifactId>docbook-maven-plugin</artifactId>
                     <version>${docbook-plugin-version}</version>
                 </plugin>
             </plugins>
@@ -239,14 +239,14 @@
     <dependencies>
         <dependency>
             <groupId>com.alibaba.citrus.tool</groupId>
-            <artifactId>maven-docbook-plugin</artifactId>
+            <artifactId>docbook-maven-plugin</artifactId>
         </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>com.alibaba.citrus.tool</groupId>
-                <artifactId>maven-docbook-plugin</artifactId>
+                <artifactId>docbook-maven-plugin</artifactId>
                 <version>${docbook-plugin-version}</version>
             </dependency>
         </dependencies>
