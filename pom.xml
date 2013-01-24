@@ -8,7 +8,7 @@
     <packaging>pom</packaging>
     <name>Citrus Documentation Parent Project</name>
     <properties>
-        <docbook-plugin-version>1.0</docbook-plugin-version>
+        <docbook-plugin-version>1.1</docbook-plugin-version>
         <fonts>${project.parent.build.directory}/fonts</fonts>
         <docbook-xsl>${project.parent.build.directory}/docbook</docbook-xsl>
         <docs-dir>${project.parent.build.directory}/docs</docs-dir>
