@@ -951,12 +951,12 @@
                 <para>你也可以直接去maven repository中手工下载以上两个包：<itemizedlist>
                         <listitem>
                             <para><link
-                                    xl:href="http://code.taobao.org/mvn/repository/com/alibaba/citrus/tool/antx-autoconfig/&antx-version;/antx-autoconfig-&antx-version;.tgz"
+                                    xl:href="http://repo1.maven.org/maven2/com/alibaba/citrus/tool/antx-autoconfig/&antx-version;/antx-autoconfig-&antx-version;.tgz"
                                  /></para>
                         </listitem>
                         <listitem>
                             <para><link
-                                    xl:href="http://code.taobao.org/mvn/repository/com/alibaba/citrus/tool/antx-autoexpand/&antx-version;/antx-autoexpand-&antx-version;.tgz"
+                                    xl:href="http://repo1.maven.org/maven2/com/alibaba/citrus/tool/antx-autoexpand/&antx-version;/antx-autoexpand-&antx-version;.tgz"
                                  /></para>
                         </listitem>
                     </itemizedlist></para>
