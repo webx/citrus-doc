@@ -2636,9 +2636,7 @@ $field.attachmentHiddenField</programlisting>
         group.getField("passwordConfirm").setValue(params.getString("password")); <co xml:id="co.form.external.transfer3" />
         group.validate(); <co xml:id="co.form.external.validate" />
 
-        nav.forwardTo("register")
-            .withParameter("action", "registerAction")
-            .withParameter("eventSubmitDoRegister", "yes"); <co xml:id="co.form.external.forward" />
+        nav.forwardTo("register", "registerAction", "register"); <co xml:id="co.form.external.forward" />
     }
 }</programlisting>
                 <calloutlist>
@@ -2654,7 +2652,7 @@ $field.attachmentHiddenField</programlisting>
                         <para>验证表单。</para>
                     </callout>
                     <callout arearefs="co.form.external.forward">
-                        <para>内部重定向到register页面，并指明action参数。</para>
+                        <para>内部重定向到register页面，并指明action参数和actionEvent参数（分别是“<code>registerAction</code>”和“<code>register</code>”）。</para>
                     </callout>
                 </calloutlist>
                 <para>只需要访问下面的URL就可以实现从系统外部注册帐户的功能：</para>
