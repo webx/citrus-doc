@@ -130,16 +130,20 @@
             ...
             &lt;plugin>
                 &lt;groupId>org.mortbay.jetty&lt;/groupId>
-                &lt;artifactId>maven-jetty-plugin&lt;/artifactId>
+                &lt;artifactId>jetty-maven-plugin&lt;/artifactId>
                 &lt;configuration>
-                    &lt;contextPath>/&lt;/contextPath>
+                    &lt;webApp>
+                        &lt;contextPath>/&lt;/contextPath>
+                    &lt;/webApp>
+                    &lt;stopKey>webx&lt;/stopKey>
+                    &lt;stopKey>9999&lt;/stopKey>
                     &lt;connectors>
-                        &lt;connector implementation="org.mortbay.jetty.nio.SelectChannelConnector">
+                        &lt;connector implementation="org.eclipse.jetty.server.nio.SelectChannelConnector">
                             &lt;port>8081&lt;/port>
                             &lt;maxIdleTime>60000&lt;/maxIdleTime>
                         &lt;/connector>
                     &lt;/connectors>
-                    &lt;requestLog implementation="org.mortbay.jetty.NCSARequestLog">
+                    &lt;requestLog implementation="org.eclipse.jetty.server.NCSARequestLog">
                         &lt;filename>target/access.log&lt;/filename>
                         &lt;retainDays>90&lt;/retainDays>
                         &lt;append>false&lt;/append>
