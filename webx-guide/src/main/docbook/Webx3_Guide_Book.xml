@@ -40,6 +40,7 @@
     </part>
     <part xml:id="webx.tools">
         <title>辅助工具</title>
+        <xi:include href="tool/Tool_SpringExt_Plugin_Guide.xml" />
         <xi:include href="tool/Tool_AutoConfig_Guide.xml" />
         <xi:include href="tool/Tool_AutoExpand_Guide.xml" />
     </part>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+<!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+%placeholders;
+]>
+<chapter xml:id="tool.plugin.springext" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="springext-plugin.html" ?>
+    <title>安装和使用SpringExt插件</title>
+    <para>本章介绍了如何在eclipse中安装和使用SpringExt插件的方法。</para>
+    <section>
+        <title>安装</title>
+        <para />
+    </section>
+</chapter>

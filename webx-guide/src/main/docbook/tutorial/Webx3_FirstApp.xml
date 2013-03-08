@@ -3,7 +3,7 @@
 <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
 %placeholders;
 ]>
-<chapter id="webx.tutorial.simple" xmlns="http://docbook.org/ns/docbook"
+<chapter xml:id="webx.tutorial.simple" xmlns="http://docbook.org/ns/docbook"
     xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
     <?dbhtml filename="firstapp.html" ?>
     <title>创建第一个Webx应用</title>
@@ -36,6 +36,12 @@
                     </listitem>
                     <listitem>
                         <para>Git eclipse插件：<link xl:href="http://eclipse.org/egit/" /></para>
+                    </listitem>
+                    <listitem>
+                        <para>SpringExt eclipse插件：<link xl:href="http://openwebx.org/updatesite/"
+                             /></para>
+                        <para>关于SpringExt eclipse插件，请参阅更详细的说明：<xref linkend="tool.plugin.springext"
+                             />。</para>
                     </listitem>
                 </itemizedlist></para>
         </section>
