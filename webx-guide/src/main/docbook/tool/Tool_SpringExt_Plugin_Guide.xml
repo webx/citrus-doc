@@ -140,9 +140,9 @@
             <para>上述命令执行以后，将生成一个<code>target/schemas</code>文件夹，里面包含了所有的可用的schemas。</para>
         </section>
         <section>
-            <title>SpringExt Maven插件的可选参数</title>
+            <title>Maven插件的可选参数</title>
             <para>SpringExt Maven插件还包含了一系列可选的参数。</para>
-            <table frame="all" rowheader="firstcol">
+            <table frame="none" rowheader="firstcol">
                 <title>SpringExt Maven插件的可选参数</title>
                 <tgroup cols="4">
                     <colspec colname="c1" colnum="1" colwidth="1.0*"/>
@@ -159,38 +159,97 @@
                     </thead>
                     <tbody>
                         <row>
-                            <entry><code>contextPath</code></entry>
-                            <entry><code>mvn springext:run</code></entry>
-                            <entry><code>/schema</code></entry>
-                            <entry><para>指定Schema URL的路径：</para>
-                                <para><code>http://localhost:8080</code><emphasis><code>/contextPath</code></emphasis><code>/myschema.xsd</code></para></entry>
+                            <entry>
+                                <code>contextPath</code>
+                            </entry>
+                            <entry>
+                                <code>mvn springext:run</code>
+                            </entry>
+                            <entry>
+                                <code>/schema</code>
+                            </entry>
+                            <entry>
+                                <para>指定Schema URL的路径：</para>
+                                <para>
+                                    <code>http://localhost:8080</code>
+                                    <emphasis>
+                                        <code>/contextPath</code>
+                                    </emphasis>
+                                    <code>/myschema.xsd</code>
+                                </para>
+                            </entry>
                         </row>
                         <row>
-                            <entry><code>port</code></entry>
-                            <entry><code>mvn springext:run</code></entry>
-                            <entry><code>8080</code></entry>
-                            <entry><para>指定Schema URL的端口：</para>
-                                <para><code>http://localhost</code><emphasis><code>:8080</code></emphasis><code>/contextPath/myschema.xsd</code></para></entry>
+                            <entry>
+                                <code>port</code>
+                            </entry>
+                            <entry>
+                                <code>mvn springext:run</code>
+                            </entry>
+                            <entry>
+                                <code>8080</code>
+                            </entry>
+                            <entry>
+                                <para>指定Schema URL的端口：</para>
+                                <para>
+                                    <code>http://localhost</code>
+                                    <emphasis>
+                                        <code>:8080</code>
+                                    </emphasis>
+                                    <code>/contextPath/myschema.xsd</code>
+                                </para>
+                            </entry>
                         </row>
                         <row>
-                            <entry><code>noTestClasspath</code></entry>
-                            <entry><para><code>mvn springext:run</code></para>
-                                <para><code>mvn springext:export</code></para></entry>
-                            <entry><code>false</code></entry>
-                            <entry><para>是否在单元测试的classpath中寻找schemas？</para></entry>
+                            <entry>
+                                <code>noTestClasspath</code>
+                            </entry>
+                            <entry>
+                                <para>
+                                    <code>mvn springext:run</code>
+                                </para>
+                                <para>
+                                    <code>mvn springext:export</code>
+                                </para>
+                            </entry>
+                            <entry>
+                                <code>false</code>
+                            </entry>
+                            <entry>
+                                <para>是否在单元测试的classpath中寻找schemas？</para>
+                            </entry>
                         </row>
                         <row>
-                            <entry><code>destdir</code></entry>
-                            <entry><code>mvn springext:export</code></entry>
-                            <entry><code>target/schemas</code></entry>
-                            <entry><para>导出schemas到指定的文件夹。</para></entry>
+                            <entry>
+                                <code>destdir</code>
+                            </entry>
+                            <entry>
+                                <code>mvn springext:export</code>
+                            </entry>
+                            <entry>
+                                <code>target/schemas</code>
+                            </entry>
+                            <entry>
+                                <para>导出schemas到指定的文件夹。</para>
+                            </entry>
                         </row>
                         <row>
-                            <entry><code>uriPrefix</code></entry>
-                            <entry><code>mvn springext:export</code></entry>
+                            <entry>
+                                <code>uriPrefix</code>
+                            </entry>
+                            <entry>
+                                <code>mvn springext:export</code>
+                            </entry>
                             <entry>导出schemas的目标文件夹的绝对路径</entry>
-                            <entry><para>在导入的schemas中，如果有引用其它的schema的地方，使用指定的URL前缀。</para>
-                                <para><emphasis><code>http://localhost:8080/schema</code></emphasis><code>/myschema.xsd</code></para></entry>
+                            <entry>
+                                <para>在导入的schemas中，如果有引用其它的schema的地方，使用指定的URL前缀。</para>
+                                <para>
+                                    <emphasis>
+                                        <code>http://localhost:8080/schema</code>
+                                    </emphasis>
+                                    <code>/myschema.xsd</code>
+                                </para>
+                            </entry>
                         </row>
                     </tbody>
                 </tgroup>
@@ -296,13 +355,305 @@
             </orderedlist>
         </section>
         <section>
-            <title>使用</title>
-            <section>
-                <title>利用插件编辑Webx/SpringExt配置文件</title>
-                <itemizedlist>
-                    <listitem/>
-                </itemizedlist>
-            </section>
+            <title>利用插件编辑Webx/SpringExt配置文件</title>
+            <para>安装完成Eclipse插件以后，然后打开任何一个Webx/SpringExt的配置文件。你会发现，打开的是一个稍微有点不同的XML编辑器。</para>
+            <figure>
+                <title>SpringExt配置文件编辑器的界面</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/plugin/eclipse/editor-ui.png"/>
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>假如你看到的并不是类似这样的编辑器界面，那么很有可能是因为你的Eclipse中还安装了其它的插件（例如：你安装了Spring
+                IDE、或者OxygenXML编辑器等），导致该文件被其它的编辑器打开了。如果是这样，请尝试用鼠标右键点击文件，然后选择Open With > SpringExt
+                Configuration File Editor。如图所示。</para>
+            <figure>
+                <title>用Open With菜单打开文件</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/plugin/eclipse/open-with.png"/>
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>在这个编辑器中，你可以做如下的事情：</para>
+            <itemizedlist>
+                <listitem>
+                    <para>验证配置文件是否合乎schema语法 —— 按鼠标右键，选择validate。</para>
+                </listitem>
+                <listitem>
+                    <para>自动语法提示 ——
+                        在键入时，eclipse会自动弹出语法提示；或者，你也可以通过eclipse的快捷键来激活语法提示（完全类似于编辑Java代码）。</para>
+                </listitem>
+                <listitem>
+                    <para>按住CTRL键（Mac下为CMD键），将鼠标移到任何一个链接上，或者namespace前缀及对应的标签上，都是可以点击查看的。</para>
+                    <table frame="none">
+                        <title>可作为超链接打开的内容</title>
+                        <tgroup cols="3">
+                            <colspec colname="c1" colnum="1" colwidth="0.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="1.0*"/>
+                            <colspec colname="c3" colnum="3" colwidth="2.0*"/>
+                            <thead>
+                                <row>
+                                    <entry>分类</entry>
+                                    <entry>可点击的内容</entry>
+                                    <entry>说明</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry morerows="2">SpringExt Configuration Point</entry>
+                                    <entry>
+                                        <code>http://www.alibaba.com/schema/services</code>
+                                    </entry>
+                                    <entry>
+                                        <para>这是一个Namespace URI，它代表一个SpringExt的扩展点（Configuration
+                                            Point）。</para>
+                                        <para>点击它就可以打开相应Configuration Point的编辑器。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>
+                                        <code>http://localhost:8080/schema/services.xsd</code>
+                                    </entry>
+                                    <entry>
+                                        <para>这是一个Schema
+                                            Location的链接，它代表一个SpringExt的扩展点（Configuration
+                                            Point）的schema。</para>
+                                        <para>点击它就可以打开相应Configuration Point的编辑器。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>
+                                        <emphasis>
+                                            <code>services</code>
+                                        </emphasis>
+                                        <code>:resource-loading</code>
+                                    </entry>
+                                    <entry>
+                                        <para>这是一个Namespace前缀，它代表一个SpringExt的扩展点（Configuration
+                                            Point）。</para>
+                                        <para>点击它就可以打开相应Configuration Point的编辑器。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry morerows="1">SpringExt Contribution</entry>
+                                    <entry>
+                                        <code>http://localhost:8080/schema/services/resource-loading.xsd"</code>
+                                    </entry>
+                                    <entry>
+                                        <para>这是一个Schema
+                                            Location的链接，它代表一个SpringExt的捐献（Contribution）的schema。</para>
+                                        <para>点击它就可以打开相应Contribution的编辑器。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>
+                                        <code>services</code>
+                                        <emphasis>
+                                            <code>:resource-loading</code>
+                                        </emphasis>
+                                    </entry>
+                                    <entry>
+                                        <para>这是一个XML标签，它代表一个SpringExt的捐献（Contribution）。</para>
+                                        <para>点击它就可以打开相应Contribution的编辑器。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry morerows="2">Spring Pluggable Schema</entry>
+                                    <entry>
+                                        <code>http://www.springframework.org/schema/beans</code>
+                                    </entry>
+                                    <entry>
+                                        <para>这是一个Namespace URI，它代表一个Spring所定义的schema。</para>
+                                        <para>点击它就可以打开相应的Spring Pluggable Schema的编辑器。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>
+                                        <para>
+                                            <code>http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd</code>
+                                        </para>
+                                        <para>或者：<code>http://www.springframework.org/schema/beans/spring-beans.xsd</code></para>
+                                    </entry>
+                                    <entry>
+                                        <para>这是一个Schema Location的链接，它代表一个Spring所定义的schema。</para>
+                                        <para>点击它就可以打开相应的Spring Pluggable Schema的编辑器。</para>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>
+                                        <emphasis>
+                                            <code>beans</code>
+                                        </emphasis>
+                                        <code>:bean</code>
+                                    </entry>
+                                    <entry>
+                                        <para>这是一个Namespace前缀，它代表一个Spring所定义的schema。</para>
+                                        <para>点击它就可以打开相应的Spring Pluggable Schema的编辑器。</para>
+                                    </entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </listitem>
+                <listitem>
+                    <para>点击Namespaces标签，即可增删配置文件中所引入的namespaces。</para>
+                    <figure>
+                        <title>Namespaces编辑界面</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/ns-tab-ui.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                    <para>在这里，你可以：</para>
+                    <itemizedlist>
+                        <listitem>
+                            <para>浏览所有可用的namespaces。</para>
+                            <para>你可以用层次状，或是扁平状两种视图来查看。点击namespaces列表顶上的<inlinemediaobject>
+                                    <imageobject>
+                                        <imagedata fileref="images/plugin/eclipse/icons/list.png"/>
+                                    </imageobject>
+                                </inlinemediaobject>或<inlinemediaobject>
+                                    <imageobject>
+                                        <imagedata fileref="images/plugin/eclipse/icons/tree.png"/>
+                                    </imageobject>
+                                </inlinemediaobject>按钮即可切换视图。</para>
+                            <para>对于层次状列表，点击namespaces列表顶上的<inlinemediaobject>
+                                    <imageobject>
+                                        <imagedata fileref="images/plugin/eclipse/icons/expand.png"
+                                        />
+                                    </imageobject>
+                                </inlinemediaobject>按钮即可实现全部展开，或点击<inlinemediaobject>
+                                    <imageobject>
+                                        <imagedata
+                                            fileref="images/plugin/eclipse/icons/collapse.png"/>
+                                    </imageobject>
+                                </inlinemediaobject>按钮可全部收拢。</para>
+                            <para>你也可以在过滤框里输入任何字符，来过滤列表，使之只显示你感兴趣的条目。</para>
+                        </listitem>
+                        <listitem>
+                            <para>选中某行namespace（注意不是打勾），可查看这个namespace的详细信息。</para>
+                            <para>例如：namespace的类型、定义在何处、有哪些schema版本等等。</para>
+                        </listitem>
+                        <listitem>
+                            <para>点击详细信息中的超链接可打开相应的内容的编辑器。</para>
+                        </listitem>
+                        <listitem>
+                            <para>勾选或清除namespace，可在配置文件中插入或清除相应的xmlns和schemaLocation条目。</para>
+                        </listitem>
+                    </itemizedlist>
+                </listitem>
+                <listitem>
+                    <para>清除未使用的namespaces —— 选择SpringExt菜单中的“<inlinemediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/icons/clear-ns.png"/>
+                            </imageobject>
+                        </inlinemediaobject> Cleanup Unused Namespaces”、或者点击工具栏上的<inlinemediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/icons/clear-ns.png"/>
+                            </imageobject>
+                        </inlinemediaobject>、或者按快捷键<code>CTRL-SHIFT-O</code>（Mac上为<code>CMD-SHIFT-O</code>）。</para>
+                </listitem>
+                <listitem>
+                    <para>升级到Webx 3.2.x的配置风格 —— 从Webx 3.2.x开始，改进了配置文件的格式 —— 对于非contribution
+                            element采用unqualifed风格，也就是无namespace前缀，使配置文件更易读。<table frame="none">
+                            <title>新老风格对比</title>
+                            <tgroup cols="2">
+                                <colspec colname="c1" colnum="1" colwidth="1.0*"/>
+                                <colspec colname="c2" colnum="2" colwidth="1.0*"/>
+                                <thead>
+                                    <row>
+                                        <entry>老风格</entry>
+                                        <entry>Webx 3.2.x 新风格</entry>
+                                    </row>
+                                </thead>
+                                <tbody>
+                                    <row>
+                                        <entry>
+                                            <programlisting language="xml">&lt;services:form>
+    &lt;services:group name="register">
+        &lt;services:field name="name" displayName="你的名字">
+            &lt;fm-validators:required-validator>
+                &lt;fm-validators:message>必须填写 ${displayName}&lt;/fm-validators:message>
+            &lt;/fm-validators:required-validator>
+        &lt;/services:field>
+    &lt;/services:group>
+&lt;/services:form></programlisting>
+                                        </entry>
+                                        <entry>
+                                            <programlisting language="xml">&lt;services:form>
+    &lt;group name="register">
+        &lt;field name="name" displayName="你的名字">
+            &lt;fm-validators:required-validator>
+                &lt;message>必须填写 ${displayName}&lt;/message>
+            &lt;/fm-validators:required-validator>
+        &lt;/field>
+    &lt;/group>
+&lt;/services:form></programlisting>
+                                        </entry>
+                                    </row>
+                                </tbody>
+                            </tgroup>
+                        </table></para>
+                    <para>但是这样配置文件会和以前的版本有所不兼容。如果你决定要升级Webx到3.2.0，只需要选择SpringExt菜单中的“<inlinemediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/icons/upgrade32.png"/>
+                            </imageobject>
+                        </inlinemediaobject> Upgrade to Webx 3.2.x Format”，或者点击工具栏上的<inlinemediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/icons/upgrade32.png"/>
+                            </imageobject>
+                        </inlinemediaobject>按钮，即可立即转换格式。</para>
+                    <para>如果你要升级的配置文件不止一个，最简单的方法是在项目的根目录下执行下面的命令：</para>
+                    <screen><command>mvn springext:convert</command></screen>
+                    <para>这样所有的Webx/SpringExt配置文件都会被转换成新的格式。</para>
+                </listitem>
+            </itemizedlist>
         </section>
+        <section>
+            <title>利用插件编辑SpringExt组件</title>
+            <para>当你在配置文件中，点击任何一个超链接时，就会打开并转到另一个编辑器。在那里，你可以浏览或修改（如果可写的话）SpringExt的组件的内容。</para>
+            <itemizedlist>
+                <listitem>
+                    <para>编辑Configuration Point</para>
+                    <figure>
+                        <title>编辑Configuration Point</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/editor-cp.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+                <listitem>
+                    <para>编辑Contribution</para>
+                    <figure>
+                        <title>编辑Contribution</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/editor-contrib.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+                <listitem>
+                    <para>编辑Spring Pluggable Schema</para>
+                    <figure>
+                        <title>编辑Spring Pluggable Schema</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/editor-spring.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+            </itemizedlist>
+        </section>
+    </section>
+    <section>
+        <title>本章总结</title>
+        <para>SpringExt提供了可扩展的schema机制，虽然很强大，但是如果没有插件的帮助，使用起来很不便。用好插件，可帮助你成倍地提高工作效率。</para>
     </section>
 </chapter>
