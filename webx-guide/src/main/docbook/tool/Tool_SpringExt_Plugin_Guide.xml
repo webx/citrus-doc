@@ -61,7 +61,7 @@
             </listitem>
         </itemizedlist>
     </section>
-    <section>
+    <section xml:id="tool.plugin.springext.maven">
         <title>Maven插件</title>
         <para>通过SpringExt Maven插件，你可以在<code>localhost</code>本机上启动一个监听<code>8080</code>端口的Schema
             Server，通过它就可以访问到所有的schemas。这种机制适合于任何一种支持schema验证的XML编辑器。</para>
@@ -285,7 +285,7 @@
             </itemizedlist>
         </section>
     </section>
-    <section>
+    <section xml:id="tool.plugin.springext.eclipse">
         <title>Eclipse插件</title>
         <para>如果你用Eclipse来作为你的应用开发的工具，那么SpringExt Eclipse插件能够为你提供最方便、更强大的功能。</para>
         <section>

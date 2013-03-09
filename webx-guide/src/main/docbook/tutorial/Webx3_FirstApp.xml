@@ -14,34 +14,36 @@
         <section>
             <title>安装JDK</title>
             <para>Webx需要JDK 5.0以上的版本。请从这里下载并安装它：<link
-                    xl:href="http://www.oracle.com/technetwork/java/javase/" />。</para>
+                    xl:href="http://www.oracle.com/technetwork/java/javase/"/>。</para>
         </section>
         <section>
             <title>安装和配置maven</title>
-            <para>Webx需要maven 2或更高版本。请从这里下载并安装它：<link xl:href="http://maven.apache.org/" />。</para>
+            <para>Webx需要maven 2或更高版本。请从这里下载并安装它：<link xl:href="http://maven.apache.org/"/>。</para>
             <note>
                 <para>你不需要对maven进行特殊的配置，因为运行Webx应用所需要的所有包都存放在全世界共享的中心Maven仓库（Central Maven
                     Repository）中。Maven将从那里自动获取所有的jar包、源代码和javadoc。</para>
                 <para>你可以从这里查询到所有和Webx有关的发布包：<link
                         xl:href="http://search.maven.org/#search%7Cga%7C1%7Ccom.alibaba.citrus"
-                     />。</para>
+                    />。</para>
             </note>
         </section>
         <section>
             <title>安装集成开发环境</title>
             <para>很难想像不用集成开发环境（IDE）来帮助开发Java应用会变成怎样。</para>
-            <para>如果你使用Eclipse（从这里下载：<link xl:href="http://www.eclipse.org/" />），建议安装如下插件：<itemizedlist>
+            <para>如果你使用Eclipse（从这里下载：<link xl:href="http://www.eclipse.org/"/>），建议安装如下插件：<itemizedlist>
                     <listitem>
-                        <para>Maven eclipse插件：<link xl:href="http://eclipse.org/m2e/" /></para>
+                        <para>Maven eclipse插件：<link xl:href="http://eclipse.org/m2e/"/></para>
                     </listitem>
                     <listitem>
-                        <para>Git eclipse插件：<link xl:href="http://eclipse.org/egit/" /></para>
+                        <para>Git eclipse插件：<link xl:href="http://eclipse.org/egit/"/></para>
                     </listitem>
                     <listitem>
                         <para>SpringExt eclipse插件：<link xl:href="http://openwebx.org/updatesite/"
-                             /></para>
-                        <para>关于SpringExt eclipse插件，请参阅更详细的说明：<xref linkend="tool.plugin.springext"
-                             />。</para>
+                            /></para>
+                        <note>
+                            <para>关于SpringExt eclipse插件，请参阅更详细的说明：<xref
+                                    linkend="tool.plugin.springext.eclipse"/>。</para>
+                        </note>
                     </listitem>
                 </itemizedlist></para>
         </section>
@@ -53,10 +55,10 @@
         <example>
             <title>从archetype创建Webx应用</title>
             <programlisting>mvn archetype:generate \
- -DgroupId=com.alibaba.webx \<co xml:id="co.firstapp.archetype.groupId" />
- -DartifactId=tutorial1 \<co xml:id="co.firstapp.archetype.artifactId" />
- -Dversion=1.0-SNAPSHOT \<co xml:id="co.firstapp.archetype.version" />
- -Dpackage=com.alibaba.webx.tutorial1 \<co xml:id="co.firstapp.archetype.package" />
+ -DgroupId=com.alibaba.webx \<co xml:id="co.firstapp.archetype.groupId"/>
+ -DartifactId=tutorial1 \<co xml:id="co.firstapp.archetype.artifactId"/>
+ -Dversion=1.0-SNAPSHOT \<co xml:id="co.firstapp.archetype.version"/>
+ -Dpackage=com.alibaba.webx.tutorial1 \<co xml:id="co.firstapp.archetype.package"/>
  -DarchetypeArtifactId=archetype-webx-quickstart \
  -DarchetypeGroupId=com.alibaba.citrus.sample \
  -DarchetypeVersion=&webx-archetype-version; \
@@ -91,12 +93,12 @@
             <programlisting>mvn jetty:run</programlisting>
         </example>
         <para>这条命令会启动Jetty Server，默认的端口是<code>8081</code>。请在浏览器地址栏输入地址，或直接点击这个链接：<link
-                xl:href="http://localhost:8081/" />。你应该可以看到类似下面的结果：</para>
+                xl:href="http://localhost:8081/"/>。你应该可以看到类似下面的结果：</para>
         <figure>
             <title>Webx开发者首页</title>
             <mediaobject>
                 <imageobject>
-                    <imagedata fileref="images/tut/firstapp-home.png" />
+                    <imagedata fileref="images/tut/firstapp-home.png"/>
                 </imageobject>
             </mediaobject>
         </figure>
@@ -105,7 +107,7 @@
         <informalfigure>
             <mediaobject>
                 <imageobject>
-                    <imagedata fileref="images/tut/firstapp-apphome-link.png" />
+                    <imagedata fileref="images/tut/firstapp-apphome-link.png"/>
                 </imageobject>
             </mediaobject>
         </informalfigure>
@@ -114,7 +116,7 @@
             <title>Webx应用首页</title>
             <mediaobject>
                 <imageobject>
-                    <imagedata fileref="images/tut/firstapp-apphome.png" />
+                    <imagedata fileref="images/tut/firstapp-apphome.png"/>
                 </imageobject>
             </mediaobject>
         </figure>
@@ -158,7 +160,7 @@
                     &lt;/requestLog>
                     &lt;systemProperties>
                         &lt;systemProperty>
-                            &lt;name>productionMode&lt;/name> <co xml:id="co.firstapp.pom.productionMode" />
+                            &lt;name>productionMode&lt;/name> <co xml:id="co.firstapp.pom.productionMode"/>
                             &lt;value>false&lt;/value>
                         &lt;/systemProperty>
                     &lt;/systemProperties>
@@ -181,12 +183,12 @@
                 <programlisting>mvn jetty:run -DproductionMode=true</programlisting>
             </example>
             <para>然后在浏览器地址栏输入地址，或直接点击这个链接：<link xl:href="http://localhost:8081/"
-                 />，你将直接被带入应用首页，而不是“开发者首页”。</para>
+                />，你将直接被带入应用首页，而不是“开发者首页”。</para>
         </section>
         <section>
             <title>“开发模式”是什么意思？</title>
             <para>开发模式是为了方便应用开发，Webx所提供的额外功能。具体请见：<xref linkend="webx.overview.framework.devmode"
-                 />。</para>
+                />。</para>
         </section>
         <section>
             <title>所生成的应用中包含了什么？</title>

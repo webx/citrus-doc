@@ -21,7 +21,7 @@
             <title>Resource Loading服务的设计</title>
             <mediaobject>
                 <imageobject>
-                    <imagedata fileref="images/o2/resource-loading-design.png" />
+                    <imagedata fileref="images/o2/resource-loading-design.png"/>
                 </imageobject>
             </mediaobject>
         </figure>
@@ -54,7 +54,7 @@
                 <title>服务提供者和使用者的关系</title>
                 <mediaobject>
                     <imageobject>
-                        <imagedata fileref="images/o2/roles.png" />
+                        <imagedata fileref="images/o2/roles.png"/>
                     </imageobject>
                 </mediaobject>
             </figure>
@@ -115,7 +115,7 @@
                 <title>用Schema改善服务角色之间的关系</title>
                 <mediaobject>
                     <imageobject>
-                        <imagedata fileref="images/o2/roles-schema.png" />
+                        <imagedata fileref="images/o2/roles-schema.png"/>
                     </imageobject>
                 </mediaobject>
             </figure>
@@ -138,7 +138,7 @@
         &lt;webapp-loader />
     &lt;/resource>
     &lt;resource pattern="/db">
-        &lt;database-loader connection="jdbc:mysql:mydb" /> <co xml:id="co.add.dbloader" />
+        &lt;database-loader connection="jdbc:mysql:mydb" /> <co xml:id="co.add.dbloader"/>
     &lt;/resource>
 &lt;/resource-loading></programlisting>
                 <calloutlist>
@@ -157,17 +157,17 @@
         <section>
             <title>SpringExt Schema</title>
             <para>SpringExt改进了Spring，使得Spring Schema可以被扩展。下面的例子对<xref
-                    xl:href="#example.resource-loading.spring.schema" />作了少许修改，使之能被扩展。</para>
+                    xl:href="#example.resource-loading.spring.schema"/>作了少许修改，使之能被扩展。</para>
             <example xml:id="example.resource-loading.springext.schema">
                 <title>用SpringExt Schema装配Resource Loading服务</title>
                 <programlisting language="xml">&lt;resource-loading id="resourceLoadingService"
                   xmlns="http://www.alibaba.com/schema/services"
-                  xmlns:loaders="http://www.alibaba.com/schema/services/resource-loading/loaders"> <co xml:id="co.ns.loaders" />
+                  xmlns:loaders="http://www.alibaba.com/schema/services/resource-loading/loaders"> <co xml:id="co.ns.loaders"/>
     &lt;resource pattern="/file">
-        &lt;loaders:file-loader basedir="${user.home}" /> <co xml:id="co.ns.loaders.prefix1" />
+        &lt;loaders:file-loader basedir="${user.home}" /> <co xml:id="co.ns.loaders.prefix1"/>
     &lt;/resource>
     &lt;resource pattern="/webroot">
-        &lt;loaders:webapp-loader /> <co xml:id="co.ns.loaders.prefix2" />
+        &lt;loaders:webapp-loader /> <co xml:id="co.ns.loaders.prefix2"/>
     &lt;/resource>
 &lt;/resource-loading></programlisting>
                 <calloutlist>
@@ -202,7 +202,7 @@
         &lt;loaders:webapp-loader />
     &lt;/resource>
     &lt;resource pattern="/db">
-        &lt;loaders:database-loader connection="jdbc:mysql:mydb" /> <co xml:id="co.add.dbloader.springext" />
+        &lt;loaders:database-loader connection="jdbc:mysql:mydb" /> <co xml:id="co.add.dbloader.springext"/>
     &lt;/resource>
 &lt;/resource-loading></programlisting>
                             <calloutlist>
@@ -221,7 +221,7 @@
         <section>
             <title>XML Schema中的秘密</title>
             <para>下面这段配置是<xref xl:href="#example.resource-loading.springext.schema.add.dbloader"
-                 />的spring配置文件的片段。</para>
+                />的spring配置文件的片段。</para>
             <programlisting language="xml">&lt;resource-loading>
     ...
     &lt;resource pattern="/db">
@@ -237,7 +237,7 @@
                 <programlisting language="xml">&lt;xsd:element name="resource" type="ResourceLoadingServiceResourceType">
 &lt;xsd:complexType name="ResourceLoadingServiceResourceType">
     &lt;xsd:choice minOccurs="0" maxOccurs="unbounded">
-        &lt;xsd:any namespace="http://www.alibaba.com/schema/services/resource-loading/loaders" /> <co xml:id="co.resource-loading.loaders" />
+        &lt;xsd:any namespace="http://www.alibaba.com/schema/services/resource-loading/loaders" /> <co xml:id="co.resource-loading.loaders"/>
     &lt;/xsd:choice>
     &lt;xsd:attribute name="pattern" type="xsd:string" use="required" />
 &lt;/xsd:complexType></programlisting>
@@ -259,7 +259,7 @@
                 <title>SpringExt的概念：扩展点和捐献</title>
                 <mediaobject>
                     <imageobject>
-                        <imagedata fileref="images/o2/springext-concept.png" />
+                        <imagedata fileref="images/o2/springext-concept.png"/>
                     </imageobject>
                 </mediaobject>
             </figure>
@@ -308,7 +308,7 @@
                 <title>组件</title>
                 <mediaobject>
                     <imageobject>
-                        <imagedata fileref="images/o2/springext-component.png" />
+                        <imagedata fileref="images/o2/springext-component.png"/>
                     </imageobject>
                 </mediaobject>
             </figure>
@@ -328,11 +328,11 @@
     xmlns:p="http://www.springframework.org/schema/p"
     xsi:schemaLocation="
         http://www.alibaba.com/schema/services
-            <emphasis>http://localhost:8080/schema/services.xsd</emphasis> <co xml:id="co.schema.location.services" />
+            <emphasis>http://localhost:8080/schema/services.xsd</emphasis> <co xml:id="co.schema.location.services"/>
         http://www.alibaba.com/schema/services/resource-loading/loaders
-            <emphasis>http://localhost:8080/schema/services-resource-loading-loaders.xsd</emphasis> <co xml:id="co.schema.location.loaders" />
+            <emphasis>http://localhost:8080/schema/services-resource-loading-loaders.xsd</emphasis> <co xml:id="co.schema.location.loaders"/>
         http://www.springframework.org/schema/beans
-            <emphasis>http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd</emphasis> <co xml:id="co.schema.location.beans" />
+            <emphasis>http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd</emphasis> <co xml:id="co.schema.location.beans"/>
     ">
     ...
 &lt;/beans:beans></programlisting>
@@ -353,7 +353,7 @@
                                 <title>Eclipse XML编辑器弹出的语法提示</title>
                                 <mediaobject>
                                     <imageobject>
-                                        <imagedata fileref="images/o2/popup-syntax.png" />
+                                        <imagedata fileref="images/o2/popup-syntax.png"/>
                                     </imageobject>
                                 </mediaobject>
                             </figure>
@@ -364,7 +364,7 @@
                                 <title>Eclipse XML编辑器验证spring配置文件时，显示的错误信息</title>
                                 <mediaobject>
                                     <imageobject>
-                                        <imagedata fileref="images/o2/validate-schema.png" />
+                                        <imagedata fileref="images/o2/validate-schema.png"/>
                                     </imageobject>
                                 </mediaobject>
                             </figure>
@@ -395,7 +395,8 @@
                 <para>XML编辑器取得schema内容的另一条途径是将所有的schema转换成静态文件，然后定义一个标准的XML
                     Catalog来访问这些schema文件。然而这种方法的难点类似于将schema存放在外部服务器上 ——
                     你很难让这些静态文件和你的组件版本保持一致。</para>
-                <para>SpringExt提供了一个解决方案，可以完全解决上述问题。你可以使用SpringExt所提供的maven插件，在<code>localhost</code>本机上启动一个监听<code>8080</code>端口的Schema
+                <para>SpringExt提供了两个解决方案，可以完全解决上述问题 ——
+                        使用maven或eclipse插件。你可以使用SpringExt所提供的maven插件，在<code>localhost</code>本机上启动一个监听<code>8080</code>端口的Schema
                     Server，通过它就可以访问到所有的schemas：</para>
                 <screen><command>mvn springext:run</command></screen>
                 <para>上述命令执行以后，打开浏览器，输入网址<code>http://localhost:8080/schema</code>就可以看到类似下面的内容：</para>
@@ -403,18 +404,20 @@
                     <title>用SpringExt maven插件罗列schemas</title>
                     <mediaobject>
                         <imageobject>
-                            <imagedata fileref="images/o2/schema-exporter.png" />
+                            <imagedata fileref="images/o2/schema-exporter.png"/>
                         </imageobject>
                     </mediaobject>
                 </figure>
                 <para>这就是为什么<xref xl:href="#example.schema.locations"
-                         />中，把<code>schemaLocation</code>指向<code>localhost:8080</code>的原因。只有这样，才能让任何普通的XML编辑器不需要任何特殊的设置，就可以读到正确的schema。</para>
+                        />中，把<code>schemaLocation</code>指向<code>localhost:8080</code>的原因。只有这样，才能让任何普通的XML编辑器不需要任何特殊的设置，就可以读到正确的schema。</para>
+                <para>你也可以使用Eclipse插件 —— 这比maven插件更方便，只要你是用eclipse来开发应用的话。</para>
+                <para>关于这两个插件，详情请见：<xref linkend="tool.plugin.springext"/>。</para>
             </section>
             <section>
                 <title>SpringExt需要读取schemas</title>
                 <para>当SpringExt在初始化容器时，需要读取schema以验证spring配置文件。</para>
                 <para>请记住，<emphasis>SpringExt永远不需要通过访问网络来访问schemas</emphasis>。事实上，即使你把<xref
-                        xl:href="#example.schema.locations" />中的schema的网址改成指向“外部服务器”的链接，SpringExt也不会真的去访问它们。例如：<itemizedlist>
+                        xl:href="#example.schema.locations"/>中的schema的网址改成指向“外部服务器”的链接，SpringExt也不会真的去访问它们。例如：<itemizedlist>
                         <listitem>
                             <para>将：<code>http://localhost:8080/schema/</code><emphasis>services.xsd</emphasis></para>
                             <para>改成：<code>http://www.alibaba.com/schema/</code><emphasis>services.xsd</emphasis></para>
@@ -435,7 +438,7 @@
                     <title>SpringExt如何取得schemas</title>
                     <mediaobject>
                         <imageobject>
-                            <imagedata fileref="images/o2/get-schemas.png" />
+                            <imagedata fileref="images/o2/get-schemas.png"/>
                         </imageobject>
                     </mediaobject>
                 </figure>
