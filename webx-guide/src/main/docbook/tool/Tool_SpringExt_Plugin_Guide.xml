@@ -7,9 +7,302 @@
     xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
     <?dbhtml filename="springext-plugin.html" ?>
     <title>安装和使用SpringExt插件</title>
-    <para>本章介绍了如何在eclipse中安装和使用SpringExt插件的方法。</para>
     <section>
-        <title>安装</title>
-        <para />
+        <title>SpringExt插件有什么用？</title>
+        <para>SpringExt扩展了Spring的schema机制，使得开发者可以借助schema来扩展框架的功能。然而使用schema来编写配置文件时，我们面临一个问题：XML编辑器到哪里去找到schema？</para>
+        <para>例如，我们在Eclipse中打开一个典型的Webx配置文件：</para>
+        <example xml:id="example.schema.locations1">
+            <title>在XML中指定Schema Location</title>
+            <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8" ?>
+&lt;beans:beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://www.alibaba.com/schema/services"
+    xmlns:loaders="http://www.alibaba.com/schema/services/resource-loading/loaders"
+    xmlns:beans="http://www.springframework.org/schema/beans"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="
+        http://www.alibaba.com/schema/services
+            <emphasis>http://localhost:8080/schema/services.xsd</emphasis> <co xml:id="co.schema.location.services1"/>
+        http://www.alibaba.com/schema/services/resource-loading/loaders
+            <emphasis>http://localhost:8080/schema/services-resource-loading-loaders.xsd</emphasis> <co xml:id="co.schema.location.loaders1"/>
+        http://www.springframework.org/schema/beans
+            <emphasis>http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd</emphasis> <co xml:id="co.schema.location.beans1"/>
+    ">
+    ...
+&lt;/beans:beans></programlisting>
+            <calloutlist>
+                <callout
+                    arearefs="co.schema.location.services1 co.schema.location.loaders1 co.schema.location.beans1">
+                    <para>指定schema的位置。</para>
+                </callout>
+            </calloutlist>
+        </example>
+        <para>一般Eclispe会用一个XML编辑器来打开这类文件，然后试着从<code>schemaLocation</code>中取得所需要的schemas，并用它们来验证文件。然而，Webx/SpringExt的schema并不存在于网络上的任何一个地方，而是存在于jar包中，或是在内存中自动生成的。显然XML编辑器不能从这样的<code>schemaLocation</code>中得到什么。</para>
+        <para>因此，当我们试图验证（validate）XML文件的时候，编辑器会警告：无法取得schema或DTD。当我们试图让Eclipse自动提示语法信息时，Eclipse会无所适从。如图所示。</para>
+        <figure>
+            <title>无法验证的XML配置文件</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata fileref="images/plugin/no-plugin.png"/>
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>SpringExt提供了两种插件，可用来解决这个问题：Maven插件，和Eclipse插件。</para>
+        <itemizedlist>
+            <listitem>
+                <para><emphasis>Maven插件</emphasis> ——
+                        你可以使用它，在<code>localhost</code>本机上启动一个监听<code>8080</code>端口的Schema
+                    Server，通过它就可以访问到所有的schemas。</para>
+                <para>这也是为什么<xref xl:href="#example.schema.locations1"
+                        />中，要把<code>schemaLocation</code>指向<code>localhost:8080</code>的原因。只有这样，才能让任何普通的XML编辑器不需要任何特殊的设置，就可以通过这个插件来读到正确的schemas。</para>
+            </listitem>
+            <listitem>
+                <para><emphasis>Eclipse插件</emphasis> ——
+                    通过它，XML编辑器可以直接取得所有schemas的内容。除此之外，Eclipse插件也提供了更多的便利功能，例如：自动引入或清除某个namespace/schema定义。</para>
+            </listitem>
+        </itemizedlist>
+    </section>
+    <section>
+        <title>Maven插件</title>
+        <para>通过SpringExt Maven插件，你可以在<code>localhost</code>本机上启动一个监听<code>8080</code>端口的Schema
+            Server，通过它就可以访问到所有的schemas。这种机制适合于任何一种支持schema验证的XML编辑器。</para>
+        <section>
+            <title>在<code>pom.xml</code>中定义插件</title>
+            <para>在使用Maven插件之前，必须在要使用插件功能的项目的<code>pom.xml</code>文件中作出定义。如果是多模块的项目（multi-modules），下面的内容必须定义在根项目（即pom项目）中。</para>
+            <example>
+                <title>在<code>pom.xml</code>这定义SpringExt Maven插件</title>
+                <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    ...
+    &lt;properties>
+        ...
+        &lt;springext-plugin-version>&springext-maven-version;&lt;/springext-plugin-version> <co xml:id="co.springext-maven-version.property"/>
+    &lt;/properties>
+    ...
+    &lt;build>
+        &lt;plugins>
+            ...
+            &lt;plugin>
+                &lt;groupId>com.alibaba.citrus.tool&lt;/groupId> <co xml:id="co.springext-maven-plugin"/>
+                &lt;artifactId>springext-maven-plugin&lt;/artifactId>
+            &lt;/plugin>
+        &lt;/plugins>
+        &lt;pluginManagement>
+            &lt;plugins>
+                ...
+                &lt;plugin>
+                    &lt;groupId>com.alibaba.citrus.tool&lt;/groupId>
+                    &lt;artifactId>springext-maven-plugin&lt;/artifactId>
+                    &lt;version>${springext-plugin-version}&lt;/version>
+                &lt;/plugin>
+            &lt;/plugins>
+        &lt;/pluginManagement>
+    &lt;/build>
+&lt;/project></programlisting>
+                <calloutlist>
+                    <callout arearefs="co.springext-maven-version.property">
+                        <para>在maven properties中指定插件的版本号，方便以后升级。</para>
+                    </callout>
+                    <callout arearefs="co.springext-maven-plugin">
+                        <para>在项目中配置插件。</para>
+                    </callout>
+                </calloutlist>
+            </example>
+        </section>
+        <section>
+            <title>启动schema服务器</title>
+            <para>在项目的根目录下，执行以下命令：</para>
+            <screen><command>mvn springext:run</command></screen>
+            <para>上述命令执行以后，打开浏览器，输入网址<code>http://localhost:8080/schema</code>就可以看到类似下面的内容：</para>
+            <figure>
+                <title>用SpringExt maven插件罗列schemas</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/plugin/maven/schema-exporter.png"/>
+                    </imageobject>
+                </mediaobject>
+            </figure>
+            <para>如果这时你重新打开刚才的XML配置文件（最好重启eclipse以清除缓存），就可以看到Eclipse已经能够弹出语法提示了。</para>
+            <figure>
+                <title>启动schema服务器以后，可以看到语法提示</title>
+                <mediaobject>
+                    <imageobject>
+                        <imagedata fileref="images/plugin/maven/schema-gramma-assist.png"/>
+                    </imageobject>
+                </mediaobject>
+            </figure>
+        </section>
+        <section>
+            <title>导出所有的schemas</title>
+            <para>在项目的根目录下，执行以下命令：</para>
+            <screen><command>mvn springext:export</command></screen>
+            <para>上述命令执行以后，将生成一个<code>target/schemas</code>文件夹，里面包含了所有的可用的schemas。</para>
+        </section>
+        <section>
+            <title>SpringExt Maven插件的可选参数</title>
+            <para>SpringExt Maven插件还包含了一系列可选的参数。</para>
+            <table frame="all" rowheader="firstcol">
+                <title>SpringExt Maven插件的可选参数</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1.0*"/>
+                    <colspec colname="c3" colnum="3" colwidth="1.0*"/>
+                    <colspec colname="c4" colnum="4" colwidth="3.0*"/>
+                    <thead>
+                        <row>
+                            <entry>参数名</entry>
+                            <entry>适用于命令</entry>
+                            <entry>默认值</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><code>contextPath</code></entry>
+                            <entry><code>mvn springext:run</code></entry>
+                            <entry><code>/schema</code></entry>
+                            <entry><para>指定Schema URL的路径：</para>
+                                <para><code>http://localhost:8080</code><emphasis><code>/contextPath</code></emphasis><code>/myschema.xsd</code></para></entry>
+                        </row>
+                        <row>
+                            <entry><code>port</code></entry>
+                            <entry><code>mvn springext:run</code></entry>
+                            <entry><code>8080</code></entry>
+                            <entry><para>指定Schema URL的端口：</para>
+                                <para><code>http://localhost</code><emphasis><code>:8080</code></emphasis><code>/contextPath/myschema.xsd</code></para></entry>
+                        </row>
+                        <row>
+                            <entry><code>noTestClasspath</code></entry>
+                            <entry><para><code>mvn springext:run</code></para>
+                                <para><code>mvn springext:export</code></para></entry>
+                            <entry><code>false</code></entry>
+                            <entry><para>是否在单元测试的classpath中寻找schemas？</para></entry>
+                        </row>
+                        <row>
+                            <entry><code>destdir</code></entry>
+                            <entry><code>mvn springext:export</code></entry>
+                            <entry><code>target/schemas</code></entry>
+                            <entry><para>导出schemas到指定的文件夹。</para></entry>
+                        </row>
+                        <row>
+                            <entry><code>uriPrefix</code></entry>
+                            <entry><code>mvn springext:export</code></entry>
+                            <entry>导出schemas的目标文件夹的绝对路径</entry>
+                            <entry><para>在导入的schemas中，如果有引用其它的schema的地方，使用指定的URL前缀。</para>
+                                <para><emphasis><code>http://localhost:8080/schema</code></emphasis><code>/myschema.xsd</code></para></entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <para>这些参数可以通过两种方法来设定。以参数<code>port</code>为例：</para>
+            <itemizedlist>
+                <listitem>
+                    <para>通过<code>pom.xml</code>来设定</para>
+                    <programlisting language="xml">&lt;?xml version="1.0" encoding="UTF-8"?>
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    ...
+    &lt;build>
+        &lt;plugins>
+            ...
+            &lt;plugin>
+                &lt;groupId>com.alibaba.citrus.tool&lt;/groupId>
+                &lt;artifactId>springext-maven-plugin&lt;/artifactId>
+                &lt;configuration>
+                    <emphasis>&lt;port>9090&lt;/port></emphasis>
+                &lt;/configuration>
+            &lt;/plugin>
+        &lt;/plugins>
+        ...
+    &lt;/build>
+&lt;/project></programlisting>
+                </listitem>
+                <listitem>
+                    <para>或者，通过命令行来设定</para>
+                    <screen><command>mvn springext:run </command><emphasis><code>-Dport=9090</code></emphasis></screen>
+                </listitem>
+            </itemizedlist>
+        </section>
+    </section>
+    <section>
+        <title>Eclipse插件</title>
+        <para>如果你用Eclipse来作为你的应用开发的工具，那么SpringExt Eclipse插件能够为你提供最方便、更强大的功能。</para>
+        <section>
+            <title>安装插件</title>
+            <orderedlist>
+                <listitem>
+                    <para>下载并安装Eclipse，建议安装最新版的Eclipse：<link xl:href="http://www.eclipse.org/"
+                        />。</para>
+                </listitem>
+                <listitem>
+                    <para>运行Eclipse，从Help菜单中，打开Eclipse Marketplace。 </para>
+                    <figure>
+                        <title>打开Eclipse Marketplace</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/install-1-menu.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+                <listitem>
+                    <para>搜索关键词<code>webx</code>，找到Webx/SpringExt Plugin，点击Install按钮。</para>
+                    <figure>
+                        <title>搜索并找到Webx/SpringExt Plugin</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/install-2-search.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+                <listitem>
+                    <para>开始安装插件。</para>
+                    <figure>
+                        <title>勾选要安装的features</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/install-3-install.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                    <figure>
+                        <title>确认License授权</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/install-4-license.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                    <figure>
+                        <title>忽略关于签名的安全警告，选择OK继续安装</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/install-5-sign.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                    <figure>
+                        <title>重启Eclipse</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/install-6-restart.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+            </orderedlist>
+        </section>
+        <section>
+            <title>使用</title>
+            <section>
+                <title>利用插件编辑Webx/SpringExt配置文件</title>
+                <itemizedlist>
+                    <listitem/>
+                </itemizedlist>
+            </section>
+        </section>
     </section>
 </chapter>

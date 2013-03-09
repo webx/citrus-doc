@@ -335,7 +335,7 @@
             <emphasis>http://localhost:8080/schema/www.springframework.org/schema/beans/spring-beans.xsd</emphasis> <co xml:id="co.schema.location.beans" />
     ">
     ...
-    &lt;/beans:beans></programlisting>
+&lt;/beans:beans></programlisting>
                 <calloutlist>
                     <callout
                         arearefs="co.schema.location.services co.schema.location.loaders co.schema.location.beans">
@@ -396,7 +396,7 @@
                     Catalog来访问这些schema文件。然而这种方法的难点类似于将schema存放在外部服务器上 ——
                     你很难让这些静态文件和你的组件版本保持一致。</para>
                 <para>SpringExt提供了一个解决方案，可以完全解决上述问题。你可以使用SpringExt所提供的maven插件，在<code>localhost</code>本机上启动一个监听<code>8080</code>端口的Schema
-                    Server，通过它就可以访问到所有的schema：</para>
+                    Server，通过它就可以访问到所有的schemas：</para>
                 <screen><command>mvn springext:run</command></screen>
                 <para>上述命令执行以后，打开浏览器，输入网址<code>http://localhost:8080/schema</code>就可以看到类似下面的内容：</para>
                 <figure>
