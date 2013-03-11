@@ -386,6 +386,27 @@
                         在键入时，eclipse会自动弹出语法提示；或者，你也可以通过eclipse的快捷键来激活语法提示（完全类似于编辑Java代码）。</para>
                 </listitem>
                 <listitem>
+                    <para>引入Namespaces —— 在键入时，eclipse会提示你引入可用的namespaces。每个namespace代表一个SpringExt
+                        Configuration
+                            Point或Spring的一个可扩展功能。引入一个namespace，就会创建一个<code>xmlns</code>条目，以及相应的<code>schemaLocation</code>。</para>
+                    <figure>
+                        <title>在&lt;beans:beans>中引入services namespace</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/import-services-ns.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                    <figure>
+                        <title>在&lt;services:pipeline>中引入valves namespace</title>
+                        <mediaobject>
+                            <imageobject>
+                                <imagedata fileref="images/plugin/eclipse/import-valves-ns.png"/>
+                            </imageobject>
+                        </mediaobject>
+                    </figure>
+                </listitem>
+                <listitem>
                     <para>按住CTRL键（Mac下为CMD键），将鼠标移到任何一个链接上，或者namespace前缀及对应的标签上，都是可以点击查看的。</para>
                     <table frame="none">
                         <title>可作为超链接打开的内容</title>
@@ -498,7 +519,7 @@
                     </table>
                 </listitem>
                 <listitem>
-                    <para>点击Namespaces标签，即可增删配置文件中所引入的namespaces。</para>
+                    <para>点击Namespaces标签，即可管理配置文件中所引入的namespaces。</para>
                     <figure>
                         <title>Namespaces编辑界面</title>
                         <mediaobject>
