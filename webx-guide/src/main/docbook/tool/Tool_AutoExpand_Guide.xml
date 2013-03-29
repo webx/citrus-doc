@@ -242,7 +242,7 @@ If your can't read the following text, specify correct one like this:
         &lt;plugins>
             &lt;plugin>
                 &lt;groupId>com.alibaba.citrus.tool&lt;/groupId>
-                &lt;artifactId>maven-autoconfig-plugin&lt;/artifactId>
+                &lt;artifactId>autoconfig-maven-plugin&lt;/artifactId>
                 &lt;version>${autoconfig-plugin-version}&lt;/version>
                 &lt;configuration>
                     ...
