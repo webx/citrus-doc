@@ -288,7 +288,7 @@
         <para>很多人会把AutoConfig看作Maven Filtering机制的简单替代品。事实上，这两者的设计初衷有很大的区别。</para>
         <section>
             <title>角色与职责</title>
-            <para>为了把事情说清楚，我们必须要定义两种角色：<emphasis>开发者（Developer）</emphasis>和<emphasis>布署者（Deployer）</emphasis>。</para>
+            <para>为了把事情说清楚，我们必须要定义两种角色：<emphasis>开发者（Developer）</emphasis>和<emphasis>部署者（Deployer）</emphasis>。</para>
             <table frame="none">
                 <title>角色和职责</title>
                 <tgroup cols="2">
@@ -315,7 +315,7 @@
                             </entry>
                         </row>
                         <row>
-                            <entry>布署者</entry>
+                            <entry>部署者</entry>
                             <entry>
                                 <itemizedlist>
                                     <listitem>
@@ -339,7 +339,7 @@
                     <thead>
                         <row>
                             <entry>开发者</entry>
-                            <entry>布署者</entry>
+                            <entry>部署者</entry>
                         </row>
                     </thead>
                     <tbody>
@@ -349,15 +349,15 @@
                                 <para>限定条件为：“合法的文件系统的目录名”。</para>
                             </entry>
                             <entry>
-                                <para>布署者取得petstore的二进制发布包，通过AutoConfig了解到，应用需要一个名为<code>petstore.upload_dir</code>目录名。</para>
-                                <para>布署者便指定一个目录给petstore，该目录名的具体值可能因不同的系统而异。</para>
+                                <para>部署者取得petstore的二进制发布包，通过AutoConfig了解到，应用需要一个名为<code>petstore.upload_dir</code>目录名。</para>
+                                <para>部署者便指定一个目录给petstore，该目录名的具体值可能因不同的系统而异。</para>
                                 <para>AutoConfig会检验该值是否符合限定条件（是否为合法目录名），如果检验通过，就生成配置文件，并将其中的<code>${petstore.upload_dir}</code>替换成该目录名。</para>
                             </entry>
                         </row>
                     </tbody>
                 </tgroup>
             </table>
-            <para>需要注意的是，一个“物理人”所对应的“角色”不是一成不变的。例如：某“开发者”需要试运行应用，此时，他就变成“布署者”。</para>
+            <para>需要注意的是，一个“物理人”所对应的“角色”不是一成不变的。例如：某“开发者”需要试运行应用，此时，他就变成“部署者”。</para>
         </section>
         <section>
             <title>分享二进制目标文件</title>
@@ -389,8 +389,8 @@
                 A里配置文件的任何细节，AutoConfig会自动发现所有的properties定义，并提示编辑。</para>
         </section>
         <section>
-            <title>布署二进制目标文件</title>
-            <para>布署应用的人（即布署者、deployer）也从中受益。因为deployer不再需要亲手去build源代码，而是从maven
+            <title>部署二进制目标文件</title>
+            <para>部署应用的人（即部署者、deployer）也从中受益。因为deployer不再需要亲手去build源代码，而是从maven
                 repository中取得二进制目标文件即可。</para>
             <figure>
                 <title>多团队多角色的合作</title>
@@ -899,8 +899,8 @@
         </section>
     </section>
     <section>
-        <title>AutoConfig的使用 —— 布署者指南</title>
-        <para>布署者有两种方法可以使用AutoConfig：<itemizedlist>
+        <title>AutoConfig的使用 —— 部署者指南</title>
+        <para>部署者有两种方法可以使用AutoConfig：<itemizedlist>
                 <listitem>
                     <para>在命令行上直接运行。</para>
                 </listitem>

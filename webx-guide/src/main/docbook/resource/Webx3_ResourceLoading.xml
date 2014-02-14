@@ -145,7 +145,7 @@ InputStream resourceContent = new FileInputStream(resourceFile); // 取得输入
                     <listitem>
                         <para>Web应用既可以打包成war文件，也可以展开到任意目录中。因此Web应用中的资源（JSP、模板、图片、Java类、配置文件）不总是可以用文件的方式存取。虽然Servlet
                                 API提供了<code>ServletContext.getRealPath()</code>方法，用来取得某个资源的实际文件路径，但该方法很可能返回<code>null</code>
-                            —— 这取决于应用服务器的实现，以及Web应用的布署方式。更好的获取WEB应用资源的方法如下：</para>
+                            —— 这取决于应用服务器的实现，以及Web应用的部署方式。更好的获取WEB应用资源的方法如下：</para>
                         <example>
                             <title>访问Web应用中的资源</title>
                             <programlisting language="java">URL resourceURL = servletContext.getResource("/WEB-INF/web.xml"); // 取得URL
@@ -464,7 +464,7 @@ context.refresh();</programlisting>
                     <term>不透明性</term>
                     <listitem>
                         <para>你必须用“绝对路径”来引用Spring中的资源。</para>
-                        <para>假如你使用<code>FileSystemXmlApplicationContext</code>来访问资源，你必须使用绝对路径来访问文件或目录资源。这妨碍了应用程序在不同系统中布署的自由。因为在不同的系统中，例如Windows和Linux，文件的绝对路径是不同的。为了系统管理的需要，有时也需要将文件或目录放在不同于开发环境的地方。</para>
+                        <para>假如你使用<code>FileSystemXmlApplicationContext</code>来访问资源，你必须使用绝对路径来访问文件或目录资源。这妨碍了应用程序在不同系统中部署的自由。因为在不同的系统中，例如Windows和Linux，文件的绝对路径是不同的。为了系统管理的需要，有时也需要将文件或目录放在不同于开发环境的地方。</para>
                         <para>即便是访问WEB应用下的资源，或者是classpath下的资源，你也必须明确指出它们的位置，例如：<code>WEB-INF/myFile.xml</code>、<code>classpath:myFile.xml</code>等。如果我希望把<code>classpath:myFile.xml</code>挪到另一个物理位置，就必须修改所有的引用。</para>
                     </listitem>
                 </varlistentry>

@@ -80,10 +80,10 @@
             </example>
         </section>
         <section>
-            <title>应用布署的方式</title>
-            <para>多数应用服务器都支持两种类型的布署方式：以包的形式布署，或者以展开目录的形式布署。</para>
+            <title>应用部署的方式</title>
+            <para>多数应用服务器都支持两种类型的部署方式：以包的形式部署，或者以展开目录的形式部署。</para>
             <table frame="none">
-                <title>布署应用的方法</title>
+                <title>部署应用的方法</title>
                 <tgroup cols="2">
                     <colspec colname="c1" colnum="1" colwidth="1.0*" />
                     <colspec colname="c2" colnum="2" colwidth="2.33*" />
@@ -95,7 +95,7 @@
                     </thead>
                     <tbody>
                         <row>
-                            <entry>以包的形式布署</entry>
+                            <entry>以包的形式部署</entry>
                             <entry>
                                 <para>你可以把WEB应用的war包直接发布在应用服务器上，应用服务器不需要把包打开就能运行它。</para>
                                 <para>发布一个应用包（只有一个文件），对于deployer来说是比较方便的。通常他只需要把这个包往指定的应用服务器目录一丢，就可以把应用跑起来。</para>
@@ -103,8 +103,8 @@
                             </entry>
                         </row>
                         <row>
-                            <entry>以展开目录的形式布署</entry>
-                            <entry>以展开目录的形式布署的应用，更适合于开发阶段。这样，开发者可以方便地替换应用中的任何一个文件，而不需要重新打包。这节省了很多时间。</entry>
+                            <entry>以展开目录的形式部署</entry>
+                            <entry>以展开目录的形式部署的应用，更适合于开发阶段。这样，开发者可以方便地替换应用中的任何一个文件，而不需要重新打包。这节省了很多时间。</entry>
                         </row>
                     </tbody>
                 </tgroup>
