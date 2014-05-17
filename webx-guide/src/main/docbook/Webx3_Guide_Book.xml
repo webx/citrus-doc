@@ -44,4 +44,10 @@
         <xi:include href="tool/Tool_AutoConfig_Guide.xml" />
         <xi:include href="tool/Tool_AutoExpand_Guide.xml" />
     </part>
+    <part xml:id="webx.userguide">
+        <title>简单使用</title>
+        <xi:include href="userguide/Webx3_pipeline.xml" />
+        <xi:include href="userguide/Webx3_pullservice.xml" />
+        <xi:include href="userguide/Webx3_uribrokerService.xml" />
+    </part>
 </book>

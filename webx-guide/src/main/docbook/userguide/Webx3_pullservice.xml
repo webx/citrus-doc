@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter[
+  <!ENTITY % placeholders SYSTEM "../../../../target/pom.ent">
+  %placeholders;
+]>
+<chapter xml:id="usergide.pullservice" xmlns="http://docbook.org/ns/docbook"
+    xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="zh-CN">
+    <?dbhtml filename="usergide_pullservice.html" ?>
+    <title>Pipeline使用</title>
+    <section>
+        <title>介绍</title>
+        <para>pullService提供了一个自动组装template context的机制。除了框架提供的工具类之外，也可以自己做扩展。 </para>
+    </section>
+    <section>
+        <title>使用</title>
+        <section>
+            <title>框架自带的tool</title>
+            <section>
+                <title> &lt;utils /&gt;</title>
+                <para>
+                    注入了arrayUtil,classLoaderUtil,classUtil,exceptionUtil,fileUtil,localeUtil,messageUtil,objectUtil,streamUtil,stringEscapeUtil,stringUtil,systemUtil,mathUtil,这些工具类。
+                     </para>
+                <caution>
+                    <para>StringUtil类webx2时候差别蛮大的，使用前最好先查下类</para>
+                </caution>
+            </section>
+            <section>
+                <title> &lt;rundata-tool /&gt; </title>
+                <para> 注入了rundata，rundata对应的实例是：TurbineRunData </para>
+            </section>
+            <section>
+                <title> &lt;csrfToken /&gt; </title>
+                <para> 注入了csrfToken，csrfToken对应的实例是：CsrfToken </para>
+            </section>
+            <section>
+                <title> &lt;form-tool /&gt; </title>
+                <para> 注入了form </para>
+            </section>
+            <section>
+                <title> &lt;control-tool /&gt; </title>
+                <para> 注入了ControlTool </para>
+            </section>
+            <section>
+                <title> &lt;uris-tool /&gt; </title>
+                <para> 注入了所有uriBrokerService里面配的uriBroker。 </para>
+            </section>
+        </section>
+        <section>
+            <title>toolName的生成规则顺序</title>
+            <para>
+                <orderedlist>
+                    <listitem>
+                        <para> refName </para>
+                    </listitem>
+                    <listitem>
+                        <para> 根据class名字生成，如果类带后缀（Tool, ToolFactory, ToolSet,
+                            ToolSetFactory），先去掉后缀，再变成camel case。如注入AbcTooFactory类，则页面可以引用abc。
+                        </para>
+                    </listitem>
+                    <listitem>
+                        <para> 根据配置文件名称生成：如果配置带后缀（-tool, -tool-factory, -tool-set,
+                            -tool-set-factory）,先去掉后缀，再变成camel case。如rundata-tool，页面引入的是rundata。
+                        </para>
+                    </listitem>
+                </orderedlist>
+            </para>
+        </section>
+    </section>
+    <section>
+        <title>扩展</title>
+        <section>
+            <title> 引入多个bean</title>
+            <programlisting language="xml">&lt;context-exposer>
+     &lt;tool id="bean1" />
+     &lt;tool id="bean2" />
+     &lt;tool id="bean3" />
+     &lt;tool id="bean4" />
+&lt;/context-exposer></programlisting>
+        </section>
+        <section>
+            <title> 注入类的常量（指的是public，static，finally的那些field），配置举例： </title>
+            <programlisting language="xml">&lt;constants id="myconst" constantClass="javax.servlet.http.HttpServletResponse" exposed="true/false"/></programlisting>
+            <para> 这样页面上就可以这么用常量，$myconst.SC_OK，$myconst.SC_FOUND  </para>
+            <para>
+                默认exposed=true，这样模板上甚至可以这么用：$SC_OK，当然也可以这么$myconst.SC_OK，建议用后者。如果exposed=false，那模板上只能这么用：$myconst.SC_FOUND </para>
+        </section>
+        <section>
+            <title> 注入一个类，举例： </title>
+            <programlisting language="xml">&lt;bean-tool id="beanName" class="com.alibaba...XXX" scope="global/request" autowire="true" /&gt;</programlisting>
+        </section>
+        <section>
+            <title> 将静态util类的方法组合在一起，举例</title>
+            <para>
+                <programlisting>&lt;mixin id="myUtils"&gt;
+     &lt;!-- 引进class中所有public static方法 --&gt;
+     &lt;class name="com.alibaba.citrus.util.StringUtil" /&gt;
+
+     &lt;!-- 引进class中部分public static方法 --&gt;
+     &lt;class name="com.alibaba.citrus.util.StringEscapeUtil"&gt;
+
+     &lt;!-- 引进指定的public static方法 --&gt;
+     &lt;method name="escapeHtml" /&gt;
+
+     &lt;!-- 引进指定的public static方法，并改名 --&gt;
+     &lt;method name="escapeURL" renameTo="escapeUrl" /&gt;
+
+     &lt;/class&gt;
+&lt;/mixin&gt;</programlisting>
+                这样在页面上可以这样使用：$myUtils.isEmpty("$ddd"),$myUtils.escapeHtml("$avar")
+            </para>
+        </section>
+    </section>
+</chapter>

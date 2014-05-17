@@ -1213,7 +1213,7 @@ $group.mapTo($user) <co xml:id="co.form.modifydata.vm.mapto" />
                         source内容，在中文环境中（<code>locale=zh_CN</code>），将显示错误信息“<code>必须填写用户名</code>”；而在英文环境中（<code>locale=en_US</code>），将显示默认的错误信息“<code>User
                         ID is required</code>”。</para>
                 <para>系统的当前locale是由<code>SetLocaleRequestContext</code>来决定的。关于<code>SetLocaleRequestContext</code>的设定和使用，请参见<xref
-                        linkend="webx.requestcontexts" />。</para>
+                        linkend="webx.requestcontexts"/></para>
                 <para>此外，你还可以可以改变message source中key的前缀。</para>
                 <example>
                     <title>改变message source key的前缀</title>
